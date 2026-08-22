@@ -135,11 +135,12 @@ def render_attendance():
         st.warning("개설된 모임이 없습니다.")
         return
 
-    # 본인이 신청한 정규모임만 필터링
+    # 본인이 신청한 정규모임만 필터링 (지정책 및 소모임/벙은 출석체크 대상에서 제외)
     my_meetings = []
     for m in meetings:
         is_bung = ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
-        if not is_bung:
+        is_jijung = ("지정책" in m['title'] or "지정책" in (m['book_title'] or ""))
+        if not is_bung and not is_jijung:
             rsvps = get_rsvps_for_meeting(m['id'])
             if any(r['member_phone'] == google_user['email'] or r['member_name'] == google_user['display_name'] for r in rsvps):
                 my_meetings.append(m)
