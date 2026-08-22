@@ -149,7 +149,7 @@ def render_attendance():
         st.info(f"📌 [{google_user['display_name']}] 님은 현재 참가 신청한 정규모임이 없습니다. 먼저 '모임 일정 & 신청' 메뉴에서 정규모임 신청을 진행해 주세요.")
         return
 
-    meeting_dict = {f"[{m['meeting_date']}] {m['title']} (@ {m['location_name']})": m for m in my_meetings}
+    meeting_dict = {f"[{m['meeting_date']}] {m['title']}\n📍 {m['location_name']}": m for m in my_meetings}
     selected_meeting_label = st.selectbox("출석체크할 모임 선택", list(meeting_dict.keys()), key="att_meeting_select")
     selected_meeting = meeting_dict[selected_meeting_label]
 
