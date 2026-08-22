@@ -7,6 +7,7 @@ from views.intro import render_intro
 from views.register import render_register
 from views.schedule import render_schedule
 from views.attendance import render_attendance
+from views.bookshelf import render_bookshelf
 
 # 기본 설정
 st.set_page_config(
@@ -70,6 +71,11 @@ if page == "home":
         st.session_state.current_page = "attendance"
         st.rerun()
 
+    # 5. 나의 서재 버튼
+    if st.button("📚 나의 서재 (My Book Planet)", key="btn_nav_bs", use_container_width=True):
+        st.session_state.current_page = "bookshelf"
+        st.rerun()
+
 elif page == "intro":
     render_intro()
 elif page == "register":
@@ -78,6 +84,8 @@ elif page == "schedule":
     render_schedule()
 elif page == "attendance":
     render_attendance()
+elif page == "bookshelf":
+    render_bookshelf()
 
 # 서브 페이지 하단에도 메인 메뉴로 돌아가기 버튼 배치
 if st.session_state.current_page != "home":
