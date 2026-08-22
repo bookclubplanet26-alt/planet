@@ -160,5 +160,14 @@ def apply_custom_css():
         background-color: #F5EFE6;
         transform: translateY(-1px);
     }
+    /* Selectbox 텍스트 줄바꿈 (모임명 길 경우 2줄 이상 표시) */
+    div[data-baseweb="select"] div {
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
+    li[role="option"] div {
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
     </style>
     """, unsafe_allow_html=True)
