@@ -63,8 +63,10 @@ def render_intro():
         st.markdown("### 📒 노쇼 방지 예치금")
         st.markdown("""
         <b>💰 예치금 안내</b><br/>
-        시즌 활동기간을 통틀어 <b>20,000원</b>을 받습니다.<br/>
-        🎉 <b>하지만! 최초 시즌 4회 이후 시즌은 3회 달성시 100% 환급해 드려요!</b>
+        시즌 활동기간을 통틀어 <b>20,000원</b>을 받습니다.<br/><br/>
+        🎉 <b>열심히 참여하시면 예치금 100% 돌려드려요!</b><br/>
+        • <b>첫 시즌</b>: 4회 출석 시 환급<br/>
+        • <b>다음 시즌부터</b>: 3회 출석 시 환급
         """, unsafe_allow_html=True)
 
     st.markdown("<br/><hr style='margin: 20px 0;'/>", unsafe_allow_html=True)
