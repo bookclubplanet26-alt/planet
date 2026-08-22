@@ -202,8 +202,21 @@ def render_attendance():
                     "book_read": str(row.get('도서명', '')),
                     "checked_at": str(row.get('출석 일시 (KST)', ''))
                 })
+                # 현재 사용자가 이미 출석 기록이 있는지 판단
+                if (user_email and r_email.lower() == user_email.lower()) or (user_name and r_name == user_name):
+                    already_checked_in = True
+
     if "checked_meetings" not in st.session_state:
         st.session_state.checked_meetings = set()
+
+    # 로컬 세션 상태 또는 로컬 DB에서 이미 출석했는지 이중 검증
+    if selected_meeting['id'] in st.session_state.checked_meetings:
+        already_checked_in = True
+    else:
+        from database import get_attendances_for_meeting
+        local_atts = get_attendances_for_meeting(selected_meeting['id'])
+        if any(a['member_name'] == my_rsvp['member_name'] or a['member_id'] == google_user['id'] for a in local_atts):
+            already_checked_in = True
 
     # 📍 모임 기준 위치 파악 (일요일: 종각 할리스 vs 토요일: 역삼 뚜레쥬르)
     from utils import get_meeting_target_gps, haversine_distance
@@ -263,31 +276,47 @@ def render_attendance():
             elif not is_valid_time_window and not bypass_time:
                 st.error(f"⚠️ 모임 시간을 확인해주세요. ({selected_meeting['meeting_date']} 모임 당일 16:00 ~ 17:00만 출석체크 가능)")
             else:
-                # 0.01초 즉시 출석 완료 상태 저장 (버튼 즉시 숨김)
-                st.session_state.checked_meetings.add(selected_meeting['id'])
+                with st.spinner("🔄 출석 처리 중입니다... 잠시만 기다려 주세요."):
+                    # 세션에 즉시 완료 기록 (프론트엔드 버튼 숨김 처리)
+                    st.session_state.checked_meetings.add(selected_meeting['id'])
 
-                is_lounging_val = 1 if att_type_name == "라운징" else 0
-                record_book_text = book_title_val if book_title_val else ("라운징" if is_lounging_val == 1 else "자유책")
+                    is_lounging_val = 1 if att_type_name == "라운징" else 0
+                    record_book_text = book_title_val if book_title_val else ("라운징" if is_lounging_val == 1 else "자유책")
 
-                # 백그라운드 비동기 스레드로 구글 시트에 즉시 전송 (대기 시간 0초!)
-                from utils import ATTENDANCE_WEBHOOK_URL, append_attendance_to_google_sheet_async, get_club_season_code
-                now_sync = datetime.now()
-                season_code = get_club_season_code(now_sync)
-                append_attendance_to_google_sheet_async(
-                    ATTENDANCE_WEBHOOK_URL,
-                    checked_at=now_sync.strftime("%Y-%m-%d %H:%M:%S"),
-                    email=google_user.get('email', ''),
-                    name=my_rsvp['member_name'],
-                    year=f"{now_sync.year}년",
-                    season=season_code,
-                    meeting_name=selected_meeting['title'],
-                    book_read=record_book_text,
-                    book_review=book_review_val,
-                    is_lounging=is_lounging_val
-                )
-                st.balloons()
-                st.success("출석체크가 정상적으로 완료되어 구글 시트에 등록되었습니다!")
-                st.rerun()
+                    # 백엔드(로컬 DB)에도 즉시 저장 (중복 저장 방지 백엔드 검증용)
+                    from database import get_connection
+                    now_sync = datetime.now()
+                    now_str = now_sync.strftime("%Y-%m-%d %H:%M:%S")
+                    try:
+                        conn = get_connection()
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                        INSERT INTO attendance (meeting_id, member_id, member_name, checked_at, book_read, is_lounging)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """, (selected_meeting['id'], google_user['id'], my_rsvp['member_name'], now_str, record_book_text, is_lounging_val))
+                        conn.commit()
+                        conn.close()
+                    except Exception:
+                        pass
+
+                    # 백그라운드 비동기 스레드로 구글 시트에 전송
+                    from utils import ATTENDANCE_WEBHOOK_URL, append_attendance_to_google_sheet_async, get_club_season_code
+                    season_code = get_club_season_code(now_sync)
+                    append_attendance_to_google_sheet_async(
+                        ATTENDANCE_WEBHOOK_URL,
+                        checked_at=now_str,
+                        email=google_user.get('email', ''),
+                        name=my_rsvp['member_name'],
+                        year=f"{now_sync.year}년",
+                        season=season_code,
+                        meeting_name=selected_meeting['title'],
+                        book_read=record_book_text,
+                        book_review=book_review_val,
+                        is_lounging=is_lounging_val
+                    )
+                    st.balloons()
+                    st.success("✅ 출석체크가 정상적으로 완료되었습니다!")
+                    st.rerun()
 
     # 관리자인 경우에만 구글 시트 출석 완료 명단 표시
     if is_admin:
