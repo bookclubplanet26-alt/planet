@@ -43,7 +43,7 @@ def render_intro():
         st.markdown("### 📓 활동기간")
         st.markdown("""
         저희 모임은 시즌별 운영으로 **2달을 1시즌**으로 운영합니다.<br/>
-        ⭐⭐ <i>처음 오시면 오리엔테이션으로 간단히 모임 소개해 드립니다.</i>
+        ⭐ <i>처음 오시면 오리엔테이션으로 간단히 모임 소개해 드립니다.</i>
         """, unsafe_allow_html=True)
 
     with col2:
