@@ -57,7 +57,7 @@ if page == "home":
         st.rerun()
 
     # 2. 회원가입 및 각종 문의 버튼
-    if st.button("👤 회원가입 및 각종 문의", key="btn_nav_reg", use_container_width=True):
+    if st.button("👤 회원가입 및 문의", key="btn_nav_reg", use_container_width=True):
         st.session_state.current_page = "register"
         st.rerun()
 
