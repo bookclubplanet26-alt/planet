@@ -77,24 +77,33 @@ def fetch_google_sheet_attendances():
 
 def get_member_attendance_count(email, name=""):
     """
-    구글 시트에서 해당 회원의 이번 시즌(예: 2608) 출석 횟수를 실시간으로 집계 (라운징은 0.5회)
+    구글 시트 출석 기록에서 해당 회원의 이번 시즌 출석 횟수를 실시간 집계 (라운징 0.5회, 정규 1회)
     """
     ok, df = fetch_google_sheet_attendances()
     if not ok or df is None or df.empty:
         return 0
     
     current_season = get_club_season_code()
+    user_email = email.strip().lower() if email else ""
+    user_name_only = name.split(" - ")[0].strip() if " - " in name else name.strip()
+    user_nick_only = name.split(" - ")[1].strip() if " - " in name else ""
+
     total = 0.0
     for idx, row in df.iterrows():
-        r_email = str(row.get('회원 이메일', '')).strip()
-        r_name = str(row.get('회원 성함', '')).strip()
-        r_season = str(row.get('시즌', '')).strip()
-        r_book = str(row.get('지참 책 제목', row.get('book_read', ''))).strip()
-        r_lounging = str(row.get('라운징', row.get('is_lounging', ''))).strip()
+        r_email = str(row.get('회원 이메일', row.get('email', ''))).strip().lower()
+        r_name = str(row.get('회원 성함', row.get('name', ''))).strip()
+        r_season = str(row.get('시즌 코드', row.get('시즌', row.get('season', '')))).strip()
+        r_book = str(row.get('도서명', row.get('book_read', ''))).strip()
+        r_lounging = str(row.get('라운징 여부', row.get('is_lounging', ''))).strip()
 
-        if (r_season == current_season or current_season in r_season) and (
-            (email and r_email == email) or (name and r_name in name or name in r_name)
-        ):
+        # 이메일 일치 OR 이름/닉네임 일치 검증
+        match_email = (user_email and r_email == user_email)
+        match_name = (user_name_only and user_name_only == r_name) or (user_nick_only and user_nick_only == r_name)
+        
+        # 시즌 체크 (시즌 값이 없거나 현재 시즌과 일치하는 경우)
+        match_season = (not r_season) or (r_season == current_season) or (current_season in r_season)
+
+        if (match_email or match_name) and match_season:
             if "1" in r_lounging or "라운징" in r_book or "라운징" in r_lounging:
                 total += 0.5
             else:

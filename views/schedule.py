@@ -3,10 +3,9 @@ import datetime
 import pandas as pd
 from database import (
     get_all_meetings, get_rsvps_for_meeting, 
-    get_all_members, add_rsvp, cancel_rsvp, add_meeting, delete_meeting,
-    get_member_attendance_count
+    get_all_members, add_rsvp, cancel_rsvp, add_meeting, delete_meeting
 )
-from utils import LOCATION_PRESETS, fetch_google_sheet_members
+from utils import LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count
 
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g"):
     rsvps = get_rsvps_for_meeting(meeting['id'])
