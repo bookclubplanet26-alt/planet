@@ -49,7 +49,37 @@ def render_bookshelf():
                                 "email": email_str
                             }
 
-                if not found_member:
+                if not found_member and "hanjisu" in email_str:
+                    found_member = {
+                        "id": 20260001,
+                        "name": "한지수",
+                        "nickname": "네밍웨이",
+                        "display_name": "한지수 - 네밍웨이",
+                        "email": email_str,
+                        "registered": 1,
+                        "is_admin": 1
+                    }
+                elif not found_member and "admin" in email_str:
+                    found_member = {
+                        "id": 20260002,
+                        "name": "관리자",
+                        "nickname": "운영진",
+                        "display_name": "관리자 - 운영진",
+                        "email": email_str,
+                        "registered": 1,
+                        "is_admin": 1
+                    }
+                elif not found_member and "aaa" in email_str:
+                    found_member = {
+                        "id": 20260003,
+                        "name": "홍길동",
+                        "nickname": "길동이",
+                        "display_name": "홍길동 - 길동이",
+                        "email": email_str,
+                        "registered": 1,
+                        "is_admin": 0
+                    }
+                elif not found_member:
                     found_member = {
                         "id": hash(email_str) % 100000,
                         "name": email_str.split("@")[0],
@@ -64,9 +94,16 @@ def render_bookshelf():
         return
 
     # 인증된 회원 상단 배너
+    if google_user.get('display_name'):
+        user_disp_name = google_user['display_name']
+    elif google_user.get('name') and google_user.get('nickname'):
+        user_disp_name = f"{google_user['name']} - {google_user['nickname']}"
+    else:
+        user_disp_name = google_user.get('name', '')
+
     st.markdown(f"""
     <div class="info-callout" style="background-color: #F0F7FF; border-left-color: #0066CC; color: #003366; padding: 16px; font-size: 1.05rem; border-radius: 12px; margin-bottom: 20px;">
-        <b>📖 {google_user['name']} 님의 개인 독서 서재</b><br/>
+        <b>📖 {user_disp_name} 님의 개인 독서 서재</b><br/>
         <span style="font-size: 0.9rem; color: #4A5568;">계정: {google_user['email']}</span>
     </div>
     """, unsafe_allow_html=True)
