@@ -323,10 +323,22 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
         "모임일자": meeting_date
     }
 
-    st.cache_data.clear()
+    try:
+        fetch_google_sheet_meetings.clear()
+        fetch_google_sheet_attendances.clear()
+        st.cache_data.clear()
+    except Exception:
+        pass
 
     try:
         requests.post(webhook_url, json=payload, timeout=5)
+    except Exception:
+        pass
+
+    try:
+        fetch_google_sheet_meetings.clear()
+        fetch_google_sheet_attendances.clear()
+        st.cache_data.clear()
     except Exception:
         pass
 
