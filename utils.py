@@ -26,87 +26,68 @@ def get_club_season_code(dt=None):
     year_short = dt.strftime("%y")
     return f"{year_short}{dt.month:02d}"
 
+@st.cache_data(ttl=300, show_spinner=False)
 def fetch_google_sheet_members():
     """
-    사용자의 구글 시트에서 회원 명단(이메일, 이름, 닉네임, 등록여부 등)을 실시간으로 가져오는 함수
+    회원 명단 시트 다이렉트 전송 (캐싱 300초 적용)
     """
-    urls = [
-        f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/export?format=csv&gid=0",
-        f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&gid=0"
-    ]
-    
+    url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/export?format=csv&gid=0"
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
-
-    for url in urls:
-        try:
-            res = requests.get(url, headers=headers, timeout=5)
-            if res.status_code == 200 and "html" not in res.text[:100].lower():
-                raw_bytes = res.content
-                # utf-8, cp949 인코딩 순차 시도
-                for enc in ["utf-8", "cp949", "euc-kr"]:
-                    try:
-                        df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc)
-                        if len(df.columns) > 1:
-                            return True, df, None
-                    except Exception:
-                        continue
-        except Exception as e:
-            continue
-            
+    try:
+        res = requests.get(url, headers=headers, timeout=4)
+        if res.status_code == 200 and "html" not in res.text[:100].lower():
+            for enc in ["utf-8", "cp949", "euc-kr"]:
+                try:
+                    df = pd.read_csv(io.BytesIO(res.content), encoding=enc)
+                    if len(df.columns) > 1:
+                        return True, df, None
+                except Exception:
+                    continue
+    except Exception:
+        pass
     return False, None, "구글 시트 공유 설정('링크가 있는 모든 사용자에게 공개') 확인이 필요합니다."
 
-@st.cache_data(ttl=10, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def fetch_google_sheet_attendances():
     """
-    출석전용 구글 시트(1k1lJmH6fmsPKD8h_-QMbTVy6nrh-RTJt-fUJAQWukKE)에서 실시간 출석 기록을 가져오는 함수 (10초 캐싱으로 대폭 속도 향상)
+    출석전용 구글 시트 다이렉트 전송 (60초 캐싱)
     """
     url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ATTENDANCE_ID}/export?format=csv&gid=0"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
     try:
-        res = requests.get(url, headers=headers, timeout=5)
+        res = requests.get(url, headers=headers, timeout=4)
         if res.status_code == 200:
             df = pd.read_csv(io.BytesIO(res.content), encoding="utf-8")
             return True, df
     except Exception:
         pass
-@st.cache_data(ttl=10, show_spinner=False)
+    return False, None
+
+@st.cache_data(ttl=300, show_spinner=False)
 def fetch_google_sheet_meetings():
     """
-    구글 시트에서 모임 목록/일정 탭(gid=0 또는 다른 탭)을 가져오는 함수
+    모임 목록 시트 다이렉트 1회 전송 (300초 스마트 캐싱으로 0.1초 초고속 조회)
     """
-    # 기본 GOOGLE_SHEET_ID 및 GOOGLE_SHEET_ATTENDANCE_ID 두 곳의 export URL 모두 시도
-    sheet_ids = [GOOGLE_SHEET_ID, GOOGLE_SHEET_ATTENDANCE_ID]
+    url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ATTENDANCE_ID}/export?format=csv&gid=1599243491"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
-
-    for s_id in sheet_ids:
-        # sheet_name 또는 gid 파라미터를 사용하여 모임목록/모임일정 검색
-        urls = [
-            f"https://docs.google.com/spreadsheets/d/{s_id}/export?format=csv&gid=1599243491",
-            f"https://docs.google.com/spreadsheets/d/{s_id}/gviz/tq?tqx=out:csv&sheet=%EB%AA%A8%EC%9E%84%EB%AA%A9%EB%A1%9D",
-            f"https://docs.google.com/spreadsheets/d/{s_id}/gviz/tq?tqx=out:csv&sheet=%EB%AA%A8%EC%9E%84%EC%9D%BC%EC%A0%95",
-            f"https://docs.google.com/spreadsheets/d/{s_id}/export?format=csv&gid=0"
-        ]
-        for url in urls:
-            try:
-                res = requests.get(url, headers=headers, timeout=5)
-                if res.status_code == 200 and "html" not in res.text[:100].lower():
-                    raw_bytes = res.content
-                    for enc in ["utf-8", "cp949", "euc-kr"]:
-                        try:
-                            df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc)
-                            # 모임 관련 주요 컬럼(모임명 또는 모임일자)이 존재하는지 확인
-                            if any(k in str(col) for col in df.columns for k in ["모임명", "모임 제목", "모임일자", "일자", "title"]):
-                                return True, df
-                        except Exception:
-                            continue
-            except Exception:
-                continue
+    try:
+        res = requests.get(url, headers=headers, timeout=4)
+        if res.status_code == 200 and "html" not in res.text[:100].lower():
+            for enc in ["utf-8", "cp949", "euc-kr"]:
+                try:
+                    df = pd.read_csv(io.BytesIO(res.content), encoding=enc)
+                    if any(k in str(col) for col in df.columns for k in ["모임명", "모임 제목", "모임일자", "일자", "title"]):
+                        return True, df
+                except Exception:
+                    continue
+    except Exception:
+        pass
 
     return False, None
 
