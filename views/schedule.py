@@ -344,54 +344,49 @@ def render_schedule():
             elif m_date >= cutoff_date:
                 past_meetings.append(m)
 
-        # 📌 진행 예정 / 지난 모임 메인 탭 분리
-        main_tab1, main_tab2 = st.tabs([
-            f"📅 진행 예정 모임 ({len(upcoming_meetings)})",
+        bung_meetings = [
+            m for m in upcoming_meetings 
+            if ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
+        ]
+        jijung_meetings = [
+            m for m in upcoming_meetings 
+            if m not in bung_meetings and ("지정책" in m['title'] or "지정" in m['title'] or "지정책" in (m['book_title'] or ""))
+        ]
+        regular_meetings = [
+            m for m in upcoming_meetings 
+            if m not in bung_meetings and m not in jijung_meetings
+        ]
+
+        # 📌 한 줄 4개 탭 구성 (정규모임 | 지정책 | 소모임/벙 | 지난 모임)
+        m_tab1, m_tab2, m_tab3, m_tab4 = st.tabs([
+            f"📅 정규모임 ({len(regular_meetings)})", 
+            f"📖 지정책 ({len(jijung_meetings)})", 
+            f"☕ 소모임 / 벙 ({len(bung_meetings)})",
             f"📜 지난 모임 (최근 2달) ({len(past_meetings)})"
         ])
 
-        with main_tab1:
-            bung_meetings = [
-                m for m in upcoming_meetings 
-                if ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
-            ]
-            jijung_meetings = [
-                m for m in upcoming_meetings 
-                if m not in bung_meetings and ("지정책" in m['title'] or "지정" in m['title'] or "지정책" in (m['book_title'] or ""))
-            ]
-            regular_meetings = [
-                m for m in upcoming_meetings 
-                if m not in bung_meetings and m not in jijung_meetings
-            ]
+        with m_tab1:
+            if not regular_meetings:
+                st.info("현재 예정된 정규모임이 없습니다.")
+            else:
+                for meeting in regular_meetings:
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="reg_m")
 
-            m_tab1, m_tab2, m_tab3 = st.tabs([
-                f"📅 정규모임 ({len(regular_meetings)})", 
-                f"📖 지정책 ({len(jijung_meetings)})", 
-                f"☕ 소모임 / 벙 ({len(bung_meetings)})"
-            ])
+        with m_tab2:
+            if not jijung_meetings:
+                st.info("현재 예정된 지정책 모임이 없습니다.")
+            else:
+                for meeting in jijung_meetings:
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="jijung_m")
 
-            with m_tab1:
-                if not regular_meetings:
-                    st.info("현재 예정된 정규모임이 없습니다.")
-                else:
-                    for meeting in regular_meetings:
-                        render_meeting_card(meeting, google_user, is_admin, key_prefix="reg_m")
+        with m_tab3:
+            if not bung_meetings:
+                st.info("현재 예정된 소모임 및 벙 모임이 없습니다.")
+            else:
+                for meeting in bung_meetings:
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="bung_m")
 
-            with m_tab2:
-                if not jijung_meetings:
-                    st.info("현재 예정된 지정책 모임이 없습니다.")
-                else:
-                    for meeting in jijung_meetings:
-                        render_meeting_card(meeting, google_user, is_admin, key_prefix="jijung_m")
-
-            with m_tab3:
-                if not bung_meetings:
-                    st.info("현재 예정된 소모임 및 벙 모임이 없습니다.")
-                else:
-                    for meeting in bung_meetings:
-                        render_meeting_card(meeting, google_user, is_admin, key_prefix="bung_m")
-
-        with main_tab2:
+        with m_tab4:
             if not past_meetings:
                 st.info("최근 2달 동안 진행된 지난 모임 기록이 없습니다.")
             else:
