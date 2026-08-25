@@ -73,7 +73,100 @@ def fetch_google_sheet_attendances():
             return True, df
     except Exception:
         pass
+@st.cache_data(ttl=10, show_spinner=False)
+def fetch_google_sheet_meetings():
+    """
+    구글 시트에서 모임 목록/일정 탭(gid=0 또는 다른 탭)을 가져오는 함수
+    """
+    # 기본 GOOGLE_SHEET_ID 및 GOOGLE_SHEET_ATTENDANCE_ID 두 곳의 export URL 모두 시도
+    sheet_ids = [GOOGLE_SHEET_ID, GOOGLE_SHEET_ATTENDANCE_ID]
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+
+    for s_id in sheet_ids:
+        # sheet_name 또는 gid 파라미터를 사용하여 모임목록/모임일정 검색
+        urls = [
+            f"https://docs.google.com/spreadsheets/d/{s_id}/gviz/tq?tqx=out:csv&sheet=%EB%AA%A8%EC%9E%84%EB%AA%A9%EB%A1%9D",
+            f"https://docs.google.com/spreadsheets/d/{s_id}/gviz/tq?tqx=out:csv&sheet=%EB%AA%A8%EC%9E%84%EC%9D%BC%EC%A0%95",
+            f"https://docs.google.com/spreadsheets/d/{s_id}/export?format=csv&gid=0"
+        ]
+        for url in urls:
+            try:
+                res = requests.get(url, headers=headers, timeout=5)
+                if res.status_code == 200 and "html" not in res.text[:100].lower():
+                    raw_bytes = res.content
+                    for enc in ["utf-8", "cp949", "euc-kr"]:
+                        try:
+                            df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc)
+                            # 모임 관련 주요 컬럼(모임명 또는 모임일자)이 존재하는지 확인
+                            if any(k in str(col) for col in df.columns for k in ["모임명", "모임 제목", "모임일자", "일자", "title"]):
+                                return True, df
+                        except Exception:
+                            continue
+            except Exception:
+                continue
+
     return False, None
+
+def get_google_sheet_meetings_list():
+    """
+    구글 시트 데이터를 정제하여 기존 DB dict 객체 규격으로 반환
+    """
+    ok, df = fetch_google_sheet_meetings()
+    if not ok or df is None or df.empty:
+        return []
+
+    title_col = next((c for c in df.columns if any(k in str(c) for k in ["모임명", "모임 제목", "title"])), df.columns[0])
+    date_col = next((c for c in df.columns if any(k in str(c) for k in ["모임일자", "일자", "날짜", "date"])), None)
+    time_col = next((c for c in df.columns if any(k in str(c) for k in ["모임시간", "시간", "time"])), None)
+    loc_col = next((c for c in df.columns if any(k in str(c) for k in ["장소명", "장소", "location"])), None)
+    book_col = next((c for c in df.columns if any(k in str(c) for k in ["도서명", "책제목", "book"])), None)
+    author_col = next((c for c in df.columns if any(k in str(c) for k in ["저자", "author"])), None)
+    max_col = next((c for c in df.columns if any(k in str(c) for k in ["정원", "최대인원", "max"])), None)
+    desc_col = next((c for c in df.columns if any(k in str(c) for k in ["모임설명", "설명", "desc"])), None)
+
+    meetings = []
+    for idx, row in df.iterrows():
+        title_val = str(row.get(title_col, '')).strip()
+        if not title_val or pd.isna(row.get(title_col)):
+            continue
+
+        date_val = str(row.get(date_col, '2026-08-30')).strip() if date_col and pd.notna(row.get(date_col)) else "2026-08-30"
+        time_val = str(row.get(time_col, '14:00 ~ 16:30')).strip() if time_col and pd.notna(row.get(time_col)) else "14:00 ~ 16:30"
+        loc_val = str(row.get(loc_col, '강남역 인근 카페')).strip() if loc_col and pd.notna(row.get(loc_col)) else "강남역 인근 카페"
+        book_val = str(row.get(book_col, '자유책 (각자 읽은 책 지참)')).strip() if book_col and pd.notna(row.get(book_col)) else "자유책 (각자 읽은 책 지참)"
+        author_val = str(row.get(author_col, '자율')).strip() if author_col and pd.notna(row.get(author_col)) else "자율"
+        
+        try:
+            max_val = int(row.get(max_col, 8)) if max_col and pd.notna(row.get(max_col)) else 8
+        except Exception:
+            max_val = 8
+            
+        desc_val = str(row.get(desc_col, '')).strip() if desc_col and pd.notna(row.get(desc_col)) else ""
+
+        # 좌표 설정
+        if "종각" in loc_val or "종로" in loc_val:
+            lat, lng = 37.5709, 126.9778
+        else:
+            lat, lng = 37.4979, 127.0276
+
+        m_dict = {
+            "id": idx + 1000,
+            "title": title_val,
+            "book_title": book_val,
+            "author": author_val,
+            "meeting_date": date_val,
+            "meeting_time": time_val,
+            "location_name": loc_val,
+            "latitude": lat,
+            "longitude": lng,
+            "max_participants": max_val,
+            "description": desc_val
+        }
+        meetings.append(m_dict)
+
+    return meetings
 
 def format_season_display(season_code):
     """

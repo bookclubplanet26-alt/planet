@@ -175,6 +175,14 @@ def update_deposit_status(member_id, status):
     conn.close()
 
 def get_all_meetings():
+    try:
+        from utils import get_google_sheet_meetings_list
+        gs_meetings = get_google_sheet_meetings_list()
+        if gs_meetings:
+            return gs_meetings
+    except Exception:
+        pass
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM meetings ORDER BY meeting_date ASC, meeting_time ASC")
@@ -183,6 +191,14 @@ def get_all_meetings():
     return meetings
 
 def get_meeting_by_id(meeting_id):
+    try:
+        meetings = get_all_meetings()
+        for m in meetings:
+            if m['id'] == meeting_id or str(m['id']) == str(meeting_id):
+                return m
+    except Exception:
+        pass
+
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM meetings WHERE id = ?", (meeting_id,))
