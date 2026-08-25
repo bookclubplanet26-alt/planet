@@ -308,9 +308,8 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
 
 def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
     """
-    백그라운드 비동기 스레드로 구글 시트 웹훅에 모임 삭제 전송
+    구글 시트 웹훅에 모임 삭제 요청 전송 및 캐시 즉시 비우기
     """
-    import threading
     if not webhook_url:
         return False
 
@@ -324,11 +323,13 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
         "모임일자": meeting_date
     }
 
-    # 캐시 지우기 (다음번 조회시 반영)
     st.cache_data.clear()
 
-    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
-    t.start()
+    try:
+        requests.post(webhook_url, json=payload, timeout=5)
+    except Exception:
+        pass
+
     return True
 
 def haversine_distance(lat1, lon1, lat2, lon2):
