@@ -267,6 +267,45 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
     t.start()
     return True
 
+def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author, meeting_date, meeting_time, location_name, max_participants=8, description="", season=""):
+    """
+    백그라운드 비동기 스레드로 구글 시트 웹훅에 새로 개설된 모임 정보를 전송
+    """
+    import threading
+    if not webhook_url:
+        return False
+
+    payload = {
+        "type": "create_meeting",
+        "action": "create_meeting",
+        "title": title,
+        "meeting_name": title,
+        "모임명": title,
+        "book_title": book_title,
+        "도서명": book_title,
+        "author": author,
+        "저자": author,
+        "meeting_date": meeting_date,
+        "모임일자": meeting_date,
+        "meeting_time": meeting_time,
+        "모임시간": meeting_time,
+        "location_name": location_name,
+        "장소명": location_name,
+        "max_participants": max_participants,
+        "정원": max_participants,
+        "description": description,
+        "모임설명": description,
+        "season": season,
+        "시즌": season
+    }
+
+    # 캐시 지우기 (다음번 조회시 반영)
+    st.cache_data.clear()
+
+    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
+    t.start()
+    return True
+
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
     위도, 경도 좌표간 거리를 하버사인(Haversine) 공식을 이용하여 메터(m) 단위로 계산

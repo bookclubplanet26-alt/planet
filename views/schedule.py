@@ -396,6 +396,9 @@ def render_schedule():
                     submit_reg = st.form_submit_button("🚀 정규 모임 개설 완료", type="primary", use_container_width=True)
                     if submit_reg:
                         add_meeting(m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_lat, m_lng, m_max, m_desc)
+                        from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
+                        m_season = get_club_season_code()
+                        append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
                         created_msg = f"🎉 '{m_title}' 정규 모임이 성공적으로 개설되었습니다!"
                         st.session_state["meeting_created_toast"] = created_msg
                         st.session_state["reset_admin_category"] = True
@@ -434,6 +437,9 @@ def render_schedule():
                             st.error("모임 제목과 지정 도서명은 필수 입력 사항입니다.")
                         else:
                             add_meeting(m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_lat, m_lng, m_max, m_desc)
+                            from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
+                            m_season = get_club_season_code()
+                            append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
                             created_msg = f"🎉 '{m_title}' 지정책 모임이 성공적으로 개설되었습니다!"
                             st.session_state["meeting_created_toast"] = created_msg
                             st.session_state["reset_admin_category"] = True
@@ -467,6 +473,9 @@ def render_schedule():
                             st.error("모임 제목과 장소는 필수 입력 사항입니다.")
                         else:
                             add_meeting(m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_lat, m_lng, m_max, m_desc)
+                            from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
+                            m_season = get_club_season_code()
+                            append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
                             created_msg = f"🎉 '{m_title}' 소모임/벙 모임이 성공적으로 개설되었습니다!"
                             st.session_state["meeting_created_toast"] = created_msg
                             st.session_state["reset_admin_category"] = True
