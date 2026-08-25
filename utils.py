@@ -87,6 +87,7 @@ def fetch_google_sheet_meetings():
     for s_id in sheet_ids:
         # sheet_name 또는 gid 파라미터를 사용하여 모임목록/모임일정 검색
         urls = [
+            f"https://docs.google.com/spreadsheets/d/{s_id}/export?format=csv&gid=1599243491",
             f"https://docs.google.com/spreadsheets/d/{s_id}/gviz/tq?tqx=out:csv&sheet=%EB%AA%A8%EC%9E%84%EB%AA%A9%EB%A1%9D",
             f"https://docs.google.com/spreadsheets/d/{s_id}/gviz/tq?tqx=out:csv&sheet=%EB%AA%A8%EC%9E%84%EC%9D%BC%EC%A0%95",
             f"https://docs.google.com/spreadsheets/d/{s_id}/export?format=csv&gid=0"
