@@ -235,20 +235,20 @@ def get_rsvps_for_meeting(meeting_id):
     return rsvps
 
 def add_rsvp(meeting_id, member_id, member_name, member_phone, participation_type="자유책"):
+    meeting = get_meeting_by_id(meeting_id)
+    if not meeting:
+        return False, "존재하지 않는 모임입니다."
+
+    max_p = meeting['max_participants'] if isinstance(meeting, dict) or hasattr(meeting, '__getitem__') else getattr(meeting, 'max_participants', 8)
+
     conn = get_connection()
     cursor = conn.cursor()
-
-    cursor.execute("SELECT max_participants FROM meetings WHERE id = ?", (meeting_id,))
-    meeting = cursor.fetchone()
-    if not meeting:
-        conn.close()
-        return False, "존재하지 않는 모임입니다."
 
     if participation_type != "대기":
         cursor.execute("SELECT COUNT(*) FROM rsvps WHERE meeting_id = ? AND (participation_type IS NULL OR participation_type != '대기')", (meeting_id,))
         confirmed_count = cursor.fetchone()[0]
 
-        if confirmed_count >= meeting['max_participants'] and meeting['max_participants'] < 900:
+        if confirmed_count >= max_p and max_p < 900:
             conn.close()
             return False, "모임 정원이 마감되어 대기 신청만 가능합니다."
 
