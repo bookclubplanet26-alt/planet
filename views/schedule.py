@@ -7,7 +7,7 @@ from database import (
 )
 from utils import LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count
 
-def render_meeting_card(meeting, google_user, is_admin, key_prefix="g"):
+def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False):
     rsvps = get_rsvps_for_meeting(meeting['id'])
     current_count = len(rsvps)
     max_count = meeting['max_participants']
@@ -67,7 +67,9 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g"):
         if meeting['description'] and meeting['description'].strip():
             st.markdown(f"📝 **모임 안내**: {meeting['description']}")
         
-        if is_unlimited:
+        if is_ended:
+            st.info(f"🏁 **모임 종료** (최종 {confirmed_count}명 참가 완료)")
+        elif is_unlimited:
             st.success(f"🟢 신청가능 ({confirmed_count}명 신청 중)")
             is_full = False
             is_waitlist_mode = False
@@ -84,7 +86,10 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g"):
         if google_user and any(r['member_phone'] == google_user['email'] or r['member_name'] == google_user['display_name'] for r in rsvps):
             already_rsvp = True
 
-        if google_user:
+        if is_ended:
+            if already_rsvp:
+                st.caption("✅ 이전 참가 신청했던 모임입니다.")
+        elif google_user:
             if already_rsvp:
                 st.info("✅ 이미 신청 완료된 모임입니다.")
                 if st.button("신청 취소하기", key=f"{key_prefix}_cancel_{meeting['id']}", use_container_width=True):
@@ -319,48 +324,80 @@ def render_schedule():
 
         st.markdown("---")
 
-        # 📌 3개 탭으로 분리 (순서: 정규모임 -> 지정책 -> 소모임 / 벙)
-        bung_meetings = [
-            m for m in meetings 
-            if ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
-        ]
+        # 모임 날짜 기준으로 예정된 모임과 지난 모임(최근 60일 내) 분류
+        today_date = datetime.date.today()
+        from datetime import timedelta
+        cutoff_date = today_date - timedelta(days=60)
 
-        jijung_meetings = [
-            m for m in meetings 
-            if m not in bung_meetings and ("지정책" in m['title'] or "지정" in m['title'] or "지정책" in (m['book_title'] or ""))
-        ]
+        upcoming_meetings = []
+        past_meetings = []
 
-        regular_meetings = [
-            m for m in meetings 
-            if m not in bung_meetings and m not in jijung_meetings
-        ]
+        for m in meetings:
+            m_date_str = m['meeting_date'] if (isinstance(m, dict) and 'meeting_date' in m) else getattr(m, 'meeting_date', '')
+            try:
+                m_date = datetime.datetime.strptime(str(m_date_str).strip(), "%Y-%m-%d").date()
+            except Exception:
+                m_date = today_date
 
-        m_tab1, m_tab2, m_tab3 = st.tabs([
-            f"📅 정규모임 ({len(regular_meetings)})", 
-            f"📖 지정책 ({len(jijung_meetings)})", 
-            f"☕ 소모임 / 벙 ({len(bung_meetings)})"
+            if m_date >= today_date:
+                upcoming_meetings.append(m)
+            elif m_date >= cutoff_date:
+                past_meetings.append(m)
+
+        # 📌 진행 예정 / 지난 모임 메인 탭 분리
+        main_tab1, main_tab2 = st.tabs([
+            f"📅 진행 예정 모임 ({len(upcoming_meetings)})",
+            f"📜 지난 모임 (최근 2달) ({len(past_meetings)})"
         ])
 
-        with m_tab1:
-            if not regular_meetings:
-                st.info("현재 예정된 정규모임이 없습니다.")
-            else:
-                for meeting in regular_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="reg_m")
+        with main_tab1:
+            bung_meetings = [
+                m for m in upcoming_meetings 
+                if ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
+            ]
+            jijung_meetings = [
+                m for m in upcoming_meetings 
+                if m not in bung_meetings and ("지정책" in m['title'] or "지정" in m['title'] or "지정책" in (m['book_title'] or ""))
+            ]
+            regular_meetings = [
+                m for m in upcoming_meetings 
+                if m not in bung_meetings and m not in jijung_meetings
+            ]
 
-        with m_tab2:
-            if not jijung_meetings:
-                st.info("현재 예정된 지정책 모임이 없습니다.")
-            else:
-                for meeting in jijung_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="jijung_m")
+            m_tab1, m_tab2, m_tab3 = st.tabs([
+                f"📅 정규모임 ({len(regular_meetings)})", 
+                f"📖 지정책 ({len(jijung_meetings)})", 
+                f"☕ 소모임 / 벙 ({len(bung_meetings)})"
+            ])
 
-        with m_tab3:
-            if not bung_meetings:
-                st.info("현재 예정된 소모임 및 벙 모임이 없습니다.")
+            with m_tab1:
+                if not regular_meetings:
+                    st.info("현재 예정된 정규모임이 없습니다.")
+                else:
+                    for meeting in regular_meetings:
+                        render_meeting_card(meeting, google_user, is_admin, key_prefix="reg_m")
+
+            with m_tab2:
+                if not jijung_meetings:
+                    st.info("현재 예정된 지정책 모임이 없습니다.")
+                else:
+                    for meeting in jijung_meetings:
+                        render_meeting_card(meeting, google_user, is_admin, key_prefix="jijung_m")
+
+            with m_tab3:
+                if not bung_meetings:
+                    st.info("현재 예정된 소모임 및 벙 모임이 없습니다.")
+                else:
+                    for meeting in bung_meetings:
+                        render_meeting_card(meeting, google_user, is_admin, key_prefix="bung_m")
+
+        with main_tab2:
+            if not past_meetings:
+                st.info("최근 2달 동안 진행된 지난 모임 기록이 없습니다.")
             else:
-                for meeting in bung_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="bung_m")
+                st.caption("💡 최근 60일(2달) 동안 성황리에 마무리된 지난 모임 목록입니다.")
+                for meeting in past_meetings:
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="past_m", is_ended=True)
 
     if tab2:
         with tab2:
