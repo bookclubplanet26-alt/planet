@@ -37,9 +37,9 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g"):
                 st.markdown(f"### 📖 {meeting['title']}")
             with col_t2:
                 if st.button("❌ 모임 삭제", key=f"{key_prefix}_del_m_{meeting['id']}", help="이 모임을 목록에서 삭제합니다"):
-                    delete_meeting(meeting['id'])
                     from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
                     delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], meeting.get('meeting_date', ''))
+                    delete_meeting(meeting['id'])
                     del_msg = f"🗑️ '{meeting['title']}' 모임이 삭제되었습니다."
                     st.session_state["meeting_deleted_toast"] = del_msg
                     st.toast(del_msg, icon="🗑️")
