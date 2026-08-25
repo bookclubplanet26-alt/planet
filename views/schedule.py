@@ -32,15 +32,19 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g"):
     with st.container():
         # 관리자인 경우 X 삭제 버튼 제공
         if is_admin:
+            m_title = meeting['title'] if isinstance(meeting, dict) or hasattr(meeting, '__getitem__') else getattr(meeting, 'title', '')
+            m_date = meeting['meeting_date'] if (isinstance(meeting, dict) and 'meeting_date' in meeting) or (hasattr(meeting, 'keys') and 'meeting_date' in meeting.keys()) else ""
+            m_id = meeting['id']
+
             col_t1, col_t2 = st.columns([4, 1])
             with col_t1:
-                st.markdown(f"### 📖 {meeting['title']}")
+                st.markdown(f"### 📖 {m_title}")
             with col_t2:
-                if st.button("❌ 모임 삭제", key=f"{key_prefix}_del_m_{meeting['id']}", help="이 모임을 목록에서 삭제합니다"):
+                if st.button("❌ 모임 삭제", key=f"{key_prefix}_del_m_{m_id}", help="이 모임을 목록에서 삭제합니다"):
                     from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
-                    delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], meeting.get('meeting_date', ''))
-                    delete_meeting(meeting['id'])
-                    del_msg = f"🗑️ '{meeting['title']}' 모임이 삭제되었습니다."
+                    delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_date)
+                    delete_meeting(m_id)
+                    del_msg = f"🗑️ '{m_title}' 모임이 삭제되었습니다."
                     st.session_state["meeting_deleted_toast"] = del_msg
                     st.toast(del_msg, icon="🗑️")
                     st.warning(del_msg)
