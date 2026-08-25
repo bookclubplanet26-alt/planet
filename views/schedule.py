@@ -362,7 +362,7 @@ def render_schedule():
             f"📅 정규모임 ({len(regular_meetings)})", 
             f"📖 지정책 ({len(jijung_meetings)})", 
             f"☕ 소모임 / 벙 ({len(bung_meetings)})",
-            f"📜 지난 모임 (최근 2달) ({len(past_meetings)})"
+            f"📜 지난 모임 ({len(past_meetings)})"
         ])
 
         with m_tab1:
@@ -388,9 +388,9 @@ def render_schedule():
 
         with m_tab4:
             if not past_meetings:
-                st.info("최근 2달 동안 진행된 지난 모임 기록이 없습니다.")
+                st.info("진행된 지난 모임 기록이 없습니다.")
             else:
-                st.caption("💡 최근 60일(2달) 동안 성황리에 마무리된 지난 모임 목록입니다.")
+                st.caption("💡 성황리에 마무리된 지난 모임 목록입니다.")
                 for meeting in past_meetings:
                     render_meeting_card(meeting, google_user, is_admin, key_prefix="past_m", is_ended=True)
 
