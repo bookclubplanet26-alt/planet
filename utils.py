@@ -10,7 +10,7 @@ GOOGLE_SHEET_ID = "1UbvS5tDzQvGlOh-TVagtYJ31pW9u8CNw-wENIK8iK48"
 
 # 사용자가 출석 기록용으로 제공한 구글 시트 ID 및 Webhook URL
 GOOGLE_SHEET_ATTENDANCE_ID = "1k1lJmH6fmsPKD8h_-QMbTVy6nrh-RTJt-fUJAQWukKE"
-ATTENDANCE_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwoPMnl73wVFHEHRSbfa3OMg7Wqb9MWLFmV2DRwyJ7iq6Y6fOHv5vKOlVA4j-8MHFjKkg/exec"
+ATTENDANCE_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbyvZjoV8v4jUCi0PC6ZGmwX4TstMvqATsLxd4rO8903DpI_vdRNBwApxF8zwCs98NI0VA/exec"
 
 def get_club_season_code(dt=None):
     """
