@@ -148,10 +148,6 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
     if not webhook_url:
         return False
     
-    full_book_info = book_read
-    if book_review:
-        full_book_info = f"{book_read} (💬 {book_review})"
-
     payload = {
         "checked_at": checked_at,
         "email": email,
@@ -159,10 +155,11 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
         "year": year,
         "season": season,
         "meeting_name": meeting_name,
-        "book_read": full_book_info,
+        "book_read": book_read,
         "book_review": book_review,
         "review": book_review,
         "감상평": book_review,
+        "한줄평": book_review,
         "is_lounging": is_lounging,
         "lounging": is_lounging,
         "라운징": is_lounging
