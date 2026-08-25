@@ -88,11 +88,12 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g"):
             if already_rsvp:
                 st.info("✅ 이미 신청 완료된 모임입니다.")
                 if st.button("신청 취소하기", key=f"{key_prefix}_cancel_{meeting['id']}", use_container_width=True):
-                    cancel_rsvp(meeting['id'], google_user['id'])
-                    from utils import ATTENDANCE_WEBHOOK_URL, cancel_rsvp_from_google_sheet_async
-                    cancel_rsvp_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], google_user.get('email', ''), google_user['display_name'])
-                    st.success("신청이 취소되었습니다.")
-                    st.rerun()
+                    with st.spinner("🔄 신청 취소 처리 중입니다..."):
+                        cancel_rsvp(meeting['id'], google_user['id'])
+                        from utils import ATTENDANCE_WEBHOOK_URL, cancel_rsvp_from_google_sheet_async
+                        cancel_rsvp_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], google_user.get('email', ''), google_user['display_name'])
+                        st.toast("✅ 신청이 취소되었습니다.")
+                        st.rerun()
             else:
                 if is_waitlist_mode:
                     selected_part_type = "대기"
@@ -121,15 +122,16 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g"):
 
                 btn_disabled = (is_full and not is_waitlist_mode)
                 if st.button(btn_label, key=f"{key_prefix}_rsvp_{meeting['id']}", disabled=btn_disabled, type="primary", use_container_width=True):
-                    success, msg = add_rsvp(meeting['id'], google_user['id'], google_user['display_name'], google_user['email'], selected_part_type)
-                    if success:
-                        from utils import ATTENDANCE_WEBHOOK_URL, add_rsvp_to_google_sheet_async
-                        add_rsvp_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], google_user['display_name'], google_user.get('email', ''), selected_part_type)
-                        toast_msg = "대기 신청이 완료되었습니다!" if selected_part_type == "대기" else "참가 신청이 완료되었습니다!"
-                        st.toast(f"✅ [{google_user['display_name']}] 님, {toast_msg}", icon="🎉")
-                        st.rerun()
-                    else:
-                        st.error(msg)
+                    with st.spinner("🔄 참가 신청 처리 중입니다... 잠시만 기다려 주세요."):
+                        success, msg = add_rsvp(meeting['id'], google_user['id'], google_user['display_name'], google_user['email'], selected_part_type)
+                        if success:
+                            from utils import ATTENDANCE_WEBHOOK_URL, add_rsvp_to_google_sheet_async
+                            add_rsvp_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], google_user['display_name'], google_user.get('email', ''), selected_part_type)
+                            toast_msg = "대기 신청이 완료되었습니다!" if selected_part_type == "대기" else "참가 신청이 완료되었습니다!"
+                            st.toast(f"✅ [{google_user['display_name']}] 님, {toast_msg}", icon="🎉")
+                            st.rerun()
+                        else:
+                            st.error(msg)
         else:
             st.warning("⚠️ 참가 신청을 위해 먼저 상단에서 Google 계정 인증을 완료해 주세요.")
 

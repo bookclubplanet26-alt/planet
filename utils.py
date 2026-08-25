@@ -357,8 +357,9 @@ def fetch_google_sheet_rsvps():
 
 def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email, participation_type="자유책"):
     """
-    구글 시트 신청명단에 참가 신청 정보 추가
+    백그라운드 비동기 스레드로 구글 시트 신청명단에 참가 신청 정보 전송 (대기시간 0초)
     """
+    import threading
     if not webhook_url:
         return False
 
@@ -386,23 +387,15 @@ def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email
     except Exception:
         pass
 
-    try:
-        requests.post(webhook_url, json=payload, timeout=5)
-    except Exception:
-        pass
-
-    try:
-        fetch_google_sheet_rsvps.clear()
-        st.cache_data.clear()
-    except Exception:
-        pass
-
+    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
+    t.start()
     return True
 
 def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member_name=""):
     """
-    구글 시트 신청명단에서 참가 신청 삭제 (취소)
+    백그라운드 비동기 스레드로 구글 시트 신청명단에서 참가 신청 삭제 전송 (대기시간 0초)
     """
+    import threading
     if not webhook_url:
         return False
 
@@ -423,17 +416,8 @@ def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member
     except Exception:
         pass
 
-    try:
-        requests.post(webhook_url, json=payload, timeout=5)
-    except Exception:
-        pass
-
-    try:
-        fetch_google_sheet_rsvps.clear()
-        st.cache_data.clear()
-    except Exception:
-        pass
-
+    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
+    t.start()
     return True
 
 def haversine_distance(lat1, lon1, lat2, lon2):
