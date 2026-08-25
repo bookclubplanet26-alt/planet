@@ -391,7 +391,7 @@ def render_schedule():
                         m_lat, m_lng = 37.5709, 126.9778
 
                     m_max = 999
-                    m_desc = st.text_area("모임 설명", value="자유책으로 진행되는 정규 독서 모임입니다.", key="reg_desc")
+                    m_desc = "플래닛 정규 독서 모임입니다."
 
                     submit_reg = st.form_submit_button("🚀 정규 모임 개설 완료", type="primary", use_container_width=True)
                     if submit_reg:
