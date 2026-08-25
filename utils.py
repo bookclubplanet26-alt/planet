@@ -306,6 +306,31 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
     t.start()
     return True
 
+def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
+    """
+    백그라운드 비동기 스레드로 구글 시트 웹훅에 모임 삭제 전송
+    """
+    import threading
+    if not webhook_url:
+        return False
+
+    payload = {
+        "type": "delete_meeting",
+        "action": "delete_meeting",
+        "title": title,
+        "meeting_name": title,
+        "모임명": title,
+        "meeting_date": meeting_date,
+        "모임일자": meeting_date
+    }
+
+    # 캐시 지우기 (다음번 조회시 반영)
+    st.cache_data.clear()
+
+    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
+    t.start()
+    return True
+
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
     위도, 경도 좌표간 거리를 하버사인(Haversine) 공식을 이용하여 메터(m) 단위로 계산
