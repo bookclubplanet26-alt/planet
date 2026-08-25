@@ -121,20 +121,28 @@ def render_bookshelf():
             r_email = str(row.get('회원 이메일', '')).strip().lower()
             r_name = str(row.get('회원 성함', '')).strip()
 
-            # 본인 기록 매칭 (이메일 또는 성함)
-            if (u_email and r_email == u_email) or (u_name and r_name == u_name):
+            # 본인 기록 매칭 (이메일 및 성함 완전/부분 일치)
+            is_me = False
+            if u_email and r_email and u_email == r_email:
+                is_me = True
+            elif u_name and r_name and (u_name == r_name or u_name in r_name or r_name in u_name):
+                is_me = True
+
+            if is_me:
                 date_val = str(row.get('출석 일시 (KST)', '')).strip()
                 meeting_name = str(row.get('모임명', '')).strip()
                 book_raw = str(row.get('도서명', '')).strip()
+                book_review_col = str(row.get('한줄평', '') or row.get('감상평', '') or row.get('review', '')).strip()
                 season_val = str(row.get('시즌 코드', '')).strip() or str(row.get('시즌', '')).strip()
                 
                 # 도서명과 감상평 분리
                 book_title = book_raw
-                book_review = ""
+                book_review = book_review_col
                 if " (💬 " in book_raw:
                     parts = book_raw.split(" (💬 ")
                     book_title = parts[0].strip()
-                    book_review = parts[1].rstrip(")").strip()
+                    if not book_review:
+                        book_review = parts[1].rstrip(")").strip()
 
                 my_records.append({
                     "date": date_val,
