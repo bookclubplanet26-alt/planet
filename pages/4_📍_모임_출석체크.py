@@ -48,9 +48,9 @@ if not google_user:
             if success and df_sheet is not None:
                 email_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["이메일", "email", "mail"])), df_sheet.columns[1] if len(df_sheet.columns)>1 else None)
                 name_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["이름", "성함", "name", "성명"])), df_sheet.columns[0] if len(df_sheet.columns)>0 else None)
-                nick_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["닉네임", "별명", "nick"])), df_sheet.columns[-1] if len(df_sheet.columns)>5 else None)
-                reg_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["등록", "상태", "reg", "status"])), None)
+                    reg_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["등록", "상태", "reg", "status"])), None)
                 admin_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["운영진", "관리자", "admin"])), None)
+                season_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["등록시즌", "등록 시즌", "시즌"])), None)
 
                 if email_col:
                     matched_row = df_sheet[df_sheet[email_col].astype(str).str.strip().str.lower() == email_str]
@@ -58,6 +58,7 @@ if not google_user:
                         r = matched_row.iloc[0]
                         u_name = str(r[name_col]).strip() if name_col and pd.notna(r[name_col]) else "한지수"
                         u_nick = str(r[nick_col]).strip() if nick_col and pd.notna(r[nick_col]) else "네밍웨이"
+                        u_season = str(r[season_col]).strip() if season_col and pd.notna(r[season_col]) else ""
                         
                         raw_reg = str(r[reg_col]).strip() if reg_col and pd.notna(r[reg_col]) else "1"
                         reg_val = 1 if raw_reg in ["1", "등록", "승인", "True", "true", "완료"] else 0
@@ -71,6 +72,7 @@ if not google_user:
                             "nickname": u_nick,
                             "display_name": f"{u_name} - {u_nick}",
                             "email": email_str,
+                            "season": u_season,
                             "registered": reg_val,
                             "is_admin": admin_val
                         }
@@ -83,6 +85,7 @@ if not google_user:
                     "nickname": "네밍웨이",
                     "display_name": "한지수 - 네밍웨이",
                     "email": email_str,
+                    "season": "2609",
                     "registered": 1,
                     "is_admin": 1
                 }
@@ -93,6 +96,7 @@ if not google_user:
                     "nickname": "운영진",
                     "display_name": "관리자 - 운영진",
                     "email": email_str,
+                    "season": "2609",
                     "registered": 1,
                     "is_admin": 1
                 }
@@ -103,6 +107,7 @@ if not google_user:
                     "nickname": "길동이",
                     "display_name": "홍길동 - 길동이",
                     "email": email_str,
+                    "season": "2609",
                     "registered": 1,
                     "is_admin": 0
                 }
@@ -112,16 +117,22 @@ if not google_user:
                 st.session_state.google_user = None
             else:
                 st.session_state.google_user = found_member
-                att_cnt = get_member_attendance_count(found_member['email'], found_member['display_name'])
-                st.success(f"✅ Google 인증 완료: 환영합니다. {found_member['name']} - {found_member['nickname']} ({found_member['email']}) (🏆 이번 시즌 출석: {att_cnt}회)")
+                from utils import get_member_attendance_count, format_season_display
+                m_season = found_member.get('season')
+                season_label = format_season_display(m_season)
+                att_cnt = get_member_attendance_count(found_member['email'], found_member['display_name'], target_season=m_season)
+                st.success(f"✅ Google 인증 완료: 환영합니다. {found_member['name']} - {found_member['nickname']} ({found_member['email']}) (🏆 {season_label} 출석: {att_cnt}회)")
                 st.rerun()
 
     st.warning("⚠️ 출석체크를 진행하려면 먼저 상단에서 Google 계정 인증을 완료해 주세요.")
 
 else:
     admin_badge = " [👑 운영진]" if google_user.get("is_admin", 0) == 1 else ""
-    att_cnt = get_member_attendance_count(google_user['email'], google_user['display_name'])
-    att_txt = f"🏆 이번 시즌 출석 횟수: <b>{att_cnt}회</b>"
+    from utils import get_member_attendance_count, format_season_display
+    m_season = google_user.get('season')
+    season_label = format_season_display(m_season)
+    att_cnt = get_member_attendance_count(google_user['email'], google_user['display_name'], target_season=m_season)
+    att_txt = f"🏆 {season_label} 출석 횟수: <b>{att_cnt}회</b>"
     
     st.markdown(f"""
     <div class="info-callout" style="background-color: #E8F0FE; border-left-color: #1A73E8; color: #174EA6; padding: 16px; font-size: 1.05rem;">
@@ -129,8 +140,6 @@ else:
         환영합니다. <b>{google_user['name']} - {google_user['nickname']}</b> ({google_user['email']})<br/>
         <span style="font-size: 0.98rem; color: #185ABC;">{att_txt}</span>
     </div>
-    """, unsafe_allow_html=True)
-
     if st.button("🚪 다른 이메일로 인증 (로그아웃)", key="p4_att_google_logout_btn"):
         st.session_state.google_user = None
         st.rerun()

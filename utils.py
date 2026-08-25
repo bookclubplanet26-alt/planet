@@ -75,15 +75,32 @@ def fetch_google_sheet_attendances():
         pass
     return False, None
 
-def get_member_attendance_count(email, name=""):
+def format_season_display(season_code):
     """
-    구글 시트 출석 기록에서 해당 회원의 이번 시즌 출석 횟수를 실시간 집계 (라운징 0.5회, 정규 1회)
+    시즌 코드를 입력받아 '2609시즌(9~10월)' 형태의 1번 방식 표기로 변환
+    - 예: 2609 -> 2609시즌(9~10월)
+    - 예: 2608 -> 2608시즌(8~9월)
+    """
+    if not season_code or not str(season_code).strip():
+        curr = get_club_season_code()
+        season_code = curr
+
+    sc = str(season_code).strip()
+    if len(sc) == 4 and sc.isdigit():
+        start_month = int(sc[2:4])
+        end_month = (start_month % 12) + 1
+        return f"{sc}시즌({start_month}~{end_month}월)"
+    return f"{sc}시즌"
+
+def get_member_attendance_count(email, name="", target_season=None):
+    """
+    구글 시트 출석 기록에서 해당 회원의 지정 시즌(또는 현재 시즌) 출석 횟수를 실시간 집계 (라운징 0.5회, 정규 1회)
     """
     ok, df = fetch_google_sheet_attendances()
     if not ok or df is None or df.empty:
         return 0
     
-    current_season = get_club_season_code()
+    current_season = str(target_season).strip() if target_season else get_club_season_code()
     user_email = email.strip().lower() if email else ""
     user_name_only = name.split(" - ")[0].strip() if " - " in name else name.strip()
     user_nick_only = name.split(" - ")[1].strip() if " - " in name else ""
@@ -100,7 +117,7 @@ def get_member_attendance_count(email, name=""):
         match_email = (user_email and r_email == user_email)
         match_name = (user_name_only and user_name_only == r_name) or (user_nick_only and user_nick_only == r_name)
         
-        # 시즌 체크 (시즌 값이 없거나 현재 시즌과 일치하는 경우)
+        # 시즌 체크 (시즌 값이 없거나 지정/현재 시즌과 일치하는 경우)
         match_season = (not r_season) or (r_season == current_season) or (current_season in r_season)
 
         if (match_email or match_name) and match_season:
