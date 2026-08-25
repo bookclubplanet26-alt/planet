@@ -240,18 +240,6 @@ def render_attendance():
 
     if already_checked_in:
         st.info("✅ 해당 모임의 출석체크가 완료되었습니다!")
-        if is_admin:
-            if st.button("👑 [운영진 테스트] 이 모임 출석 기록 초기화하고 구글시트 재전송 테스트하기", key="admin_reset_att_btn"):
-                st.session_state.checked_meetings.discard(selected_meeting['id'])
-                from database import get_connection
-                conn = get_connection()
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM attendance WHERE meeting_id = ? AND (member_name = ? OR member_id = ?)", (selected_meeting['id'], my_rsvp['member_name'], my_rsvp['member_id']))
-                conn.commit()
-                conn.close()
-                st.cache_data.clear()
-                st.success("테스트 출석 기록이 초기화되었습니다. 아래에서 다시 출석체크를 진행해 보세요!")
-                st.rerun()
     else:
         att_choice = st.radio(
             "📌 출석 유형 선택", 
