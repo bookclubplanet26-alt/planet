@@ -282,11 +282,23 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
         "시즌": season
     }
 
-    # 캐시 지우기 (다음번 조회시 반영)
-    st.cache_data.clear()
+    try:
+        fetch_google_sheet_meetings.clear()
+        st.cache_data.clear()
+    except Exception:
+        pass
 
-    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
-    t.start()
+    try:
+        requests.post(webhook_url, json=payload, timeout=5)
+    except Exception:
+        pass
+
+    try:
+        fetch_google_sheet_meetings.clear()
+        st.cache_data.clear()
+    except Exception:
+        pass
+
     return True
 
 def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
