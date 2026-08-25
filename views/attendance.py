@@ -232,6 +232,12 @@ def render_attendance():
     from utils import get_meeting_target_gps, haversine_distance
     target_name, target_lat, target_lng = get_meeting_target_gps(selected_meeting)
 
+    # 👑 운영진 전용 테스트 옵션 (시간/위치 제한 해제)
+    bypass_time = False
+    if is_admin:
+        st.info("👑 **운영진 전용 모드**: 출석체크 시간/위치 제한을 해제할 수 있습니다.")
+        bypass_time = st.checkbox("🔓 출석체크 조건(시간/위치 제한) 해제하기", value=True, key="att_admin_bypass_time_top")
+
     if already_checked_in:
         st.info("✅ 해당 모임의 출석체크가 완료되었습니다!")
         if is_admin:
@@ -262,11 +268,6 @@ def render_attendance():
             att_type_name = "정규모임"
             book_read_input = st.text_input("📖 지참 책 제목", placeholder="예: 데미안, 사피엔스 등", key="att_book_read_input")
             book_review_input = st.text_area("💬 책에 대한 간단한 감상평 (선택)", placeholder="책을 읽고 느낀 점이나 공유하고 싶은 한 줄 생각을 적어주세요 (선택)", key="att_book_review_input", height=80)
-
-        # 운영진 테스트 옵션
-        bypass_time = False
-        if is_admin:
-            bypass_time = st.checkbox("👑 [운영진 테스트] 시간/위치 제한 해제", key="att_admin_bypass_time")
 
         if not is_valid_time_window and not bypass_time:
             st.warning(f"⏱️ **출석체크 가능 시간 안내**: **{selected_meeting['meeting_date']} 모임 당일 16:00 ~ 17:00**에만 출석체크가 가능합니다.")
