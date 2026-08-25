@@ -248,12 +248,16 @@ def render_attendance():
             key="att_type_radio_choice"
         )
 
-        if "라운징" in att_choice:
+        current_att_choice = st.session_state.get("att_type_radio_choice", att_choice)
+        if "라운징" in str(current_att_choice):
             att_type_name = "라운징"
+        else:
+            att_type_name = "정규모임"
+
+        if att_type_name == "라운징":
             book_read_input = st.text_input("📖 지참 책 제목 (선택)", placeholder="지참한 책이 있다면 입력해주세요 (선택)", key="att_book_read_input")
             book_review_input = st.text_area("💬 책에 대한 간단한 감상평 (선택)", placeholder="책을 읽고 느낀 점이나 공유하고 싶은 한 줄 생각을 적어주세요 (선택)", key="att_book_review_input", height=80)
         else:
-            att_type_name = "정규모임"
             book_read_input = st.text_input("📖 지참 책 제목", placeholder="예: 데미안, 사피엔스 등", key="att_book_read_input")
             book_review_input = st.text_area("💬 책에 대한 간단한 감상평 (선택)", placeholder="책을 읽고 느낀 점이나 공유하고 싶은 한 줄 생각을 적어주세요 (선택)", key="att_book_review_input", height=80)
 
@@ -279,7 +283,7 @@ def render_attendance():
                     # 세션에 즉시 완료 기록 (프론트엔드 버튼 숨김 처리)
                     st.session_state.checked_meetings.add(selected_meeting['id'])
 
-                    is_lounging_val = 1 if att_type_name == "라운징" else 0
+                    is_lounging_val = 1 if (att_type_name == "라운징" or "라운징" in str(st.session_state.get("att_type_radio_choice", ""))) else 0
                     record_book_text = book_title_val if book_title_val else ("라운징" if is_lounging_val == 1 else "자유책")
 
                     # 백엔드(로컬 DB)에도 즉시 저장 (중복 저장 방지 백엔드 검증용)
