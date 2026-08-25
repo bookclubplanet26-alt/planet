@@ -327,6 +327,115 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
 
     return True
 
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_google_sheet_rsvps():
+    """
+    구글 시트에서 신청명단/참가신청 탭을 가져오는 함수
+    """
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+    urls = [
+        f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ATTENDANCE_ID}/gviz/tq?tqx=out:csv&sheet=%EC%8B%A0%EC%B2%AD%EB%AA%85%EB%8B%A8",
+        f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ATTENDANCE_ID}/gviz/tq?tqx=out:csv&sheet=%EC%B0%B8%EA%B0%80%EC%8B%A0%EC%B2%AD",
+        f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=%EC%8B%A0%EC%B2%AD%EB%AA%85%EB%8B%A8"
+    ]
+    for url in urls:
+        try:
+            res = requests.get(url, headers=headers, timeout=4)
+            if res.status_code == 200 and "html" not in res.text[:100].lower():
+                for enc in ["utf-8", "cp949", "euc-kr"]:
+                    try:
+                        df = pd.read_csv(io.BytesIO(res.content), encoding=enc)
+                        if any(k in str(col) for col in df.columns for k in ["회원", "이름", "모임", "신청"]):
+                            return True, df
+                    except Exception:
+                        continue
+        except Exception:
+            continue
+    return False, None
+
+def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email, participation_type="자유책"):
+    """
+    구글 시트 신청명단에 참가 신청 정보 추가
+    """
+    if not webhook_url:
+        return False
+
+    from datetime import datetime
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    payload = {
+        "type": "add_rsvp",
+        "action": "add_rsvp",
+        "created_at": now_str,
+        "meeting_name": meeting_name,
+        "모임명": meeting_name,
+        "member_name": member_name,
+        "회원명": member_name,
+        "이름": member_name,
+        "email": email,
+        "이메일": email,
+        "participation_type": participation_type,
+        "참여방식": participation_type
+    }
+
+    try:
+        fetch_google_sheet_rsvps.clear()
+        st.cache_data.clear()
+    except Exception:
+        pass
+
+    try:
+        requests.post(webhook_url, json=payload, timeout=5)
+    except Exception:
+        pass
+
+    try:
+        fetch_google_sheet_rsvps.clear()
+        st.cache_data.clear()
+    except Exception:
+        pass
+
+    return True
+
+def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member_name=""):
+    """
+    구글 시트 신청명단에서 참가 신청 삭제 (취소)
+    """
+    if not webhook_url:
+        return False
+
+    payload = {
+        "type": "cancel_rsvp",
+        "action": "cancel_rsvp",
+        "meeting_name": meeting_name,
+        "모임명": meeting_name,
+        "email": email,
+        "이메일": email,
+        "member_name": member_name,
+        "회원명": member_name
+    }
+
+    try:
+        fetch_google_sheet_rsvps.clear()
+        st.cache_data.clear()
+    except Exception:
+        pass
+
+    try:
+        requests.post(webhook_url, json=payload, timeout=5)
+    except Exception:
+        pass
+
+    try:
+        fetch_google_sheet_rsvps.clear()
+        st.cache_data.clear()
+    except Exception:
+        pass
+
+    return True
+
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
     위도, 경도 좌표간 거리를 하버사인(Haversine) 공식을 이용하여 메터(m) 단위로 계산
