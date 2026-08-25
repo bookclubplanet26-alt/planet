@@ -224,6 +224,8 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
         return False
     
     payload = {
+        "type": "attendance",
+        "action": "attendance",
         "checked_at": checked_at,
         "email": email,
         "name": name,
