@@ -29,93 +29,93 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         "종각 (" in meeting['title']
     )
 
-        desc_raw = meeting['description'] or ""
-        leader_name = ""
-        kakao_url = ""
-        clean_desc = desc_raw
+    desc_raw = meeting['description'] or ""
+    leader_name = ""
+    kakao_url = ""
+    clean_desc = desc_raw
 
-        if "[책장:" in clean_desc:
-            try:
-                l_part = clean_desc.split("[책장:")[1].split("]")[0]
-                leader_name = l_part.strip()
-                clean_desc = clean_desc.replace(f"[책장:{l_part}]", "").strip()
-            except Exception:
-                pass
+    if "[책장:" in clean_desc:
+        try:
+            l_part = clean_desc.split("[책장:")[1].split("]")[0]
+            leader_name = l_part.strip()
+            clean_desc = clean_desc.replace(f"[책장:{l_part}]", "").strip()
+        except Exception:
+            pass
 
-        if "[카톡:" in clean_desc:
-            try:
-                k_part = clean_desc.split("[카톡:")[1].split("]")[0]
-                kakao_url = k_part.strip()
-                clean_desc = clean_desc.replace(f"[카톡:{k_part}]", "").strip()
-            except Exception:
-                pass
+    if "[카톡:" in clean_desc:
+        try:
+            k_part = clean_desc.split("[카톡:")[1].split("]")[0]
+            kakao_url = k_part.strip()
+            clean_desc = clean_desc.replace(f"[카톡:{k_part}]", "").strip()
+        except Exception:
+            pass
 
-        with st.container():
-            # 관리자인 경우 X 삭제 버튼 제공
-            if is_admin:
-                m_title = meeting['title'] if isinstance(meeting, dict) or hasattr(meeting, '__getitem__') else getattr(meeting, 'title', '')
-                m_date = meeting['meeting_date'] if (isinstance(meeting, dict) and 'meeting_date' in meeting) or (hasattr(meeting, 'keys') and 'meeting_date' in meeting.keys()) else ""
-                m_id = meeting['id']
+    with st.container():
+        # 관리자인 경우 X 삭제 버튼 제공
+        if is_admin:
+            m_title = meeting['title'] if isinstance(meeting, dict) or hasattr(meeting, '__getitem__') else getattr(meeting, 'title', '')
+            m_date = meeting['meeting_date'] if (isinstance(meeting, dict) and 'meeting_date' in meeting) or (hasattr(meeting, 'keys') and 'meeting_date' in meeting.keys()) else ""
+            m_id = meeting['id']
 
-                col_t1, col_t2 = st.columns([4, 1])
-                with col_t1:
-                    st.markdown(f"### 📖 {m_title}")
-                    if leader_name:
-                        st.markdown(f"👤 **지정책장**: `{leader_name}`")
-                with col_t2:
-                    if st.button("❌ 모임 삭제", key=f"{key_prefix}_del_m_{m_id}", help="이 모임을 목록에서 삭제합니다"):
-                        from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
-                        delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_date)
-                        delete_meeting(m_id)
-                        del_msg = f"🗑️ '{m_title}' 모임이 삭제되었습니다."
-                        st.session_state["meeting_deleted_toast"] = del_msg
-                        st.toast(del_msg, icon="🗑️")
-                        st.warning(del_msg)
-                        st.rerun()
-            else:
-                st.markdown(f"### 📖 {meeting['title']}")
+            col_t1, col_t2 = st.columns([4, 1])
+            with col_t1:
+                st.markdown(f"### 📖 {m_title}")
                 if leader_name:
                     st.markdown(f"👤 **지정책장**: `{leader_name}`")
-
-            # 소모임일 때 📘 책 제목 라인 완전 감춤
-            if is_bung:
-                pass
-            elif is_unlimited:
-                st.markdown("📘 **모임 형태**: 자유책 (각자 읽은 책 지참)")
-            else:
-                st.markdown(f"📘 **책 제목**: {meeting['book_title']}")
-                if meeting['author'] and str(meeting['author']).strip() and str(meeting['author']).strip() != "자율":
-                    st.markdown(f"✍️ **저자명**: {meeting['author']}")
-
-            st.markdown(f"🗓️ **일시**: `{meeting['meeting_date']}` `{meeting['meeting_time']}`")
-            st.markdown(f"📍 **장소**: {meeting['location_name']}")
-
-            # 소모임 내용 및 안내 (모임 설명) 표시
-            if clean_desc and clean_desc.strip():
-                st.markdown(f"📝 **모임 안내**: {clean_desc}")
-
-            # 오픈 카카오톡방 주소 (가장 마지막 표시)
-            if kakao_url:
-                is_registered_member = (google_user and google_user.get('registered', 0) == 1)
-                if is_registered_member or is_admin:
-                    st.markdown(f"💬 **오픈 카톡방 주소**: [{kakao_url}]({kakao_url})")
-                else:
-                    st.warning("🔒 오픈 카톡방 주소는 **시즌 등록 후 확인이 가능합니다.**")
-        
-        if is_ended:
-            st.info(f"🏁 **모임 종료** (최종 {confirmed_count}명 참가 완료)")
-        elif is_unlimited:
-            st.success(f"🟢 신청가능 ({confirmed_count}명 신청 중)")
-            is_full = False
-            is_waitlist_mode = False
+            with col_t2:
+                if st.button("❌ 모임 삭제", key=f"{key_prefix}_del_m_{m_id}", help="이 모임을 목록에서 삭제합니다"):
+                    from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
+                    delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_date)
+                    delete_meeting(m_id)
+                    del_msg = f"🗑️ '{m_title}' 모임이 삭제되었습니다."
+                    st.session_state["meeting_deleted_toast"] = del_msg
+                    st.toast(del_msg, icon="🗑️")
+                    st.warning(del_msg)
+                    st.rerun()
         else:
-            is_full = (confirmed_count >= max_count)
-            if is_full:
-                st.warning(f"🔴 신청마감 ({confirmed_count}/{max_count}명) - ⏳ 대기 신청 가능 ({waitlist_count}명 대기 중)")
-                is_waitlist_mode = True
+            st.markdown(f"### 📖 {meeting['title']}")
+            if leader_name:
+                st.markdown(f"👤 **지정책장**: `{leader_name}`")
+
+        # 소모임일 때 📘 책 제목 라인 완전 감춤
+        if is_bung:
+            pass
+        elif is_unlimited:
+            st.markdown("📘 **모임 형태**: 자유책 (각자 읽은 책 지참)")
+        else:
+            st.markdown(f"📘 **책 제목**: {meeting['book_title']}")
+            if meeting['author'] and str(meeting['author']).strip() and str(meeting['author']).strip() != "자율":
+                st.markdown(f"✍️ **저자명**: {meeting['author']}")
+
+        st.markdown(f"🗓️ **일시**: `{meeting['meeting_date']}` `{meeting['meeting_time']}`")
+        st.markdown(f"📍 **장소**: {meeting['location_name']}")
+
+        # 소모임 내용 및 안내 (모임 설명) 표시
+        if clean_desc and clean_desc.strip():
+            st.markdown(f"📝 **모임 안내**: {clean_desc}")
+
+        # 오픈 카카오톡방 주소 (가장 마지막 표시)
+        if kakao_url:
+            is_registered_member = (google_user and google_user.get('registered', 0) == 1)
+            if is_registered_member or is_admin:
+                st.markdown(f"💬 **오픈 카톡방 주소**: [{kakao_url}]({kakao_url})")
             else:
-                st.success(f"🟢 신청가능 ({confirmed_count}/{max_count}명)")
-                is_waitlist_mode = False
+                st.warning("🔒 오픈 카톡방 주소는 **시즌 등록 후 확인이 가능합니다.**")
+    
+    if is_ended:
+        st.info(f"🏁 **모임 종료** (최종 {confirmed_count}명 참가 완료)")
+    elif is_unlimited:
+        st.success(f"🟢 신청가능 ({confirmed_count}명 신청 중)")
+        is_full = False
+        is_waitlist_mode = False
+    else:
+        is_full = (confirmed_count >= max_count)
+        if is_full:
+            st.warning(f"🔴 신청마감 ({confirmed_count}/{max_count}명) - ⏳ 대기 신청 가능 ({waitlist_count}명 대기 중)")
+            is_waitlist_mode = True
+        else:
+            st.success(f"🟢 신청가능 ({confirmed_count}/{max_count}명)")
+            is_waitlist_mode = False
 
         already_rsvp = False
         if google_user and any(r['member_phone'] == google_user['email'] or r['member_name'] == google_user['display_name'] for r in rsvps):
