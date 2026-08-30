@@ -385,7 +385,11 @@ def render_schedule():
         ]
         jijung_meetings = [
             m for m in upcoming_meetings 
-            if m not in bung_meetings and ("지정책" in m['title'] or "지정" in m['title'] or "지정책" in (m['book_title'] or ""))
+            if m not in bung_meetings and (
+                "지정책" in m['title'] or "지정" in m['title'] or "지정책" in (m['book_title'] or "") or
+                "[책장:" in (m['description'] or "") or "[카톡:" in (m['description'] or "") or
+                (m['max_participants'] > 0 and m['max_participants'] < 50 and m['max_participants'] != 999)
+            )
         ]
         regular_meetings = [
             m for m in upcoming_meetings 
@@ -517,8 +521,9 @@ def render_schedule():
                         if not m_title or not m_book:
                             st.error("모임 제목과 지정 도서명은 필수 입력 사항입니다.")
                         else:
-                            # 모임 설명에 지정책장 및 카카오톡 오픈채팅 태그 정보 구조화 저장
-                            extra_desc = m_desc.strip() if m_desc else ""
+                            pure_desc = m_desc.strip() if m_desc else ""
+                            # 앱 화면용 (태그 포함)
+                            extra_desc = pure_desc
                             if jijung_leader.strip():
                                 extra_desc = f"[책장:{jijung_leader.strip()}]\n" + extra_desc
                             if kakao_link.strip():
@@ -527,7 +532,8 @@ def render_schedule():
                             add_meeting(m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_lat, m_lng, m_max, extra_desc)
                             from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
                             m_season = get_club_season_code()
-                            append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, extra_desc, m_season)
+                            # 구글 시트에는 순수 모임설명만 전송 (책장/카톡 태그 제거)
+                            append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, pure_desc, m_season, jijung_leader=jijung_leader.strip(), kakao_url=kakao_link.strip())
                             created_msg = f"🎉 '{m_title}' 지정책 모임이 성공적으로 개설되었습니다!"
                             st.session_state["meeting_created_toast"] = created_msg
                             st.session_state["reset_admin_category"] = True

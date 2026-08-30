@@ -267,7 +267,7 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
     t.start()
     return True
 
-def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author, meeting_date, meeting_time, location_name, max_participants=8, description="", season=""):
+def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author, meeting_date, meeting_time, location_name, max_participants=8, description="", season="", jijung_leader="", kakao_url=""):
     """
     백그라운드 비동기 스레드로 구글 시트 웹훅에 새로 개설된 모임 정보를 전송
     """
@@ -275,17 +275,17 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
     if not webhook_url:
         return False
 
-    leader_name = ""
-    kakao_url = ""
+    leader_name = jijung_leader.strip()
+    k_url = kakao_url.strip()
     clean_desc = description or ""
-    if "[책장:" in clean_desc:
+    if not leader_name and "[책장:" in clean_desc:
         try:
             leader_name = clean_desc.split("[책장:")[1].split("]")[0].strip()
         except Exception:
             pass
-    if "[카톡:" in clean_desc:
+    if not k_url and "[카톡:" in clean_desc:
         try:
-            kakao_url = clean_desc.split("[카톡:")[1].split("]")[0].strip()
+            k_url = clean_desc.split("[카톡:")[1].split("]")[0].strip()
         except Exception:
             pass
 
@@ -313,8 +313,8 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
         "시즌": season,
         "jijung_leader": leader_name,
         "지정책장": leader_name,
-        "kakao_url": kakao_url,
-        "오픈카톡방": kakao_url
+        "kakao_url": k_url,
+        "오픈카톡방": k_url
     }
 
     try:
