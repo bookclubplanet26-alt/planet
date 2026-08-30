@@ -256,9 +256,13 @@ def render_attendance():
 
         if att_type_name == "라운징":
             book_read_input = st.text_input("📖 지참 책 제목 (선택)", placeholder="지참한 책이 있다면 입력해주세요 (선택)", key="att_book_read_input")
+            book_author_input = st.text_input("✍️ 저자 / 작가 (선택)", placeholder="예: 어니스트 헤밍웨이 (선택)", key="att_book_author_input")
+            rating_val = st.radio("⭐ 도서 별점 (선택)", [5, 4, 3, 2, 1], format_func=lambda x: "⭐" * x + f" ({x}점)", horizontal=True, key="att_rating_input")
             book_review_input = st.text_area("💬 책에 대한 간단한 감상평 (선택)", placeholder="책을 읽고 느낀 점이나 공유하고 싶은 한 줄 생각을 적어주세요 (선택)", key="att_book_review_input", height=80)
         else:
             book_read_input = st.text_input("📖 지참 책 제목", placeholder="예: 데미안, 사피엔스 등", key="att_book_read_input")
+            book_author_input = st.text_input("✍️ 저자 / 작가 (선택)", placeholder="예: 헤르만 헤세 (선택)", key="att_book_author_input")
+            rating_val = st.radio("⭐ 도서 별점 (선택)", [5, 4, 3, 2, 1], format_func=lambda x: "⭐" * x + f" ({x}점)", horizontal=True, key="att_rating_input")
             book_review_input = st.text_area("💬 책에 대한 간단한 감상평 (선택)", placeholder="책을 읽고 느낀 점이나 공유하고 싶은 한 줄 생각을 적어주세요 (선택)", key="att_book_review_input", height=80)
 
         if not is_valid_time_window and not bypass_time:
@@ -271,6 +275,7 @@ def render_attendance():
             is_within_200m = (dist_m <= 200)
 
             book_title_val = book_read_input.strip()
+            book_author_val = book_author_input.strip()
             book_review_val = book_review_input.strip()
             if att_type_name == "정규모임" and not book_title_val:
                 st.error("⚠️ 정규모임 출석체크를 완료하려면 지참 책 제목을 입력해 주세요.")
@@ -315,7 +320,9 @@ def render_attendance():
                         meeting_name=selected_meeting['title'],
                         book_read=record_book_text,
                         book_review=book_review_val,
-                        is_lounging=is_lounging_val
+                        is_lounging=is_lounging_val,
+                        book_author=book_author_val,
+                        rating=rating_val
                     )
                     st.balloons()
                     st.success("✅ 출석체크가 정상적으로 완료되었습니다!")

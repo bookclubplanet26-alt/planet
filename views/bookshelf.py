@@ -144,10 +144,15 @@ def render_bookshelf():
                     if not book_review:
                         book_review = parts[1].rstrip(")").strip()
 
+                author_val = str(row.get('저자명', '') or row.get('저자', '')).strip()
+                rating_val = str(row.get('별점', '')).strip()
+
                 my_records.append({
                     "date": date_val,
                     "meeting": meeting_name,
                     "book_title": book_title if book_title else "자유책",
+                    "book_author": author_val,
+                    "rating": rating_val,
                     "book_review": book_review,
                     "season": season_val if season_val else "기타 시즌"
                 })
@@ -187,14 +192,23 @@ def render_bookshelf():
     # 🖼️ 카드 갤러리 형태로 도서 서가 표시
     for idx, r in filtered_df.iterrows():
         date_str = r['date'].split()[0] if ' ' in r['date'] else r['date']
+        author_text = f" <span style='font-size: 0.9rem; color: #795548;'>({r['book_author']})</span>" if r['book_author'] else ""
         
+        # 별점 렌더링
+        try:
+            r_num = int(float(r['rating'])) if r['rating'] else 0
+            star_text = "⭐" * r_num if r_num > 0 else ""
+        except Exception:
+            star_text = ""
+        star_badge = f" <span style='font-size: 0.9rem; margin-left: 6px;'>{star_text}</span>" if star_text else ""
+
         st.markdown(f"""
         <div style="background-color: #FFFFFF; border: 1px solid #EAE5D9; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
             <div style="font-size: 0.85rem; color: #8D6E63; font-weight: bold; margin-bottom: 4px;">
                 🗓️ {date_str} | 📌 {r['meeting']}
             </div>
             <div style="font-size: 1.15rem; font-weight: bold; color: #3E2723; margin-bottom: 6px;">
-                📖 {r['book_title']}
+                📖 {r['book_title']}{author_text}{star_badge}
             </div>
             {f'<div style="font-size: 0.92rem; color: #5D4037; background-color: #FAF8F5; padding: 10px; border-radius: 8px; margin-top: 6px;">💬 <i>"{r["book_review"]}"</i></div>' if r['book_review'] else ''}
         </div>

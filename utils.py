@@ -214,10 +214,12 @@ def _async_send_post(webhook_url, payload):
     except Exception:
         pass
 
-def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name, year, season, meeting_name, book_read, book_review="", is_lounging=0):
+def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name, year, season, meeting_name, book_read, book_review="", is_lounging=0, book_author="", rating=5):
     """
     백그라운드 비동기 스레드(Async Thread)로 구글 시트에 전송하여 사용자 대기시간 0초로 단축!
     - is_lounging: 라운징 선택시 1, 아니면 0
+    - book_author: 저자/작가명 (선택)
+    - rating: 별점 (1~5)
     """
     import threading
     if not webhook_url:
@@ -239,7 +241,13 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
         "한줄평": book_review,
         "is_lounging": is_lounging,
         "lounging": is_lounging,
-        "라운징": is_lounging
+        "라운징": is_lounging,
+        "book_author": book_author,
+        "author": book_author,
+        "저자명": book_author,
+        "저자": book_author,
+        "rating": rating,
+        "별점": rating
     }
     
     # 캐시 지우기 (다음번 조회시 반영)
