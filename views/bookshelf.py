@@ -163,6 +163,14 @@ def render_bookshelf():
 
     # 📊 독서 통계 카운터
     df_my = pd.DataFrame(my_records)
+    
+    # 🗓️ 최신 날짜순 정렬 (내림차순)
+    try:
+        df_my['parsed_date'] = pd.to_datetime(df_my['date'], errors='coerce')
+        df_my = df_my.sort_values(by='parsed_date', ascending=False)
+    except Exception:
+        df_my = df_my.iloc[::-1]
+
     total_att = len(df_my)
     unique_books = df_my[df_my['book_title'] != '자유책']['book_title'].nunique()
     
