@@ -491,8 +491,8 @@ def render_schedule():
                     st.markdown("##### 📕 지정책 모임 설정")
                     m_title = st.text_input("모임 제목", value="[지정책] 독서 토론 모임", key="jijung_title")
                     jijung_leader = st.text_input("지정책장 이름", placeholder="예: 한지수 - 네밍웨이", key="jijung_leader")
-                    m_book = st.text_input("지정 도서명 (필수)", placeholder="예: 멋진 신세계 & 영화 가타카", key="jijung_book")
-                    m_author = st.text_input("저자명 (필수)", placeholder="예: 올더스 헉슬리", key="jijung_author")
+                    m_book = st.text_input("지정 도서명 (필수)", placeholder="예: 태양은 다시 떠오른다", key="jijung_book")
+                    m_author = st.text_input("저자명 (필수)", placeholder="예: 어니스트 헤밍웨이", key="jijung_author")
 
                     c1, c2 = st.columns(2)
                     with c1:
