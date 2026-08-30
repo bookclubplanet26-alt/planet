@@ -16,7 +16,7 @@ def render_register():
     <div class="club-card" style="border-left: 4px solid #FEE500; background-color: #FFFDF0; padding: 28px 24px; text-align: center; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
         <h3 style="margin-top: 0; color: #3C1E1E; font-size: 1.4rem;">💬 회원가입 및 문의</h3>
         <p style="font-size: 1.05rem; color: #3C1E1E; margin-bottom: 20px; line-height: 1.6;">
-            북클럽 플래닛 회원가입 및 문의사항은 아래 카카오톡 오픈채팅 링크 또는 QR 코드를 통해 편하게 연락 주세요!
+            북클럽 플래닛 회원가입 및 문의사항은 아래 카카오톡 오픈채팅 링크 또는 QR 코드를 통해 편하게 연락 주세요! (현생이슈로 좀 늦을 수 있어요ㅠ)
         </p>
         <a href="https://open.kakao.com/o/sWLBJTue" target="_blank" style="
             display: inline-block;
