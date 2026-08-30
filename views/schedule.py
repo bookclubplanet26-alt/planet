@@ -17,8 +17,14 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
     confirmed_count = len(confirmed_rsvps)
     waitlist_count = len(waitlist_rsvps)
 
-    is_jijung = ("지정책" in meeting['title'])
     is_bung = ("소모임" in meeting['title'] or "벙" in meeting['title'] or meeting['book_title'] == "자율 / 소모임")
+    is_jijung = (
+        not is_bung and (
+            "지정책" in meeting['title'] or "지정" in meeting['title'] or "지정책" in (meeting['book_title'] or "") or
+            "[책장:" in (meeting['description'] or "") or "[카톡:" in (meeting['description'] or "") or
+            (max_count > 0 and max_count < 50 and max_count != 999)
+        )
+    )
 
     # 무제한 인원 처리 (정규모임)
     is_unlimited = (
