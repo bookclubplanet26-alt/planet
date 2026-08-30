@@ -77,43 +77,8 @@ if not google_user:
                             "is_admin": admin_val
                         }
 
-            # 테스트 계정 및 운영진 호환
-            if not found_member and "hanjisu" in email_str:
-                found_member = {
-                    "id": 20260001,
-                    "name": "한지수",
-                    "nickname": "네밍웨이",
-                    "display_name": "한지수 - 네밍웨이",
-                    "email": email_str,
-                    "season": "2609",
-                    "registered": 1,
-                    "is_admin": 1
-                }
-            elif not found_member and "admin" in email_str:
-                found_member = {
-                    "id": 20260002,
-                    "name": "관리자",
-                    "nickname": "운영진",
-                    "display_name": "관리자 - 운영진",
-                    "email": email_str,
-                    "season": "2609",
-                    "registered": 1,
-                    "is_admin": 1
-                }
-            elif not found_member and "aaa" in email_str:
-                found_member = {
-                    "id": 20260003,
-                    "name": "홍길동",
-                    "nickname": "길동이",
-                    "display_name": "홍길동 - 길동이",
-                    "email": email_str,
-                    "season": "2609",
-                    "registered": 1,
-                    "is_admin": 0
-                }
-
             if not found_member:
-                st.error("🚨 미등록입니다 등록을 확인해주세요")
+                st.error("🚨 미등록 회원입니다. 구글 시트 등록 상태 및 이메일을 확인해 주세요.")
                 st.session_state.google_user = None
             else:
                 st.session_state.google_user = found_member

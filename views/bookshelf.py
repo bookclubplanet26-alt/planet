@@ -49,48 +49,13 @@ def render_bookshelf():
                                 "email": email_str
                             }
 
-                if not found_member and "hanjisu" in email_str:
-                    found_member = {
-                        "id": 20260001,
-                        "name": "한지수",
-                        "nickname": "네밍웨이",
-                        "display_name": "한지수 - 네밍웨이",
-                        "email": email_str,
-                        "registered": 1,
-                        "is_admin": 1
-                    }
-                elif not found_member and "admin" in email_str:
-                    found_member = {
-                        "id": 20260002,
-                        "name": "관리자",
-                        "nickname": "운영진",
-                        "display_name": "관리자 - 운영진",
-                        "email": email_str,
-                        "registered": 1,
-                        "is_admin": 1
-                    }
-                elif not found_member and "aaa" in email_str:
-                    found_member = {
-                        "id": 20260003,
-                        "name": "홍길동",
-                        "nickname": "길동이",
-                        "display_name": "홍길동 - 길동이",
-                        "email": email_str,
-                        "registered": 1,
-                        "is_admin": 0
-                    }
-                elif not found_member:
-                    found_member = {
-                        "id": hash(email_str) % 100000,
-                        "name": email_str.split("@")[0],
-                        "nickname": "",
-                        "display_name": email_str.split("@")[0],
-                        "email": email_str
-                    }
-
-                st.session_state.google_user = found_member
-                st.success(f"✅ Google 인증 완료! 환영합니다. {found_member['display_name']}님")
-                st.rerun()
+                if not found_member:
+                    st.error("🚨 미등록 회원입니다. 구글 시트 등록 상태 및 이메일을 확인해 주세요.")
+                    st.session_state.google_user = None
+                else:
+                    st.session_state.google_user = found_member
+                    st.success(f"✅ Google 인증 완료! 환영합니다. {found_member['display_name']}님")
+                    st.rerun()
         return
 
     # 인증된 회원 상단 배너
