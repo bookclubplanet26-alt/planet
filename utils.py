@@ -107,6 +107,8 @@ def get_google_sheet_meetings_list():
     author_col = next((c for c in df.columns if any(k in str(c) for k in ["저자", "author"])), None)
     max_col = next((c for c in df.columns if any(k in str(c) for k in ["정원", "최대인원", "max"])), None)
     desc_col = next((c for c in df.columns if any(k in str(c) for k in ["모임설명", "설명", "desc"])), None)
+    leader_col = next((c for c in df.columns if any(k in str(c) for k in ["지정책장", "책장", "leader"])), None)
+    kakao_col = next((c for c in df.columns if any(k in str(c) for k in ["오픈카톡방", "오픈카톡", "카톡", "kakao"])), None)
 
     meetings = []
     for idx, row in df.iterrows():
@@ -126,6 +128,13 @@ def get_google_sheet_meetings_list():
             max_val = 8
             
         desc_val = str(row.get(desc_col, '')).strip() if desc_col and pd.notna(row.get(desc_col)) else ""
+        leader_val = str(row.get(leader_col, '')).strip() if leader_col and pd.notna(row.get(leader_col)) else ""
+        kakao_val = str(row.get(kakao_col, '')).strip() if kakao_col and pd.notna(row.get(kakao_col)) else ""
+
+        if leader_val and "[책장:" not in desc_val:
+            desc_val = f"[책장:{leader_val}]\n" + desc_val
+        if kakao_val and "[카톡:" not in desc_val:
+            desc_val = desc_val + f"\n[카톡:{kakao_val}]"
 
         # 좌표 설정
         if "종각" in loc_val or "종로" in loc_val:
@@ -266,6 +275,20 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
     if not webhook_url:
         return False
 
+    leader_name = ""
+    kakao_url = ""
+    clean_desc = description or ""
+    if "[책장:" in clean_desc:
+        try:
+            leader_name = clean_desc.split("[책장:")[1].split("]")[0].strip()
+        except Exception:
+            pass
+    if "[카톡:" in clean_desc:
+        try:
+            kakao_url = clean_desc.split("[카톡:")[1].split("]")[0].strip()
+        except Exception:
+            pass
+
     payload = {
         "type": "create_meeting",
         "action": "create_meeting",
@@ -287,7 +310,11 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
         "description": description,
         "모임설명": description,
         "season": season,
-        "시즌": season
+        "시즌": season,
+        "jijung_leader": leader_name,
+        "지정책장": leader_name,
+        "kakao_url": kakao_url,
+        "오픈카톡방": kakao_url
     }
 
     try:
