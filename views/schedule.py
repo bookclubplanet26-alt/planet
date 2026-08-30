@@ -117,82 +117,82 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             st.success(f"🟢 신청가능 ({confirmed_count}/{max_count}명)")
             is_waitlist_mode = False
 
-        already_rsvp = False
-        if google_user and any(r['member_phone'] == google_user['email'] or r['member_name'] == google_user['display_name'] for r in rsvps):
-            already_rsvp = True
+    already_rsvp = False
+    if google_user and any(r['member_phone'] == google_user['email'] or r['member_name'] == google_user['display_name'] for r in rsvps):
+        already_rsvp = True
 
-        if is_ended:
-            if already_rsvp:
-                st.caption("✅ 이전 참가 신청했던 모임입니다.")
-        elif google_user:
-            if already_rsvp:
-                st.info("✅ 이미 신청 완료된 모임입니다.")
-                if st.button("신청 취소하기", key=f"{key_prefix}_cancel_{meeting['id']}", use_container_width=True):
-                    with st.spinner("🔄 신청 취소 처리 중입니다..."):
-                        cancel_rsvp(meeting['id'], google_user['id'])
-                        from utils import ATTENDANCE_WEBHOOK_URL, cancel_rsvp_from_google_sheet_async
-                        cancel_rsvp_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], google_user.get('email', ''), google_user['display_name'])
-                        st.toast("✅ 신청이 취소되었습니다.")
-                        st.rerun()
-            else:
-                if is_waitlist_mode:
-                    selected_part_type = "대기"
-                    btn_label = "⏳ 대기 신청하기"
-                elif is_jijung:
-                    selected_part_type = "지정책"
-                    btn_label = "🚀 참가 신청하기"
-                elif is_bung:
-                    # 소모임: 별도 참여방식 선택 없이 바로 신청
-                    selected_part_type = "참석"
-                    btn_label = "🚀 참가 신청하기"
-                else:
-                    part_choice = st.radio(
-                        "참여 방식을 선택하세요",
-                        ["📖 자유책", "🛋️ 라운징", "📕 지정책"],
-                        horizontal=True,
-                        key=f"{key_prefix}_part_radio_{meeting['id']}"
-                    )
-                    if "지정책" in part_choice:
-                        selected_part_type = "지정책"
-                    elif "라운징" in part_choice:
-                        selected_part_type = "라운징"
-                    else:
-                        selected_part_type = "자유책"
-                    btn_label = "🚀 참가 신청하기"
-
-                btn_disabled = (is_full and not is_waitlist_mode)
-                if st.button(btn_label, key=f"{key_prefix}_rsvp_{meeting['id']}", disabled=btn_disabled, type="primary", use_container_width=True):
-                    with st.spinner("🔄 참가 신청 처리 중입니다... 잠시만 기다려 주세요."):
-                        success, msg = add_rsvp(meeting['id'], google_user['id'], google_user['display_name'], google_user['email'], selected_part_type)
-                        if success:
-                            from utils import ATTENDANCE_WEBHOOK_URL, add_rsvp_to_google_sheet_async
-                            add_rsvp_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], google_user['display_name'], google_user.get('email', ''), selected_part_type)
-                            toast_msg = "대기 신청이 완료되었습니다!" if selected_part_type == "대기" else "참가 신청이 완료되었습니다!"
-                            st.toast(f"✅ [{google_user['display_name']}] 님, {toast_msg}", icon="🎉")
-                            st.rerun()
-                        else:
-                            st.error(msg)
+    if is_ended:
+        if already_rsvp:
+            st.caption("✅ 이전 참가 신청했던 모임입니다.")
+    elif google_user:
+        if already_rsvp:
+            st.info("✅ 이미 신청 완료된 모임입니다.")
+            if st.button("신청 취소하기", key=f"{key_prefix}_cancel_{meeting['id']}", use_container_width=True):
+                with st.spinner("🔄 신청 취소 처리 중입니다..."):
+                    cancel_rsvp(meeting['id'], google_user['id'])
+                    from utils import ATTENDANCE_WEBHOOK_URL, cancel_rsvp_from_google_sheet_async
+                    cancel_rsvp_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], google_user.get('email', ''), google_user['display_name'])
+                    st.toast("✅ 신청이 취소되었습니다.")
+                    st.rerun()
         else:
-            st.warning("⚠️ 참가 신청을 위해 먼저 상단에서 Google 계정 인증을 완료해 주세요.")
-
-        with st.expander(f"👥 참석 명단 ({current_count}명)"):
-            if rsvps:
-                for r in rsvps:
-                    p_type = r['participation_type'] if 'participation_type' in r.keys() and r['participation_type'] else '자유책'
-                    if "대기" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (⏳ 대기)")
-                    elif "지정책" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (📕 지정책)")
-                    elif "라운징" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (🛋️ 라운징)")
-                    elif "자유책" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (📖 자유책)")
-                    else:
-                        st.markdown(f"• **{r['member_name']}**")
+            if is_waitlist_mode:
+                selected_part_type = "대기"
+                btn_label = "⏳ 대기 신청하기"
+            elif is_jijung:
+                selected_part_type = "지정책"
+                btn_label = "🚀 참가 신청하기"
+            elif is_bung:
+                # 소모임: 별도 참여방식 선택 없이 바로 신청
+                selected_part_type = "참석"
+                btn_label = "🚀 참가 신청하기"
             else:
-                st.write("아직 참가 신청자가 없습니다.")
+                part_choice = st.radio(
+                    "참여 방식을 선택하세요",
+                    ["📖 자유책", "🛋️ 라운징", "📕 지정책"],
+                    horizontal=True,
+                    key=f"{key_prefix}_part_radio_{meeting['id']}"
+                )
+                if "지정책" in part_choice:
+                    selected_part_type = "지정책"
+                elif "라운징" in part_choice:
+                    selected_part_type = "라운징"
+                else:
+                    selected_part_type = "자유책"
+                btn_label = "🚀 참가 신청하기"
 
-        st.markdown("<hr style='margin:12px 0;'/>", unsafe_allow_html=True)
+            btn_disabled = (is_full and not is_waitlist_mode)
+            if st.button(btn_label, key=f"{key_prefix}_rsvp_{meeting['id']}", disabled=btn_disabled, type="primary", use_container_width=True):
+                with st.spinner("🔄 참가 신청 처리 중입니다... 잠시만 기다려 주세요."):
+                    success, msg = add_rsvp(meeting['id'], google_user['id'], google_user['display_name'], google_user['email'], selected_part_type)
+                    if success:
+                        from utils import ATTENDANCE_WEBHOOK_URL, add_rsvp_to_google_sheet_async
+                        add_rsvp_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], google_user['display_name'], google_user.get('email', ''), selected_part_type)
+                        toast_msg = "대기 신청이 완료되었습니다!" if selected_part_type == "대기" else "참가 신청이 완료되었습니다!"
+                        st.toast(f"✅ [{google_user['display_name']}] 님, {toast_msg}", icon="🎉")
+                        st.rerun()
+                    else:
+                        st.error(msg)
+    else:
+        st.warning("⚠️ 참가 신청을 위해 먼저 상단에서 Google 계정 인증을 완료해 주세요.")
+
+    with st.expander(f"👥 참석 명단 ({current_count}명)"):
+        if rsvps:
+            for r in rsvps:
+                p_type = r['participation_type'] if 'participation_type' in r.keys() and r['participation_type'] else '자유책'
+                if "대기" in str(p_type):
+                    st.markdown(f"• **{r['member_name']}** (⏳ 대기)")
+                elif "지정책" in str(p_type):
+                    st.markdown(f"• **{r['member_name']}** (📕 지정책)")
+                elif "라운징" in str(p_type):
+                    st.markdown(f"• **{r['member_name']}** (🛋️ 라운징)")
+                elif "자유책" in str(p_type):
+                    st.markdown(f"• **{r['member_name']}** (📖 자유책)")
+                else:
+                    st.markdown(f"• **{r['member_name']}**")
+        else:
+            st.write("아직 참가 신청자가 없습니다.")
+
+    st.markdown("<hr style='margin:12px 0;'/>", unsafe_allow_html=True)
 
 
 def render_schedule():
