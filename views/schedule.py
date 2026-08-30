@@ -29,43 +29,78 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         "종각 (" in meeting['title']
     )
 
-    with st.container():
-        # 관리자인 경우 X 삭제 버튼 제공
-        if is_admin:
-            m_title = meeting['title'] if isinstance(meeting, dict) or hasattr(meeting, '__getitem__') else getattr(meeting, 'title', '')
-            m_date = meeting['meeting_date'] if (isinstance(meeting, dict) and 'meeting_date' in meeting) or (hasattr(meeting, 'keys') and 'meeting_date' in meeting.keys()) else ""
-            m_id = meeting['id']
+        desc_raw = meeting['description'] or ""
+        leader_name = ""
+        kakao_url = ""
+        clean_desc = desc_raw
 
-            col_t1, col_t2 = st.columns([4, 1])
-            with col_t1:
-                st.markdown(f"### 📖 {m_title}")
-            with col_t2:
-                if st.button("❌ 모임 삭제", key=f"{key_prefix}_del_m_{m_id}", help="이 모임을 목록에서 삭제합니다"):
-                    from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
-                    delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_date)
-                    delete_meeting(m_id)
-                    del_msg = f"🗑️ '{m_title}' 모임이 삭제되었습니다."
-                    st.session_state["meeting_deleted_toast"] = del_msg
-                    st.toast(del_msg, icon="🗑️")
-                    st.warning(del_msg)
-                    st.rerun()
-        else:
-            st.markdown(f"### 📖 {meeting['title']}")
+        if "[책장:" in clean_desc:
+            try:
+                l_part = clean_desc.split("[책장:")[1].split("]")[0]
+                leader_name = l_part.strip()
+                clean_desc = clean_desc.replace(f"[책장:{l_part}]", "").strip()
+            except Exception:
+                pass
 
-        # 소모임일 때 📘 책 제목 라인 완전 감춤
-        if is_bung:
-            pass
-        elif is_unlimited:
-            st.markdown("📘 **모임 형태**: 자유책 (각자 읽은 책 지참)")
-        else:
-            st.markdown(f"📘 **책 제목**: {meeting['book_title']} ({meeting['author'] or '저자미상'})")
+        if "[카톡:" in clean_desc:
+            try:
+                k_part = clean_desc.split("[카톡:")[1].split("]")[0]
+                kakao_url = k_part.strip()
+                clean_desc = clean_desc.replace(f"[카톡:{k_part}]", "").strip()
+            except Exception:
+                pass
 
-        st.markdown(f"🗓️ **일시**: `{meeting['meeting_date']}` `{meeting['meeting_time']}`")
-        st.markdown(f"📍 **장소**: {meeting['location_name']}")
+        with st.container():
+            # 관리자인 경우 X 삭제 버튼 제공
+            if is_admin:
+                m_title = meeting['title'] if isinstance(meeting, dict) or hasattr(meeting, '__getitem__') else getattr(meeting, 'title', '')
+                m_date = meeting['meeting_date'] if (isinstance(meeting, dict) and 'meeting_date' in meeting) or (hasattr(meeting, 'keys') and 'meeting_date' in meeting.keys()) else ""
+                m_id = meeting['id']
 
-        # 소모임 내용 및 안내 (모임 설명) 표시
-        if meeting['description'] and meeting['description'].strip():
-            st.markdown(f"📝 **모임 안내**: {meeting['description']}")
+                col_t1, col_t2 = st.columns([4, 1])
+                with col_t1:
+                    st.markdown(f"### 📖 {m_title}")
+                    if leader_name:
+                        st.markdown(f"👤 **지정책장**: `{leader_name}`")
+                with col_t2:
+                    if st.button("❌ 모임 삭제", key=f"{key_prefix}_del_m_{m_id}", help="이 모임을 목록에서 삭제합니다"):
+                        from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
+                        delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_date)
+                        delete_meeting(m_id)
+                        del_msg = f"🗑️ '{m_title}' 모임이 삭제되었습니다."
+                        st.session_state["meeting_deleted_toast"] = del_msg
+                        st.toast(del_msg, icon="🗑️")
+                        st.warning(del_msg)
+                        st.rerun()
+            else:
+                st.markdown(f"### 📖 {meeting['title']}")
+                if leader_name:
+                    st.markdown(f"👤 **지정책장**: `{leader_name}`")
+
+            # 소모임일 때 📘 책 제목 라인 완전 감춤
+            if is_bung:
+                pass
+            elif is_unlimited:
+                st.markdown("📘 **모임 형태**: 자유책 (각자 읽은 책 지참)")
+            else:
+                st.markdown(f"📘 **책 제목**: {meeting['book_title']}")
+                if meeting['author'] and str(meeting['author']).strip() and str(meeting['author']).strip() != "자율":
+                    st.markdown(f"✍️ **저자명**: {meeting['author']}")
+
+            st.markdown(f"🗓️ **일시**: `{meeting['meeting_date']}` `{meeting['meeting_time']}`")
+            st.markdown(f"📍 **장소**: {meeting['location_name']}")
+
+            # 소모임 내용 및 안내 (모임 설명) 표시
+            if clean_desc and clean_desc.strip():
+                st.markdown(f"📝 **모임 안내**: {clean_desc}")
+
+            # 오픈 카카오톡방 주소 (가장 마지막 표시)
+            if kakao_url:
+                is_registered_member = (google_user and google_user.get('registered', 0) == 1)
+                if is_registered_member or is_admin:
+                    st.markdown(f"💬 **오픈 카톡방 주소**: [{kakao_url}]({kakao_url})")
+                else:
+                    st.warning("🔒 오픈 카톡방 주소는 **시즌 등록 후 확인이 가능합니다.**")
         
         if is_ended:
             st.info(f"🏁 **모임 종료** (최종 {confirmed_count}명 참가 완료)")
@@ -455,8 +490,9 @@ def render_schedule():
                 with st.form("form_jijung_meeting"):
                     st.markdown("##### 📕 지정책 모임 설정")
                     m_title = st.text_input("모임 제목", value="[지정책] 독서 토론 모임", key="jijung_title")
-                    m_book = st.text_input("지정 도서명 (필수)", placeholder="예: 데미안", key="jijung_book")
-                    m_author = st.text_input("저자", placeholder="예: 헤르만 헤세", key="jijung_author")
+                    jijung_leader = st.text_input("지정책장 이름", placeholder="예: 한지수 - 네밍웨이", key="jijung_leader")
+                    m_book = st.text_input("지정 도서명 (필수)", placeholder="예: 멋진 신세계 & 영화 가타카", key="jijung_book")
+                    m_author = st.text_input("저자명 (필수)", placeholder="예: 올더스 헉슬리", key="jijung_author")
 
                     c1, c2 = st.columns(2)
                     with c1:
@@ -473,6 +509,7 @@ def render_schedule():
                         m_lat, m_lng = 37.5709, 126.9778
 
                     m_max = st.number_input("정원 (명)", min_value=2, max_value=30, value=6, key="jijung_max")
+                    kakao_link = st.text_input("오픈 카카오톡방 주소 (URL)", placeholder="예: https://open.kakao.com/o/...", key="jijung_kakao_link")
                     m_desc = st.text_area("발제 및 토론 질문", placeholder="토론 주제를 입력하세요.", key="jijung_desc")
 
                     submit_jijung = st.form_submit_button("🚀 지정책 모임 개설 완료", type="primary", use_container_width=True)
@@ -480,10 +517,17 @@ def render_schedule():
                         if not m_title or not m_book:
                             st.error("모임 제목과 지정 도서명은 필수 입력 사항입니다.")
                         else:
-                            add_meeting(m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_lat, m_lng, m_max, m_desc)
+                            # 모임 설명에 지정책장 및 카카오톡 오픈채팅 태그 정보 구조화 저장
+                            extra_desc = m_desc.strip() if m_desc else ""
+                            if jijung_leader.strip():
+                                extra_desc = f"[책장:{jijung_leader.strip()}]\n" + extra_desc
+                            if kakao_link.strip():
+                                extra_desc = extra_desc + f"\n[카톡:{kakao_link.strip()}]"
+
+                            add_meeting(m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_lat, m_lng, m_max, extra_desc)
                             from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
                             m_season = get_club_season_code()
-                            append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
+                            append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, extra_desc, m_season)
                             created_msg = f"🎉 '{m_title}' 지정책 모임이 성공적으로 개설되었습니다!"
                             st.session_state["meeting_created_toast"] = created_msg
                             st.session_state["reset_admin_category"] = True
