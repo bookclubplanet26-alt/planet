@@ -47,21 +47,21 @@ def render_attendance():
                         matched_row = df_sheet[df_sheet[email_col].astype(str).str.strip().str.lower() == email_str]
                         if not matched_row.empty:
                             r = matched_row.iloc[0]
-                            u_name = str(r[name_col]).strip() if name_col and pd.notna(r[name_col]) else "한지수"
-                            u_nick = str(r[nick_col]).strip() if nick_col and pd.notna(r[nick_col]) else "네밍웨이"
+                            u_name = str(r[name_col]).strip() if name_col and pd.notna(r[name_col]) else "회원"
+                            u_nick = str(r[nick_col]).strip() if nick_col and pd.notna(r[nick_col]) else ""
                             u_season = str(r[season_col]).strip() if season_col and pd.notna(r[season_col]) else ""
                             
-                            raw_reg = str(r[reg_col]).strip() if reg_col and pd.notna(r[reg_col]) else "1"
+                            raw_reg = str(r[reg_col]).strip() if reg_col and pd.notna(r[reg_col]) else "0"
                             reg_val = 1 if raw_reg in ["1", "등록", "승인", "True", "true", "완료"] else 0
 
-                            raw_admin = str(r[admin_col]).strip() if admin_col and pd.notna(r[admin_col]) else "1"
+                            raw_admin = str(r[admin_col]).strip() if admin_col and pd.notna(r[admin_col]) else "0"
                             admin_val = 1 if raw_admin in ["1", "운영진", "관리자", "True", "true"] else 0
 
                             found_member = {
                                 "id": hash(email_str) % 100000,
                                 "name": u_name,
                                 "nickname": u_nick,
-                                "display_name": f"{u_name} - {u_nick}",
+                                "display_name": f"{u_name} - {u_nick}" if u_nick else u_name,
                                 "email": email_str,
                                 "season": u_season,
                                 "registered": reg_val,
