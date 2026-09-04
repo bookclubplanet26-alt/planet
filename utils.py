@@ -39,12 +39,15 @@ def get_gspread_client():
     - 2순위: 로컬 planet-app-507608-f8729d5756b5.json 키 파일
     """
     try:
-        if hasattr(st, "secrets") and ("gcp_service_account" in st.secrets or "text" in str(st.secrets)):
+        if hasattr(st, "secrets") and "gcp_service_account" in st.secrets:
             from google.oauth2.service_account import Credentials
             scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-            if "gcp_service_account" in st.secrets:
-                creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
-                return gspread.authorize(creds)
+            sec_dict = dict(st.secrets["gcp_service_account"])
+            # toml 형식 줄바꿈 호환 처리
+            if "private_key" in sec_dict:
+                sec_dict["private_key"] = sec_dict["private_key"].replace("\\n", "\n")
+            creds = Credentials.from_service_account_info(sec_dict, scopes=scopes)
+            return gspread.authorize(creds)
     except Exception:
         pass
 
