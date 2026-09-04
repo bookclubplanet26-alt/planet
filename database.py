@@ -226,9 +226,14 @@ def delete_meeting(meeting_id):
     conn.close()
     return True
 
+import pandas as pd
+
 def get_rsvps_for_meeting(meeting_id):
     meeting = get_meeting_by_id(meeting_id)
     m_title = meeting['title'] if meeting and (isinstance(meeting, dict) or hasattr(meeting, '__getitem__')) else ""
+
+    rsvps = []
+    seen_identifiers = set()
 
     try:
         from utils import fetch_google_sheet_rsvps
@@ -239,7 +244,6 @@ def get_rsvps_for_meeting(meeting_id):
             email_col = next((c for c in df.columns if any(k in str(c) for k in ["이메일", "email", "mail"])), None)
             type_col = next((c for c in df.columns if any(k in str(c) for k in ["참여방식", "방식", "type"])), None)
 
-            rsvps = []
             for idx, row in df.iterrows():
                 row_m = str(row.get(m_col, '')).strip()
                 if m_title and (row_m == m_title or m_title in row_m or row_m in m_title):
@@ -247,24 +251,37 @@ def get_rsvps_for_meeting(meeting_id):
                     r_email = str(row.get(email_col, '')).strip() if email_col and pd.notna(row.get(email_col)) else ""
                     r_type = str(row.get(type_col, '자유책')).strip() if type_col and pd.notna(row.get(type_col)) else "자유책"
 
+                    identifier = r_email.strip().lower() if r_email else r_name.strip()
+                    if identifier:
+                        seen_identifiers.add(identifier)
+
                     rsvps.append({
                         "id": idx + 1,
                         "meeting_id": meeting_id,
-                        "member_id": hash(r_email) % 100000 if r_email else idx,
+                        "member_id": hash(r_email) % 100000 if r_email else idx + 100,
                         "member_name": r_name,
                         "member_phone": r_email,
                         "participation_type": r_type
                     })
-            if rsvps:
-                return rsvps
     except Exception:
         pass
 
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM rsvps WHERE meeting_id = ?", (meeting_id,))
-    rsvps = cursor.fetchall()
-    conn.close()
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM rsvps WHERE meeting_id = ?", (meeting_id,))
+        db_rsvps = cursor.fetchall()
+        conn.close()
+        for row in db_rsvps:
+            r_phone = str(row['member_phone'] or '').strip().lower()
+            r_name = str(row['member_name'] or '').strip()
+            identifier = r_phone if r_phone else r_name
+            if identifier not in seen_identifiers:
+                rsvps.append(dict(row))
+                seen_identifiers.add(identifier)
+    except Exception:
+        pass
+
     return rsvps
 
 def add_rsvp(meeting_id, member_id, member_name, member_phone, participation_type="자유책"):
