@@ -231,7 +231,6 @@ import pandas as pd
 def get_rsvps_for_meeting(meeting_id):
     meeting = get_meeting_by_id(meeting_id)
     m_title = meeting['title'] if meeting and (isinstance(meeting, dict) or hasattr(meeting, '__getitem__')) else ""
-    m_date = str(meeting['meeting_date']).strip() if meeting and (isinstance(meeting, dict) or hasattr(meeting, '__getitem__')) and 'meeting_date' in meeting else ""
 
     rsvps = []
     seen_identifiers = set()
@@ -241,24 +240,13 @@ def get_rsvps_for_meeting(meeting_id):
         ok, df = fetch_google_sheet_rsvps()
         if ok and df is not None and not df.empty:
             m_col = next((c for c in df.columns if any(k in str(c) for k in ["모임명", "모임", "title"])), df.columns[0])
-            date_col = next((c for c in df.columns if any(k in str(c) for k in ["모임일자", "일자", "날짜", "date"])), None)
             name_col = next((c for c in df.columns if any(k in str(c) for k in ["회원명", "이름", "성함", "name"])), None)
             email_col = next((c for c in df.columns if any(k in str(c) for k in ["이메일", "email", "mail"])), None)
             type_col = next((c for c in df.columns if any(k in str(c) for k in ["참여방식", "방식", "type"])), None)
 
             for idx, row in df.iterrows():
                 row_m = str(row.get(m_col, '')).strip()
-                row_d = str(row.get(date_col, '')).strip() if date_col and pd.notna(row.get(date_col)) else ""
-
-                # 모임명 비교
-                title_match = m_title and (row_m == m_title or m_title in row_m or row_m in m_title)
-                
-                # 모임일자 비교 (시트에 모임일자 값이 등록된 경우에만 검증)
-                date_match = True
-                if row_d and m_date:
-                    date_match = (row_d == m_date or m_date in row_d or row_d in m_date)
-
-                if title_match and date_match:
+                if m_title and (row_m == m_title or m_title in row_m or row_m in m_title):
                     r_name = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else "회원"
                     r_email = str(row.get(email_col, '')).strip() if email_col and pd.notna(row.get(email_col)) else ""
                     r_type = str(row.get(type_col, '자유책')).strip() if type_col and pd.notna(row.get(type_col)) else "자유책"

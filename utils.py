@@ -26,11 +26,54 @@ def get_club_season_code(dt=None):
     year_short = dt.strftime("%y")
     return f"{year_short}{dt.month:02d}"
 
+import os
+import gspread
+
+# 서비스 계정 JSON 파일 경로
+SERVICE_ACCOUNT_FILE = os.path.join(os.path.dirname(__file__), "planet-app-507608-f8729d5756b5.json")
+
+def get_gspread_client():
+    """
+    100% 비공개 구글 시트를 가져오기 위한 서비스 계정 클라이언트 생성
+    - 1순위: Streamlit secrets (Cloud 배포 환경)
+    - 2순위: 로컬 planet-app-507608-f8729d5756b5.json 키 파일
+    """
+    try:
+        if hasattr(st, "secrets") and ("gcp_service_account" in st.secrets or "text" in str(st.secrets)):
+            from google.oauth2.service_account import Credentials
+            scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+            if "gcp_service_account" in st.secrets:
+                creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+                return gspread.authorize(creds)
+    except Exception:
+        pass
+
+    try:
+        if os.path.exists(SERVICE_ACCOUNT_FILE):
+            return gspread.service_account(filename=SERVICE_ACCOUNT_FILE)
+    except Exception:
+        pass
+    return None
+
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_google_sheet_members():
     """
-    회원 명단 시트 다이렉트 전송 (캐싱 300초 적용)
+    회원 명단 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
     """
+    try:
+        gc = get_gspread_client()
+        if gc:
+            sh = gc.open_by_key(GOOGLE_SHEET_ID)
+            ws = sh.worksheet("회원목록") if "회원목록" in [w.title for w in sh.worksheets()] else sh.sheet1
+            records = ws.get_all_records()
+            if records:
+                df = pd.DataFrame(records)
+                if not df.empty and len(df.columns) > 1:
+                    return True, df, None
+    except Exception:
+        pass
+
+    # fallback: 기존 CSV 퍼블릭 경로
     url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/export?format=csv&gid=0"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -52,8 +95,20 @@ def fetch_google_sheet_members():
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_google_sheet_attendances():
     """
-    출석전용 구글 시트 다이렉트 전송 (60초 캐싱)
+    출석전용 구글 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
     """
+    gc = get_gspread_client()
+    if gc:
+        try:
+            sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+            ws = sh.worksheet("출석목록") if "출석목록" in [w.title for w in sh.worksheets()] else sh.sheet1
+            records = ws.get_all_records()
+            df = pd.DataFrame(records)
+            if not df.empty:
+                return True, df
+        except Exception:
+            pass
+
     url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ATTENDANCE_ID}/export?format=csv&gid=0"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -70,8 +125,21 @@ def fetch_google_sheet_attendances():
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_google_sheet_meetings():
     """
-    모임 목록 시트 다이렉트 1회 전송 (300초 스마트 캐싱으로 0.1초 초고속 조회)
+    모임 목록 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
     """
+    gc = get_gspread_client()
+    if gc:
+        try:
+            sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+            ws = sh.worksheet("모임목록") if "모임목록" in [w.title for w in sh.worksheets()] else None
+            if ws:
+                records = ws.get_all_records()
+                df = pd.DataFrame(records)
+                if not df.empty:
+                    return True, df
+        except Exception:
+            pass
+
     url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ATTENDANCE_ID}/export?format=csv&gid=1599243491"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -377,8 +445,23 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_google_sheet_rsvps():
     """
-    구글 시트에서 신청명단/참가신청 탭을 가져오는 함수
+    구글 시트에서 신청명단/참가신청 탭을 가져오는 함수 (gspread 보안 인증 1순위 사용)
     """
+    gc = get_gspread_client()
+    if gc:
+        for s_id in [GOOGLE_SHEET_ATTENDANCE_ID, GOOGLE_SHEET_ID]:
+            try:
+                sh = gc.open_by_key(s_id)
+                for w_title in ["신청명단", "참가신청"]:
+                    if w_title in [w.title for w in sh.worksheets()]:
+                        ws = sh.worksheet(w_title)
+                        records = ws.get_all_records()
+                        df = pd.DataFrame(records)
+                        if not df.empty and any(k in str(col) for col in df.columns for k in ["회원", "이름", "모임", "신청"]):
+                            return True, df
+            except Exception:
+                continue
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
