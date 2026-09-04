@@ -402,7 +402,7 @@ def fetch_google_sheet_rsvps():
             continue
     return False, None
 
-def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email, participation_type="자유책"):
+def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email, participation_type="자유책", meeting_date=""):
     """
     백그라운드 비동기 스레드로 구글 시트 신청명단에 참가 신청 정보 전송 (대기시간 0초)
     """
@@ -419,6 +419,8 @@ def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email
         "created_at": now_str,
         "meeting_name": meeting_name,
         "모임명": meeting_name,
+        "meeting_date": meeting_date,
+        "모임일자": meeting_date,
         "member_name": member_name,
         "회원명": member_name,
         "이름": member_name,
@@ -438,7 +440,7 @@ def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email
     t.start()
     return True
 
-def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member_name=""):
+def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member_name="", meeting_date=""):
     """
     백그라운드 비동기 스레드로 구글 시트 신청명단에서 참가 신청 삭제 전송 (대기시간 0초)
     """
@@ -451,6 +453,8 @@ def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member
         "action": "cancel_rsvp",
         "meeting_name": meeting_name,
         "모임명": meeting_name,
+        "meeting_date": meeting_date,
+        "모임일자": meeting_date,
         "email": email,
         "이메일": email,
         "member_name": member_name,
