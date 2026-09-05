@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils import fetch_google_sheet_attendances, fetch_google_sheet_members, render_deposit_refund_card
+from utils import fetch_google_sheet_attendances, fetch_google_sheet_members, format_member_attendance_and_deposit_text
 
 def render_bookshelf():
     st.subheader("📚 나의 서재 (My Book Planet)")
@@ -66,15 +66,15 @@ def render_bookshelf():
     else:
         user_disp_name = google_user.get('name', '')
 
+    att_txt = format_member_attendance_and_deposit_text(google_user)
+
     st.markdown(f"""
     <div class="info-callout" style="background-color: #F0F7FF; border-left-color: #0066CC; color: #003366; padding: 16px; font-size: 1.05rem; border-radius: 12px; margin-bottom: 20px;">
         <b>📖 {user_disp_name} 님의 개인 독서 서재</b><br/>
-        <span style="font-size: 0.9rem; color: #4A5568;">계정: {google_user['email']}</span>
+        <span style="font-size: 0.9rem; color: #4A5568;">계정: {google_user['email']}</span><br/>
+        <span style="font-size: 0.95rem; color: #003366; margin-top: 4px; display: inline-block;">{att_txt}</span>
     </div>
     """, unsafe_allow_html=True)
-
-    # 💰 나의 예치금 & 환급 현황 카드 실시간 렌더링
-    render_deposit_refund_card(google_user)
 
     # 구글 시트 출석 기록에서 본인 데이터 추출
     with st.spinner("📚 나의 독서 기록을 불러오는 중..."):

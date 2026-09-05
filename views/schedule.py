@@ -7,7 +7,7 @@ from database import (
 )
 from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
-    get_current_kst, render_deposit_refund_card, get_member_deposit_info, 
+    get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
     fetch_google_sheet_accounting, sync_accounting_pipeline_with_members, 
     GOOGLE_SHEET_ACCOUNTING_ID
 )
@@ -315,11 +315,13 @@ def render_schedule():
 
         else:
             admin_badge = " [👑 운영진]" if google_user.get("is_admin", 0) == 1 else ""
-            from utils import format_season_display
-            m_season = google_user.get('season')
-            season_label = format_season_display(m_season)
-            att_cnt = get_member_attendance_count(google_user['email'], google_user['display_name'], target_season=m_season)
-            att_txt = f"🏆 {season_label} 출석 횟수: <b>{att_cnt}회</b>"
+            att_txt = format_member_attendance_and_deposit_text(google_user)
+            if not att_txt:
+                from utils import format_season_display
+                m_season = google_user.get('season')
+                season_label = format_season_display(m_season)
+                att_cnt = get_member_attendance_count(google_user['email'], google_user['display_name'], target_season=m_season)
+                att_txt = f"🏆 {season_label} 출석 횟수: <b>{att_cnt}회</b>"
             
             st.markdown(f"""
             <div class="info-callout" style="background-color: #E8F0FE; border-left-color: #1A73E8; color: #174EA6; padding: 16px; font-size: 1.05rem;">
@@ -335,9 +337,6 @@ def render_schedule():
             if st.button("🚪 다른 이메일로 인증 (로그아웃)", key="google_logout_btn"):
                 st.session_state.google_user = None
                 st.rerun()
-
-        # 💰 나의 예치금 & 환급 현황 카드 실시간 렌더링
-        render_deposit_refund_card(google_user)
 
         st.markdown("---")
 

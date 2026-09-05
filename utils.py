@@ -1011,89 +1011,41 @@ def get_member_deposit_info(user_email="", user_name="", user_season=None):
         "deposit_amount": 0 if is_admin else 20000
     }
 
-def render_deposit_refund_card(google_user):
+def format_member_attendance_and_deposit_text(google_user):
     """
-    회원의 예치금 및 시즌 출석 환급 달성 현황 카드 UI 컴포넌트
-    - 첫 등록 신규 부원: 시즌 4회 출석 시 100% 반환 (20,000원)
-    - 기존 활동 부원: 시즌 3회 출석 시 100% 반환 (20,000원)
-    - 운영진: 예치금 면제 대상
+    기존 Google 인증 배너에 들어갈 깔끔하고 압축적인 출석 횟수 및 예치금 환급 요건 문구 생성
+    예:
+    - 신규 부원: 🏆 2609시즌(9~10월) 출석 횟수: 1회 (💰 신규 예치금 환급: 1/4회, 3회 남음)
+    - 환급 달성: 🏆 2609시즌(9~10월) 출석 횟수: 4회 (🎉 예치금 환급 달성!)
+    - 운영진: 🏆 2609시즌(9~10월) 출석 횟수: 0회 (👑 예치금 면제)
     """
     if not google_user:
-        return
-    
-    dep_info = get_member_deposit_info(
+        return ""
+        
+    dep = get_member_deposit_info(
         user_email=google_user.get('email', ''),
-        user_name=google_user.get('name', ''),
+        user_name=google_user.get('display_name', google_user.get('name', '')),
         user_season=google_user.get('season')
     )
+    s_label = format_season_display(dep['current_season'])
+    cnt = dep['current_count']
+    if dep['is_admin']:
+        return f"🏆 {s_label} 출석 횟수: <b>{cnt}회</b> <span style='font-size: 0.88rem; color: #856404; margin-left: 6px;'>(👑 예치금 면제)</span>"
     
-    is_admin = dep_info['is_admin']
-    curr_s_label = format_season_display(dep_info['current_season'])
-    
-    if is_admin:
-        st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #FFFDF5, #FFF9E6); border: 1px solid #FFE082; border-radius: 12px; padding: 14px 18px; margin: 10px 0 16px 0; box-shadow: 0 2px 6px rgba(255, 179, 0, 0.08);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: 800; font-size: 1.0rem; color: #B78103;">👑 운영진 예치금 안내</span>
-                <span style="background-color: #FFE082; color: #8C6200; font-size: 0.78rem; font-weight: bold; padding: 2px 8px; border-radius: 10px;">예치금 면제</span>
-            </div>
-            <p style="margin: 6px 0 0 0; color: #6D4C00; font-size: 0.88rem; line-height: 1.4;">
-                운영진은 모임 기획 및 운영을 총괄하므로 시즌 예치금(20,000원) 납부 및 환급 요건이 적용되지 않습니다.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        return
-
-    # 일반 부원
-    is_first = dep_info['is_first_season']
-    member_type_tag = "🌱 첫 등록 신규 부원" if is_first else "⭐ 기존 활동 부원"
-    tag_bg = "#E8F5E9" if is_first else "#E3F2FD"
-    tag_color = "#2E7D32" if is_first else "#1565C0"
-    
-    target = dep_info['target_count']
-    curr = dep_info['current_count']
-    remain = dep_info['remaining_count']
-    is_eligible = dep_info['is_eligible']
-    
-    progress_pct = min(100, int((curr / target * 100))) if target > 0 else 100
-    
-    if is_eligible:
-        border_color = "#81C784"
-        bg_color = "#F1F8E9"
-        status_badge = '<span style="background-color: #4CAF50; color: white; font-size: 0.8rem; font-weight: bold; padding: 4px 10px; border-radius: 12px;">🎉 환급 요건 달성!</span>'
-        status_msg = f"축하합니다! 이번 <b>{curr_s_label}</b> 목표 출석(<b>{target}회</b>)을 모두 달성하셨습니다.<br/>시즌 종료 후 등록하신 계좌로 예치금 <b>20,000원</b>이 100% 전액 반환됩니다. 💸"
+    target = dep['target_count']
+    tag = "신규" if dep['is_first_season'] else "기존"
+    if dep['is_eligible']:
+        tag_badge = f"<span style='color: #2E7D32; font-weight: bold; margin-left: 6px;'>🎉 예치금 환급 달성! ({cnt}/{target}회)</span>"
     else:
-        border_color = "#90CAF9"
-        bg_color = "#F6FAFD"
-        status_badge = f'<span style="background-color: #1976D2; color: white; font-size: 0.8rem; font-weight: bold; padding: 4px 10px; border-radius: 12px;">활동 중 ({curr}/{target}회)</span>'
-        status_msg = f"앞으로 <b>{remain}회 더 출석</b>하시면 시즌 종료 후 예치금(20,000원) 100% 반환 대상이 됩니다! 🏃‍♂️"
+        remain = dep['remaining_count']
+        tag_badge = f"<span style='color: #1565C0; font-size: 0.9rem; margin-left: 6px;'>(💰 {tag} 예치금 환급: <b>{cnt}/{target}회</b>, {remain}회 남음)</span>"
+    return f"🏆 {s_label} 출석 횟수: <b>{cnt}회</b> {tag_badge}"
 
-    st.markdown(f"""
-    <div style="background-color: {bg_color}; border: 1px solid {border_color}; border-radius: 14px; padding: 16px 18px; margin: 10px 0 18px 0; box-shadow: 0 3px 8px rgba(0,0,0,0.03);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div>
-                <span style="font-weight: 800; font-size: 1.02rem; color: #1E293B;">💰 나의 예치금 & 환급 현황</span>
-                <span style="background-color: {tag_bg}; color: {tag_color}; font-size: 0.78rem; font-weight: bold; padding: 3px 8px; border-radius: 8px; margin-left: 6px;">{member_type_tag}</span>
-            </div>
-            {status_badge}
-        </div>
-        <div style="margin-bottom: 10px;">
-            <div style="display: flex; justify-content: space-between; font-size: 0.86rem; color: #475569; margin-bottom: 4px;">
-                <span><b>{curr_s_label}</b> 출석 달성률 ({curr}회 / {target}회)</span>
-                <b>{progress_pct}%</b>
-            </div>
-            <div style="background-color: #E2E8F0; border-radius: 10px; height: 10px; overflow: hidden;">
-                <div style="background: linear-gradient(90deg, #4CAF50, #2E7D32); height: 100%; width: {progress_pct}%; border-radius: 10px; transition: width 0.5s ease;"></div>
-            </div>
-        </div>
-        <div style="background-color: #FFFFFF; border-radius: 10px; padding: 10px 14px; border: 1px solid #E2E8F0; font-size: 0.88rem; color: #334155; line-height: 1.45;">
-            {status_msg}
-            <div style="font-size: 0.8rem; color: #64748B; margin-top: 6px; border-top: 1px dashed #E2E8F0; padding-top: 5px;">
-                • 기준: <b>신규 첫 등록</b>은 1시즌(2개월) 내 <b>4회</b> / <b>다음 시즌부터</b>는 <b>3회</b> 출석 시 반환 (정규 1회, 라운징 0.5회 인정)
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+def render_deposit_refund_card(google_user):
+    """
+    (Deprecated) 기존 분리형 카드는 제거되고 Google 인증 배너 내부로 압축 통합되었습니다.
+    """
+    pass
 
 def sync_accounting_pipeline_with_members():
     """

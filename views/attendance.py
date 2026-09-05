@@ -11,7 +11,7 @@ from utils import (
     get_member_attendance_count, get_meeting_target_gps, 
     format_season_display, ATTENDANCE_WEBHOOK_URL, 
     append_attendance_to_google_sheet_async, get_club_season_code,
-    get_current_kst, render_deposit_refund_card
+    get_current_kst, format_member_attendance_and_deposit_text
 )
 
 def filter_attendances_for_meeting(att_df, selected_meeting):
@@ -157,10 +157,12 @@ def render_attendance():
 
     else:
         admin_badge = " [👑 운영진]" if google_user.get("is_admin", 0) == 1 else ""
-        m_season = google_user.get('season')
-        season_label = format_season_display(m_season)
-        att_cnt = get_member_attendance_count(google_user['email'], google_user['display_name'], target_season=m_season)
-        att_txt = f"🏆 {season_label} 출석 횟수: <b>{att_cnt}회</b>"
+        att_txt = format_member_attendance_and_deposit_text(google_user)
+        if not att_txt:
+            m_season = google_user.get('season')
+            season_label = format_season_display(m_season)
+            att_cnt = get_member_attendance_count(google_user['email'], google_user['display_name'], target_season=m_season)
+            att_txt = f"🏆 {season_label} 출석 횟수: <b>{att_cnt}회</b>"
         
         col_box, col_logout = st.columns([4, 1])
         with col_box:
@@ -177,9 +179,6 @@ def render_attendance():
             if st.button("🚪 로그아웃", key="att_google_logout_btn"):
                 st.session_state.google_user = None
                 st.rerun()
-
-        # 💰 나의 예치금 & 환급 현황 카드 실시간 렌더링
-        render_deposit_refund_card(google_user)
 
     st.markdown("---")
 
