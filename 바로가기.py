@@ -71,8 +71,8 @@ if page == "home":
         st.session_state.current_page = "attendance"
         st.rerun()
 
-    # 5. 나의 서재 & 나의 모임 버튼
-    if st.button("📚 나의 서재 & 나의 모임", key="btn_nav_bs", use_container_width=True):
+    # 5. 나의 서재 버튼
+    if st.button("📚 나의 서재 (My Book Planet)", key="btn_nav_bs", use_container_width=True):
         st.session_state.current_page = "bookshelf"
         st.rerun()
 
