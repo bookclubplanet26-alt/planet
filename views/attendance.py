@@ -110,12 +110,11 @@ def render_attendance():
         st.warning("개설된 모임이 없습니다.")
         return
 
-    # 본인이 신청한 모임 또는 모든 정규모임 중 오늘 이후(예정된 모임)만 필터링 (기간 지난 모임 제외)
+    # 본인이 실제로 참가 신청(RSVP)한 정규모임 중 오늘 및 향후 예정된 모임만 필터링
     import datetime
     today_date = datetime.date.today()
 
     my_meetings = []
-    is_admin = (google_user and google_user.get("is_admin", 0) == 1)
 
     for m in meetings:
         is_bung = ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
@@ -128,27 +127,24 @@ def render_attendance():
         except Exception:
             m_date = today_date
 
-        # 지난 모임 제외 (오늘 포함 이후 모임만)
+        # 지난 모임 제외 & 정규모임 중 본인이 참가 신청한 모임만 포함
         if m_date >= today_date and not is_bung and not is_jijung:
             rsvps = get_rsvps_for_meeting(m['id'])
-            has_rsvp = any(r['member_phone'] == google_user['email'] or r['member_name'] == google_user['display_name'] for r in rsvps)
-            if has_rsvp or is_admin:
+            user_email = str(google_user.get('email', '')).strip().lower()
+            user_display = str(google_user.get('display_name', '')).strip()
+            user_name = str(google_user.get('name', '')).strip()
+            
+            has_rsvp = any(
+                (user_email and str(r.get('member_phone', '')).strip().lower() == user_email) or
+                (user_display and str(r.get('member_name', '')).strip() == user_display) or
+                (user_name and str(r.get('member_name', '')).strip() == user_name)
+                for r in rsvps
+            )
+            if has_rsvp:
                 my_meetings.append(m)
 
     if not my_meetings:
-        for m in meetings:
-            is_bung = ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
-            is_jijung = ("지정책" in m['title'] or "지정책" in (m['book_title'] or ""))
-            m_date_str = m['meeting_date'] if (isinstance(m, dict) and 'meeting_date' in m) else getattr(m, 'meeting_date', '')
-            try:
-                m_date = datetime.datetime.strptime(str(m_date_str).strip(), "%Y-%m-%d").date()
-            except Exception:
-                m_date = today_date
-            if m_date >= today_date and not is_bung and not is_jijung:
-                my_meetings.append(m)
-
-    if not my_meetings:
-        st.info(f"📌 현재 출석체크 가능한 예정된 정규모임이 없습니다. 먼저 '모임 일정 & 신청' 메뉴를 확인해 주세요.")
+        st.info(f"📌 [{google_user['display_name']}] 님은 현재 참가 신청한 예정된 정규모임이 없습니다. 먼저 **'모임 일정 & 신청'** 메뉴에서 정규모임 신청을 진행해 주세요.")
         return
 
     meeting_dict = {f"[{m['meeting_date']}] {m['title']}\n📍 {m['location_name']}": m for m in my_meetings}
@@ -156,7 +152,16 @@ def render_attendance():
     selected_meeting = meeting_dict[selected_meeting_label]
 
     rsvps = get_rsvps_for_meeting(selected_meeting['id'])
-    my_rsvp = next((r for r in rsvps if r['member_phone'] == google_user['email'] or r['member_name'] == google_user['display_name']), None)
+    user_email = str(google_user.get('email', '')).strip().lower()
+    user_display = str(google_user.get('display_name', '')).strip()
+    user_name = str(google_user.get('name', '')).strip()
+    
+    my_rsvp = next((
+        r for r in rsvps
+        if (user_email and str(r.get('member_phone', '')).strip().lower() == user_email) or
+           (user_display and str(r.get('member_name', '')).strip() == user_display) or
+           (user_name and str(r.get('member_name', '')).strip() == user_name)
+    ), None)
     is_admin = (google_user and google_user.get("is_admin", 0) == 1)
 
     if not my_rsvp:
