@@ -8,8 +8,7 @@ from database import (
 from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
-    fetch_google_sheet_accounting, sync_accounting_pipeline_with_members, 
-    GOOGLE_SHEET_ACCOUNTING_ID, check_member_season_eligibility
+    check_member_season_eligibility
 )
 
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False):
@@ -247,11 +246,10 @@ def render_schedule():
 
     # 탭 구성: 이메일 인증 완료 후 관리자(운영진==1)일 경우에만 관리자 탭 노출
     if is_admin:
-        tab1, tab2, tab3 = st.tabs(["📚 예정된 모임 목록", "➕ [관리자] 새 모임 개설", "💰 [운영진] 예치금 & 회계장부"])
+        tab1, tab2 = st.tabs(["📚 예정된 모임 목록", "➕ [관리자] 새 모임 개설"])
     else:
         tab1, = st.tabs(["📚 예정된 모임 목록"])
         tab2 = None
-        tab3 = None
 
     with tab1:
         meetings = get_all_meetings()
@@ -577,91 +575,3 @@ def render_schedule():
                             st.balloons()
                             st.rerun()
 
-    if tab3:
-        with tab3:
-            st.markdown("#### 💰 [운영진 전용] 예치금 관리 & 회계장부 동기화 파이프라인")
-            st.caption("회계장부 입금에 따른 부원 등록 및 시즌별 예치금(20,000원) 출석 환급 자격 현황을 관리합니다.")
-
-            # 1. 회원별 예치금 및 환급 요건 달성 현황 테이블
-            ok_mem, df_members, _ = fetch_google_sheet_members()
-            if ok_mem and df_members is not None and not df_members.empty:
-                mem_rows = []
-                eligible_count = 0
-                active_member_count = 0
-                
-                for idx, r in df_members.iterrows():
-                    m_name = str(r.get('이름', '')).strip()
-                    m_email = str(r.get('이메일', '')).strip()
-                    m_nick = str(r.get('닉네임', '')).strip()
-                    m_season = str(r.get('현재등록시즌', '2609')).strip()
-                    
-                    dep_data = get_member_deposit_info(user_email=m_email, user_name=m_name, user_season=m_season)
-                    
-                    if not dep_data['is_admin']:
-                        active_member_count += 1
-                        if dep_data['is_eligible']:
-                            eligible_count += 1
-
-                    mem_type = "👑 운영진" if dep_data['is_admin'] else ("🌱 신규 부원" if dep_data['is_first_season'] else "⭐ 기존 부원")
-                    
-                    mem_rows.append({
-                        "성함": m_name,
-                        "닉네임": m_nick,
-                        "이메일": m_email,
-                        "구분": mem_type,
-                        "등록시즌": dep_data['current_season'],
-                        "시즌 출석": f"{dep_data['current_count']}회 / 목표 {dep_data['target_count']}회" if not dep_data['is_admin'] else "-",
-                        "환급 자격": "🎉 환급 대상" if dep_data['is_eligible'] else ("👑 면제" if dep_data['is_admin'] else f"진행중 (남은 {dep_data['remaining_count']}회)"),
-                        "상태": dep_data['status_label']
-                    })
-
-                col_m1, col_m2, col_m3 = st.columns(3)
-                with col_m1:
-                    st.metric("전체 등록 부원", f"{len(df_members)}명")
-                with col_m2:
-                    st.metric("일반 활동 부원", f"{active_member_count}명")
-                with col_m3:
-                    st.metric("🎉 환급 요건 달성", f"{eligible_count}명")
-
-                st.markdown("##### 📋 부원별 예치금 및 출석 환급 현황표")
-                st.dataframe(pd.DataFrame(mem_rows), use_container_width=True, hide_index=True)
-
-            st.markdown("---")
-            st.markdown("#### 📑 회계장부(Google Sheet) 실시간 연동 파이프라인")
-            
-            accounting_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ACCOUNTING_ID}/edit"
-            st.markdown(f"🔗 **연동 회계장부 시트**: [회계장부 구글 시트 바로가기]({accounting_url})")
-
-            ok_acc, acc_data, acc_err = fetch_google_sheet_accounting()
-
-            if ok_acc and acc_data:
-                st.success(f"🟢 **회계장부 연동 정상**: {len(acc_data)}개 탭 인식됨 ({', '.join(acc_data.keys())})")
-                col_sync1, col_sync2 = st.columns([2, 1])
-                with col_sync1:
-                    st.caption("회계장부의 입금 내역을 스캔하여 회원명과 일치할 시 '등록여부=1' 및 '현재등록시즌'을 자동 갱신합니다.")
-                with col_sync2:
-                    if st.button("🔄 회계장부 ➔ 회원목록 동기화 실행", type="primary", use_container_width=True):
-                        with st.spinner("회계장부 데이터 동기화 중..."):
-                            sync_ok, sync_msg = sync_accounting_pipeline_with_members()
-                            if sync_ok:
-                                st.success(f"✅ {sync_msg}")
-                                st.rerun()
-                            else:
-                                st.error(f"동기화 오류: {sync_msg}")
-            else:
-                st.warning("⚠️ **회계장부 시트 접근 권한 설정 필요**")
-                st.markdown(f"""
-                현재 회계장부 시트가 비공개 상태이거나 서비스 계정에 접근 권한이 없습니다.<br/>
-                아래 순서대로 권한을 1회만 부여해주시면 앱과 실시간 자동 파이프라인이 즉시 가동됩니다:
-                <ol style="margin-top: 8px; font-size: 0.93rem; color: #334155;">
-                    <li><a href='{accounting_url}' target='_blank'><b>회계장부 구글 시트 열기 🔗</b></a></li>
-                    <li>우측 상단 <b>[공유]</b> 버튼 클릭</li>
-                    <li>사용자 추가란에 아래 봇 이메일을 입력하고 <b>'뷰어' (또는 '편집자')</b>로 초대:<br/>
-                        <code style="background-color: #F1F5F9; color: #0F172A; padding: 2px 6px; font-weight: bold;">planet-bot@planet-app-507608.iam.gserviceaccount.com</code>
-                    </li>
-                    <li>또는 <i>일반 액세스</i>를 <b>'링크가 있는 모든 사용자에게 뷰어'</b>로 변경</li>
-                </ol>
-                """, unsafe_allow_html=True)
-                if st.button("🔄 권한 부여 후 연동 재확인", key="recheck_acc_btn"):
-                    fetch_google_sheet_accounting.clear()
-                    st.rerun()
