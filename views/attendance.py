@@ -110,24 +110,45 @@ def render_attendance():
         st.warning("개설된 모임이 없습니다.")
         return
 
-    # 본인이 신청한 모임 또는 모든 정규모임 (운영진이거나 미신청시도 선택 가능하도록 보완)
+    # 본인이 신청한 모임 또는 모든 정규모임 중 오늘 이후(예정된 모임)만 필터링 (기간 지난 모임 제외)
+    import datetime
+    today_date = datetime.date.today()
+
     my_meetings = []
     is_admin = (google_user and google_user.get("is_admin", 0) == 1)
 
     for m in meetings:
         is_bung = ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
         is_jijung = ("지정책" in m['title'] or "지정책" in (m['book_title'] or ""))
-        if not is_bung and not is_jijung:
+        
+        # 모임 날짜 파싱
+        m_date_str = m['meeting_date'] if (isinstance(m, dict) and 'meeting_date' in m) else getattr(m, 'meeting_date', '')
+        try:
+            m_date = datetime.datetime.strptime(str(m_date_str).strip(), "%Y-%m-%d").date()
+        except Exception:
+            m_date = today_date
+
+        # 지난 모임 제외 (오늘 포함 이후 모임만)
+        if m_date >= today_date and not is_bung and not is_jijung:
             rsvps = get_rsvps_for_meeting(m['id'])
             has_rsvp = any(r['member_phone'] == google_user['email'] or r['member_name'] == google_user['display_name'] for r in rsvps)
             if has_rsvp or is_admin:
                 my_meetings.append(m)
 
     if not my_meetings:
-        my_meetings = [m for m in meetings if not ("소모임" in m['title'] or "벙" in m['title'] or "지정책" in m['title'])]
+        for m in meetings:
+            is_bung = ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
+            is_jijung = ("지정책" in m['title'] or "지정책" in (m['book_title'] or ""))
+            m_date_str = m['meeting_date'] if (isinstance(m, dict) and 'meeting_date' in m) else getattr(m, 'meeting_date', '')
+            try:
+                m_date = datetime.datetime.strptime(str(m_date_str).strip(), "%Y-%m-%d").date()
+            except Exception:
+                m_date = today_date
+            if m_date >= today_date and not is_bung and not is_jijung:
+                my_meetings.append(m)
 
     if not my_meetings:
-        st.info(f"📌 [{google_user['display_name']}] 님은 현재 참가 신청한 정규모임이 없습니다. 먼저 '모임 일정 & 신청' 메뉴에서 정규모임 신청을 진행해 주세요.")
+        st.info(f"📌 현재 출석체크 가능한 예정된 정규모임이 없습니다. 먼저 '모임 일정 & 신청' 메뉴를 확인해 주세요.")
         return
 
     meeting_dict = {f"[{m['meeting_date']}] {m['title']}\n📍 {m['location_name']}": m for m in my_meetings}
