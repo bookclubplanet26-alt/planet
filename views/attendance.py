@@ -190,8 +190,18 @@ def render_attendance():
     is_admin = (google_user and google_user.get("is_admin", 0) == 1)
 
     for m in meetings:
-        is_bung = ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
-        is_jijung = ("지정책" in m['title'] or "지정책" in (m['book_title'] or ""))
+        max_p = m.get('max_participants', 999) if isinstance(m, dict) else getattr(m, 'max_participants', 999)
+        book_t = str(m.get('book_title', '') or '' if isinstance(m, dict) else getattr(m, 'book_title', '')).strip()
+        m_desc = str(m.get('description', '') or '' if isinstance(m, dict) else getattr(m, 'description', ''))
+        m_title = str(m.get('title', '') or '' if isinstance(m, dict) else getattr(m, 'title', ''))
+
+        is_bung = ("소모임" in m_title or "벙" in m_title or book_t == "자율 / 소모임")
+        is_regular = (
+            (max_p >= 900 or "자유" in book_t or "강남 (" in m_title or "종각 (" in m_title)
+            and "[책장:" not in m_desc
+            and "지정" not in m_title
+        )
+        is_jijung = (not is_bung and not is_regular) or ("지정" in m_title or "지정" in book_t or "[책장:" in m_desc or (0 < max_p < 50))
         
         m_date_str = m['meeting_date'] if (isinstance(m, dict) and 'meeting_date' in m) else getattr(m, 'meeting_date', '')
         try:
@@ -199,7 +209,8 @@ def render_attendance():
         except Exception:
             m_date = today_date
 
-        if m_date >= today_date and not is_bung and not is_jijung:
+        # 지난 모임 제외 & 정규모임만 출석체크 대상 (지정책 및 소모임 완전 제외)
+        if m_date >= today_date and is_regular and not is_jijung and not is_bung:
             if is_admin:
                 my_meetings.append(m)
             else:
