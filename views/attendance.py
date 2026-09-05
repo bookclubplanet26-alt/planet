@@ -258,6 +258,16 @@ def render_attendance():
     selected_meeting_label = st.selectbox("출석체크할 모임 선택", list(meeting_dict.keys()), key="att_meeting_select")
     selected_meeting = meeting_dict[selected_meeting_label]
 
+    # 👑 운영진 전용 시간/위치 제한 해제 체크박스 (모임 선택 즉시 최상단 노출)
+    bypass_time = False
+    if is_admin:
+        st.markdown("""
+        <div style="background-color: #FFFDF5; border: 1px solid #FFE082; border-radius: 10px; padding: 10px 14px; margin: 8px 0 12px 0;">
+            <b style="color: #B78103;">👑 운영진 모드:</b> 출석체크 시간/위치 제한 해제 및 사전 신청 여부와 무관한 즉시 출석체크가 가능합니다.
+        </div>
+        """, unsafe_allow_html=True)
+        bypass_time = st.checkbox("🔓 [운영진] 출석체크 조건(시간/위치 제한) 해제하기", value=True, key="att_admin_bypass_time_top")
+
     rsvps = get_rsvps_for_meeting(selected_meeting['id'])
     user_email = str(google_user.get('email', '')).strip().lower()
     user_display = str(google_user.get('display_name', '')).strip()
@@ -277,24 +287,19 @@ def render_attendance():
 
     if not my_rsvp:
         if is_admin:
-            st.info("👑 **운영진 모니터링 모드**: 해당 모임의 실시간 출석 현황을 조회 중입니다. *(본인 미신청 모임으로 개인 출석체크는 제외됩니다)*")
-            st.markdown("---")
-            st.markdown(f"#### 📋 [{selected_meeting['meeting_date']}] {selected_meeting['title']} 출석 완료 명단 [👑 운영진 전용]")
-            if gs_attendances:
-                for att in gs_attendances:
-                    t_str = str(att['checked_at']).split()[1][:5] if ' ' in str(att['checked_at']) else str(att['checked_at'])[:5]
-                    raw_b = str(att.get('book_read', ''))
-                    pure_b = raw_b.split(" (💬 ")[0].strip() if " (💬 " in raw_b else raw_b
-                    b_str = f" (📖 {pure_b})" if pure_b else ""
-                    st.write(f"• **{att['member_name']}**{b_str} - {t_str} 출석완료")
-            else:
-                local_atts = get_attendances_for_meeting(selected_meeting['id'])
-                if local_atts:
-                    for att in local_atts:
-                        st.write(f"• **{att['member_name']}**님 ({att['checked_at'].split()[1] if ' ' in att['checked_at'] else att['checked_at']} 출석완료)")
-                else:
-                    st.info(f"아직 [{selected_meeting['meeting_date']}] 모임에 출석 완료한 부원이 없습니다.")
-        return
+            # 운영진은 사전 참가신청(RSVP)이 없더라도 현장 출석체크 및 모니터링이 가능하도록 자동 허용
+            my_rsvp = {
+                "id": 9999,
+                "meeting_id": selected_meeting['id'],
+                "member_id": google_user['id'],
+                "member_name": google_user['display_name'],
+                "member_phone": google_user['email'],
+                "participation_type": "운영진"
+            }
+            st.info(f"👑 **운영진 권한**: [{selected_meeting['title']}] 모임에 사전 신청 내역이 없으나, 운영진 권한으로 즉시 출석체크 및 실시간 명단 조회가 가능합니다.")
+        else:
+            st.warning("⚠️ 현재 선택하신 모임은 참가 신청 내역이 없어 출석체크를 진행할 수 없습니다.")
+            return
 
     # 시간 체크 로직 (해당 모임 날짜의 16:00 ~ 17:00 KST, 여유 버퍼 15:50 ~ 17:30 허용)
     now_kst = get_current_kst()
@@ -338,11 +343,6 @@ def render_attendance():
                     break
 
     target_name, target_lat, target_lng = get_meeting_target_gps(selected_meeting)
-
-    bypass_time = False
-    if is_admin:
-        st.info("👑 **운영진 전용 모드**: 출석체크 시간/위치 제한을 해제할 수 있습니다.")
-        bypass_time = st.checkbox("🔓 출석체크 조건(시간/위치 제한) 해제하기", value=True, key="att_admin_bypass_time_top")
 
     if already_checked_in:
         st.info(f"✅ [{selected_meeting['meeting_date']}] {selected_meeting['title']} 출석체크가 완료되었습니다!")
