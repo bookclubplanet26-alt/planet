@@ -11,7 +11,7 @@ from utils import (
     get_member_attendance_count, get_meeting_target_gps, 
     format_season_display, ATTENDANCE_WEBHOOK_URL, 
     append_attendance_to_google_sheet_async, get_club_season_code,
-    get_current_kst, format_member_attendance_and_deposit_text
+    get_current_kst, format_member_attendance_and_deposit_text, check_member_season_eligibility
 )
 
 def filter_attendances_for_meeting(att_df, selected_meeting):
@@ -179,6 +179,16 @@ def render_attendance():
             if st.button("🚪 로그아웃", key="att_google_logout_btn"):
                 st.session_state.google_user = None
                 st.rerun()
+
+        is_elig, _, reason_msg = check_member_season_eligibility(google_user)
+        if not is_elig and not (google_user and google_user.get("is_admin", 0) == 1):
+            st.markdown(f"""
+            <div style="margin: 10px 0 16px 0; padding: 14px 18px; background-color: #FFF3E0; border: 1px solid #FFE082; border-left: 5px solid #FF9800; border-radius: 10px; color: #7F5100; font-size: 0.95rem; line-height: 1.55;">
+                <div style="font-weight: bold; font-size: 1.02rem; margin-bottom: 4px; color: #E65100;">📢 시즌 등록 및 예치금 입금 안내</div>
+                현재 <b>{reason_msg}</b><br/>
+                모임 신청 및 출석 체크 참여를 위해 먼저 <b>이번 시즌 등록(예치금 입금)</b>을 완료해 주세요!
+            </div>
+            """, unsafe_allow_html=True)
 
     st.markdown("---")
 

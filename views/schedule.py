@@ -9,7 +9,7 @@ from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
     fetch_google_sheet_accounting, sync_accounting_pipeline_with_members, 
-    GOOGLE_SHEET_ACCOUNTING_ID
+    GOOGLE_SHEET_ACCOUNTING_ID, check_member_season_eligibility
 )
 
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False):
@@ -107,11 +107,11 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
         # 오픈 카카오톡방 주소 (가장 마지막 표시)
         if kakao_url:
-            is_registered_member = (google_user and google_user.get('registered', 0) == 1)
-            if is_registered_member or is_admin:
+            is_eligible, _, _ = check_member_season_eligibility(google_user)
+            if is_eligible or is_admin:
                 st.markdown(f"💬 **오픈 카톡방 주소**: [{kakao_url}]({kakao_url})")
             else:
-                st.warning("🔒 오픈 카톡방 주소는 **시즌 등록 후 확인이 가능합니다.**")
+                st.warning("🔒 오픈 카톡방 주소는 **이번 시즌 예치금 등록(입금 완료) 회원**에게만 공개됩니다. 먼저 시즌 등록 및 예치금을 입금해 주세요.")
     
     if is_ended:
         st.info(f"🏁 **모임 종료** (최종 {confirmed_count}명 참가 완료)")
@@ -147,44 +147,52 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                     st.toast("✅ 신청이 취소되었습니다.")
                     st.rerun()
         else:
-            if is_waitlist_mode:
-                selected_part_type = "대기"
-                btn_label = "⏳ 대기 신청하기"
-            elif is_jijung:
-                selected_part_type = "지정책"
-                btn_label = "🚀 참가 신청하기"
-            elif is_bung:
-                # 소모임: 별도 참여방식 선택 없이 바로 신청
-                selected_part_type = "참석"
-                btn_label = "🚀 참가 신청하기"
+            is_eligible, reason_type, reason_msg = check_member_season_eligibility(google_user)
+            if not is_eligible and not is_admin:
+                st.warning(f"""
+                🚫 **모임 신청 제한 (시즌 등록 필요)**  
+                {reason_msg}  
+                📌 정규모임, 지정책, 소모임/벙 등 모든 모임에 참여하시려면 **이번 시즌 예치금 입금 및 등록**을 먼저 완료해 주세요!
+                """)
             else:
-                part_choice = st.radio(
-                    "참여 방식을 선택하세요",
-                    ["📖 자유책", "🛋️ 라운징", "📕 지정책"],
-                    horizontal=True,
-                    key=f"{key_prefix}_part_radio_{meeting['id']}"
-                )
-                if "지정책" in part_choice:
+                if is_waitlist_mode:
+                    selected_part_type = "대기"
+                    btn_label = "⏳ 대기 신청하기"
+                elif is_jijung:
                     selected_part_type = "지정책"
-                elif "라운징" in part_choice:
-                    selected_part_type = "라운징"
+                    btn_label = "🚀 참가 신청하기"
+                elif is_bung:
+                    # 소모임: 별도 참여방식 선택 없이 바로 신청
+                    selected_part_type = "참석"
+                    btn_label = "🚀 참가 신청하기"
                 else:
-                    selected_part_type = "자유책"
-                btn_label = "🚀 참가 신청하기"
-
-            btn_disabled = (is_full and not is_waitlist_mode)
-            if st.button(btn_label, key=f"{key_prefix}_rsvp_{meeting['id']}", disabled=btn_disabled, type="primary", use_container_width=True):
-                with st.spinner("🔄 참가 신청 처리 중입니다... 잠시만 기다려 주세요."):
-                    success, msg = add_rsvp(meeting['id'], google_user['id'], google_user['display_name'], google_user['email'], selected_part_type)
-                    if success:
-                        from utils import ATTENDANCE_WEBHOOK_URL, add_rsvp_to_google_sheet_async
-                        m_date_val = meeting.get('meeting_date', '') if isinstance(meeting, dict) else getattr(meeting, 'meeting_date', '')
-                        add_rsvp_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], google_user['display_name'], google_user.get('email', ''), selected_part_type, meeting_date=m_date_val)
-                        toast_msg = "대기 신청이 완료되었습니다!" if selected_part_type == "대기" else "참가 신청이 완료되었습니다!"
-                        st.toast(f"✅ [{google_user['display_name']}] 님, {toast_msg}", icon="🎉")
-                        st.rerun()
+                    part_choice = st.radio(
+                        "참여 방식을 선택하세요",
+                        ["📖 자유책", "🛋️ 라운징", "📕 지정책"],
+                        horizontal=True,
+                        key=f"{key_prefix}_part_radio_{meeting['id']}"
+                    )
+                    if "지정책" in part_choice:
+                        selected_part_type = "지정책"
+                    elif "라운징" in part_choice:
+                        selected_part_type = "라운징"
                     else:
-                        st.error(msg)
+                        selected_part_type = "자유책"
+                    btn_label = "🚀 참가 신청하기"
+
+                btn_disabled = (is_full and not is_waitlist_mode)
+                if st.button(btn_label, key=f"{key_prefix}_rsvp_{meeting['id']}", disabled=btn_disabled, type="primary", use_container_width=True):
+                    with st.spinner("🔄 참가 신청 처리 중입니다... 잠시만 기다려 주세요."):
+                        success, msg = add_rsvp(meeting['id'], google_user['id'], google_user['display_name'], google_user['email'], selected_part_type)
+                        if success:
+                            from utils import ATTENDANCE_WEBHOOK_URL, add_rsvp_to_google_sheet_async
+                            m_date_val = meeting.get('meeting_date', '') if isinstance(meeting, dict) else getattr(meeting, 'meeting_date', '')
+                            add_rsvp_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, meeting['title'], google_user['display_name'], google_user.get('email', ''), selected_part_type, meeting_date=m_date_val)
+                            toast_msg = "대기 신청이 완료되었습니다!" if selected_part_type == "대기" else "참가 신청이 완료되었습니다!"
+                            st.toast(f"✅ [{google_user['display_name']}] 님, {toast_msg}", icon="🎉")
+                            st.rerun()
+                        else:
+                            st.error(msg)
     else:
         st.warning("⚠️ 참가 신청을 위해 먼저 상단에서 Google 계정 인증을 완료해 주세요.")
 
@@ -331,6 +339,16 @@ def render_schedule():
             </div>
             """, unsafe_allow_html=True)
             
+            is_elig, _, reason_msg = check_member_season_eligibility(google_user)
+            if not is_elig and not is_admin:
+                st.markdown(f"""
+                <div style="margin: 10px 0 16px 0; padding: 14px 18px; background-color: #FFF3E0; border: 1px solid #FFE082; border-left: 5px solid #FF9800; border-radius: 10px; color: #7F5100; font-size: 0.95rem; line-height: 1.55;">
+                    <div style="font-weight: bold; font-size: 1.02rem; margin-bottom: 4px; color: #E65100;">📢 시즌 등록 및 예치금 입금 안내</div>
+                    현재 <b>{reason_msg}</b><br/>
+                    정규모임, 지정책, 소모임/벙 등 모든 모임 참가 신청 및 지정책 오픈 카톡방 열람을 위해 먼저 <b>이번 시즌 등록(예치금 입금)</b>을 완료해 주세요!
+                </div>
+                """, unsafe_allow_html=True)
+
             if is_admin:
                 st.success("👑 **운영진(관리자) 권한이 확인되었습니다.** 상단 탭에 '[관리자] 새 모임 개설' 메뉴가 추가되었으며, 각 모임 우측 ❌ 삭제 버튼으로 모임을 삭제할 수 있습니다.")
 

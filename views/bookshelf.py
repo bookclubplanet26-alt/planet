@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils import fetch_google_sheet_attendances, fetch_google_sheet_members, format_member_attendance_and_deposit_text
+from utils import fetch_google_sheet_attendances, fetch_google_sheet_members, format_member_attendance_and_deposit_text, check_member_season_eligibility
 
 def render_bookshelf():
     st.subheader("📚 나의 서재 (My Book Planet)")
@@ -13,14 +13,16 @@ def render_bookshelf():
 
     # 🔐 Google 계정 본인 인증
     if not google_user:
-        st.info("🔐 '나의 서재'를 조회하려면 먼저 Google 계정 본인 인증이 필요합니다.")
+        st.markdown("#### 🔐 Google 계정 본인 인증")
+        st.info("💡 나의 독서 기록 및 감상평을 확인하려면 먼저 Google 계정 인증을 완료해 주세요.")
+        
         col_g1, col_g2 = st.columns([3, 1])
         with col_g1:
-            g_email_input = st.text_input("Google 계정 이메일 주소", placeholder="example@gmail.com", key="bs_google_login_email")
+            g_email_input = st.text_input("Google 계정 이메일 주소", placeholder="example@gmail.com", key="bookshelf_login_email")
         with col_g2:
             st.write("")
             st.write("")
-            login_submitted = st.button("🔑 Google 인증", key="bs_google_login_btn", type="primary", use_container_width=True)
+            login_submitted = st.button("🔑 Google 인증", key="bookshelf_login_btn", type="primary", use_container_width=True)
 
         if login_submitted:
             email_str = g_email_input.strip().lower()
@@ -34,6 +36,9 @@ def render_bookshelf():
                     email_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["이메일", "email", "mail"])), df_sheet.columns[1] if len(df_sheet.columns)>1 else None)
                     name_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["이름", "성함", "name", "성명"])), df_sheet.columns[0] if len(df_sheet.columns)>0 else None)
                     nick_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["닉네임", "별명", "nick"])), df_sheet.columns[-1] if len(df_sheet.columns)>5 else None)
+                    reg_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["등록", "상태", "reg", "status"])), None)
+                    admin_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["운영진", "관리자", "admin"])), None)
+                    season_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["등록시즌", "등록 시즌", "시즌"])), None)
 
                     if email_col:
                         matched_row = df_sheet[df_sheet[email_col].astype(str).str.strip().str.lower() == email_str]
@@ -41,12 +46,23 @@ def render_bookshelf():
                             r = matched_row.iloc[0]
                             u_name = str(r[name_col]).strip() if name_col and pd.notna(r[name_col]) else "회원"
                             u_nick = str(r[nick_col]).strip() if nick_col and pd.notna(r[nick_col]) else ""
+                            u_season = str(r[season_col]).strip() if season_col and pd.notna(r[season_col]) else ""
+                            
+                            raw_reg = str(r[reg_col]).strip() if reg_col and pd.notna(r[reg_col]) else "0"
+                            reg_val = 1 if raw_reg in ["1", "등록", "승인", "True", "true", "완료"] else 0
+
+                            raw_admin = str(r[admin_col]).strip() if admin_col and pd.notna(r[admin_col]) else "0"
+                            admin_val = 1 if raw_admin in ["1", "운영진", "관리자", "True", "true"] else 0
+
                             found_member = {
                                 "id": hash(email_str) % 100000,
                                 "name": u_name,
                                 "nickname": u_nick,
                                 "display_name": f"{u_name} - {u_nick}" if u_nick else u_name,
-                                "email": email_str
+                                "email": email_str,
+                                "season": u_season,
+                                "registered": reg_val,
+                                "is_admin": admin_val
                             }
 
                 if not found_member:
@@ -54,7 +70,6 @@ def render_bookshelf():
                     st.session_state.google_user = None
                 else:
                     st.session_state.google_user = found_member
-                    st.success(f"✅ Google 인증 완료! 환영합니다. {found_member['display_name']}님")
                     st.rerun()
         return
 
@@ -75,6 +90,16 @@ def render_bookshelf():
         <span style="font-size: 0.95rem; color: #003366; margin-top: 4px; display: inline-block;">{att_txt}</span>
     </div>
     """, unsafe_allow_html=True)
+
+    is_elig, _, reason_msg = check_member_season_eligibility(google_user)
+    if not is_elig and not (google_user and google_user.get("is_admin", 0) == 1):
+        st.markdown(f"""
+        <div style="margin: -10px 0 20px 0; padding: 14px 18px; background-color: #FFF3E0; border: 1px solid #FFE082; border-left: 5px solid #FF9800; border-radius: 10px; color: #7F5100; font-size: 0.95rem; line-height: 1.55;">
+            <div style="font-weight: bold; font-size: 1.02rem; margin-bottom: 4px; color: #E65100;">📢 시즌 등록 및 예치금 입금 안내</div>
+            현재 <b>{reason_msg}</b><br/>
+            모임 참가 신청 및 활동을 위해 먼저 <b>이번 시즌 등록(예치금 입금)</b>을 완료해 주세요!
+        </div>
+        """, unsafe_allow_html=True)
 
     # 구글 시트 출석 기록에서 본인 데이터 추출
     with st.spinner("📚 나의 독서 기록을 불러오는 중..."):

@@ -1011,6 +1011,51 @@ def get_member_deposit_info(user_email="", user_name="", user_season=None):
         "deposit_amount": 0 if is_admin else 20000
     }
 
+def check_member_season_eligibility(google_user):
+    """
+    회원의 현재 시즌 활동(정규/지정책/소모임 신청 및 지정책 오픈카톡 열람) 가능 여부 종합 판정
+    
+    [승인(True) 조건]
+    1. 운영진 (is_admin == 1): 예치금 면제이므로 항상 승인
+    2. 일반 회원:
+       - Google 로그인 완료 상태
+       - 등록여부(registered == 1): 구글 시트 등록여부가 '1' 또는 등록/승인/완료여야 함 (0, 미등록, 미납, 출석실패 등 불가)
+       - 현재등록시즌: 현재 클럽 활성 시즌 코드(예: 2609)와 일치해야 함 (이전 시즌 등록 후 이번 시즌 미입금자 불가)
+       - 시트 비고/상태 등에 '출석실패', '미납' 등 불이익 키워드가 없어야 함
+    
+    반환: tuple (is_eligible: bool, reason_type: str, reason_msg: str)
+    """
+    if not google_user:
+        return False, "NOT_LOGGED_IN", "Google 계정 본인 인증이 필요합니다."
+
+    is_admin = (google_user.get("is_admin", 0) == 1)
+    if is_admin:
+        return True, "ADMIN", "운영진 계정 (예치금 면제)"
+
+    dep = get_member_deposit_info(
+        user_email=google_user.get('email', ''),
+        user_name=google_user.get('display_name', google_user.get('name', '')),
+        user_season=google_user.get('season')
+    )
+
+    current_club_season = get_club_season_code()
+    user_reg_season = str(dep.get('current_season', '')).strip()
+
+    # 1. 시트 내 상태/비고/환급란에 출석실패, 미납 등 키워드 검출
+    raw_status = str(dep.get('status_label', ''))
+    if any(k in raw_status for k in ["출석실패", "출석 미달", "미납", "예치금미납", "박탈"]):
+        return False, "FAILED_OR_UNPAID", "이전 시즌 출석 미달 또는 예치금 미납으로 모임 신청이 제한되었습니다."
+
+    # 2. 등록여부 확인 (1이 아니거나 0, 미등록 등인 경우)
+    if dep.get('registered', 0) != 1 or google_user.get('registered', 0) != 1:
+        return False, "UNREGISTERED", "이번 시즌 예치금 미등록 상태입니다 (입금 확인 필요)."
+
+    # 3. 등록 시즌 일치 여부 확인 (현재 활성 시즌과 다른 경우: 이전 시즌 미재등록자)
+    if user_reg_season != current_club_season:
+        return False, "PAST_SEASON", f"현재 {format_season_display(current_club_season)} 미등록 상태입니다 (이전 등록: {format_season_display(user_reg_season)})."
+
+    return True, "ACTIVE", "정상 등록 회원"
+
 def format_member_attendance_and_deposit_text(google_user):
     """
     기존 Google 인증 배너에 들어갈 깔끔하고 압축적인 출석 횟수 및 예치금 환급 요건 문구 생성
@@ -1018,6 +1063,7 @@ def format_member_attendance_and_deposit_text(google_user):
     - 신규 부원: 🏆 2609시즌(9~10월) 출석 횟수: 1회 (💰 신규 예치금 환급: 1/4회, 3회 남음)
     - 환급 달성: 🏆 2609시즌(9~10월) 출석 횟수: 4회 (🎉 예치금 환급 달성!)
     - 운영진: 🏆 2609시즌(9~10월) 출석 횟수: 0회 (👑 예치금 면제)
+    - 미등록/미납: 🏆 2609시즌(9~10월) 출석 횟수: 0회 (⚠️ 이번 시즌 예치금 미등록 - 활동을 위해 시즌 등록을 진행해 주세요)
     """
     if not google_user:
         return ""
@@ -1032,6 +1078,11 @@ def format_member_attendance_and_deposit_text(google_user):
     if dep['is_admin']:
         return f"🏆 {s_label} 출석 횟수: <b>{cnt}회</b> <span style='font-size: 0.88rem; color: #856404; margin-left: 6px;'>(👑 예치금 면제)</span>"
     
+    # 예치금 미등록 또는 출석실패 등 미자격 상태인 경우
+    is_eligible, reason_type, _ = check_member_season_eligibility(google_user)
+    if not is_eligible:
+        return f"🏆 {s_label} 출석 횟수: <b>{cnt}회</b> <span style='color: #D32F2F; font-size: 0.88rem; margin-left: 6px;'>(⚠️ 이번 시즌 예치금 미등록 - 활동을 위해 시즌 등록을 진행해 주세요)</span>"
+
     target = dep['target_count']
     tag = "신규" if dep['is_first_season'] else "기존"
     if dep['is_eligible']:
