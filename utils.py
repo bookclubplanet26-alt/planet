@@ -12,19 +12,33 @@ GOOGLE_SHEET_ID = "1UbvS5tDzQvGlOh-TVagtYJ31pW9u8CNw-wENIK8iK48"
 GOOGLE_SHEET_ATTENDANCE_ID = "1k1lJmH6fmsPKD8h_-QMbTVy6nrh-RTJt-fUJAQWukKE"
 ATTENDANCE_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbw1KwJAy3_GGXkQ_pYISTxExafydX2JGPyY6BsS711V1m4s49N7VwDL2dmeJbF8qBFMrA/exec"
 
+def get_current_kst():
+    """
+    대한민국 표준시(KST, UTC+9) datetime 객체 반환
+    - Streamlit Cloud(Linux UTC) 환경에서도 언제나 정확한 한국 시간 보장
+    """
+    from datetime import datetime
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("Asia/Seoul"))
+    except Exception:
+        from datetime import timezone, timedelta
+        return datetime.now(timezone(timedelta(hours=9)))
+
 def get_club_season_code(dt=None):
     """
     2달 간격 시즌 코드 (시작 월 기준 매월 롤링 시즌)
     - 2601: 1월~2월 시즌
     - 2602: 2월~3월 시즌
     ...
-    - 2608: 8월~9월 시즌 (현재 8월)
+    - 2608: 8월~9월 시즌
+    - 2609: 9월~10월 시즌
     """
     if dt is None:
-        from datetime import datetime
-        dt = datetime.now()
+        dt = get_current_kst()
     year_short = dt.strftime("%y")
     return f"{year_short}{dt.month:02d}"
+
 
 import os
 import gspread
@@ -288,7 +302,19 @@ def get_member_attendance_count(email, name="", target_season=None):
 # 하위 호환성 별칭
 count_member_season_attendances = get_member_attendance_count
 
-def _async_send_post(webhook_url, payload):
+def _async_append_attendance(webhook_url, payload, row_data):
+    # 1순위: gspread 서비스 계정 다이렉트 추가 (100% 컬럼 정확성 및 지연 없는 기록)
+    try:
+        gc = get_gspread_client()
+        if gc and row_data:
+            sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+            ws = sh.worksheet("출석목록") if "출석목록" in [w.title for w in sh.worksheets()] else sh.sheet1
+            ws.append_row(row_data)
+            return
+    except Exception:
+        pass
+
+    # 2순위: Google Apps Script Webhook fallback
     try:
         requests.post(webhook_url, json=payload, timeout=8)
     except Exception:
@@ -297,6 +323,7 @@ def _async_send_post(webhook_url, payload):
 def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name, year, season, meeting_name, book_read, book_review="", is_lounging=0, book_author="", rating=5):
     """
     백그라운드 비동기 스레드(Async Thread)로 구글 시트에 전송하여 사용자 대기시간 0초로 단축!
+    - gspread 다이렉트 연동 1순위 사용 (누락 및 열 밀림 0%)
     - is_lounging: 라운징 선택시 1, 아니면 0
     - book_author: 저자/작가명 (선택)
     - rating: 별점 (1~5)
@@ -329,12 +356,32 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
         "rating": rating,
         "별점": rating
     }
+
+    # 출석목록 11개 컬럼 순서
+    # ['출석 일시 (KST)', '회원 이메일', '회원 성함', '연도', '시즌', '모임명', '도서명', '한줄평', '라운징', '저자명', '별점']
+    row_data = [
+        str(checked_at),
+        str(email),
+        str(name),
+        str(year),
+        str(season),
+        str(meeting_name),
+        str(book_read),
+        str(book_review),
+        str(is_lounging),
+        str(book_author),
+        str(rating)
+    ]
     
     # 캐시 지우기 (다음번 조회시 반영)
-    st.cache_data.clear()
+    try:
+        fetch_google_sheet_attendances.clear()
+        st.cache_data.clear()
+    except Exception:
+        pass
     
     # 백그라운드 비동기 스레드 시작
-    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
+    t = threading.Thread(target=_async_append_attendance, args=(webhook_url, payload, row_data), daemon=True)
     t.start()
     return True
 
@@ -520,16 +567,36 @@ def fetch_google_sheet_rsvps():
             continue
     return False, None
 
+def _async_append_rsvp(webhook_url, payload, row_data):
+    # 1순위: gspread 서비스 계정 다이렉트 추가 (정확한 6개 컬럼 일치: 신청일시, 모임명, 모임일자, 회원명, 이메일, 참여방식)
+    try:
+        gc = get_gspread_client()
+        if gc and row_data:
+            sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+            ws = sh.worksheet("신청명단") if "신청명단" in [w.title for w in sh.worksheets()] else None
+            if ws:
+                ws.append_row(row_data)
+                return
+    except Exception:
+        pass
+
+    # 2순위: Google Apps Script Webhook fallback
+    try:
+        requests.post(webhook_url, json=payload, timeout=8)
+    except Exception:
+        pass
+
 def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email, participation_type="자유책", meeting_date=""):
     """
     백그라운드 비동기 스레드로 구글 시트 신청명단에 참가 신청 정보 전송 (대기시간 0초)
+    - gspread 다이렉트 연동 1순위 사용 (열 밀림 방지 및 정확한 6개 컬럼 보장)
     """
     import threading
     if not webhook_url:
         return False
 
     from datetime import datetime
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_str = get_current_kst().strftime("%Y-%m-%d %H:%M:%S")
 
     payload = {
         "type": "add_rsvp",
@@ -548,13 +615,24 @@ def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email
         "참여방식": participation_type
     }
 
+    # 신청명단 6개 컬럼 순서
+    # ['신청일시', '모임명', '모임일자', '회원명', '이메일', '참여방식']
+    row_data = [
+        str(now_str),
+        str(meeting_name),
+        str(meeting_date),
+        str(member_name),
+        str(email),
+        str(participation_type)
+    ]
+
     try:
         fetch_google_sheet_rsvps.clear()
         st.cache_data.clear()
     except Exception:
         pass
 
-    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
+    t = threading.Thread(target=_async_append_rsvp, args=(webhook_url, payload, row_data), daemon=True)
     t.start()
     return True
 

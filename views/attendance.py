@@ -10,7 +10,8 @@ from utils import (
     fetch_google_sheet_members, fetch_google_sheet_attendances, 
     get_member_attendance_count, get_meeting_target_gps, 
     format_season_display, ATTENDANCE_WEBHOOK_URL, 
-    append_attendance_to_google_sheet_async, get_club_season_code
+    append_attendance_to_google_sheet_async, get_club_season_code,
+    get_current_kst
 )
 
 def filter_attendances_for_meeting(att_df, selected_meeting):
@@ -184,7 +185,7 @@ def render_attendance():
         st.warning("개설된 모임이 없습니다.")
         return
 
-    today_date = date.today()
+    today_date = get_current_kst().date()
 
     my_meetings = []
     is_admin = (google_user and google_user.get("is_admin", 0) == 1)
@@ -292,12 +293,12 @@ def render_attendance():
                     st.info(f"아직 [{selected_meeting['meeting_date']}] 모임에 출석 완료한 부원이 없습니다.")
         return
 
-    # 시간 체크 로직 (해당 모임 날짜의 16:00 ~ 17:00만 허용)
-    now = datetime.now()
-    today_str = now.strftime("%Y-%m-%d")
+    # 시간 체크 로직 (해당 모임 날짜의 16:00 ~ 17:00 KST, 여유 버퍼 15:50 ~ 17:30 허용)
+    now_kst = get_current_kst()
+    today_str = now_kst.strftime("%Y-%m-%d")
 
     is_correct_day = (today_str == selected_meeting['meeting_date'])
-    is_correct_time = (time(16, 0) <= now.time() <= time(17, 0))
+    is_correct_time = (time(15, 50) <= now_kst.time() <= time(17, 30))
     is_valid_time_window = is_correct_day and is_correct_time
 
     # 이미 출석 완료했는지 판단
@@ -381,15 +382,15 @@ def render_attendance():
                     is_lounging_val = 1 if att_type_name == "라운징" else 0
                     record_book_text = book_title_val if book_title_val else ("라운징" if is_lounging_val == 1 else "자유책")
 
-                    now_sync = datetime.now()
+                    now_sync = get_current_kst()
                     now_str = now_sync.strftime("%Y-%m-%d %H:%M:%S")
                     try:
                         conn = get_connection()
                         cursor = conn.cursor()
                         cursor.execute("""
-                        INSERT INTO attendance (meeting_id, member_id, member_name, checked_at, book_read, is_lounging)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                        """, (selected_meeting['id'], google_user['id'], my_rsvp['member_name'], now_str, record_book_text, is_lounging_val))
+                        INSERT OR REPLACE INTO attendance (meeting_id, member_id, member_name, latitude, longitude, distance_m, checked_at, book_read, is_lounging)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (selected_meeting['id'], google_user['id'], my_rsvp['member_name'], target_lat, target_lng, 0.0, now_str, record_book_text, is_lounging_val))
                         conn.commit()
                         conn.close()
                     except Exception:

@@ -73,9 +73,9 @@ def init_db():
         meeting_id INTEGER NOT NULL,
         member_id INTEGER NOT NULL,
         member_name TEXT NOT NULL,
-        latitude REAL NOT NULL,
-        longitude REAL NOT NULL,
-        distance_m REAL NOT NULL,
+        latitude REAL DEFAULT 0.0,
+        longitude REAL DEFAULT 0.0,
+        distance_m REAL DEFAULT 0.0,
         book_read TEXT DEFAULT '자유책',
         checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(meeting_id, member_id),
@@ -210,15 +210,27 @@ def get_rsvps_for_meeting(meeting_id):
                 row_d = str(row.get(date_col, '')).strip() if date_col and pd.notna(row.get(date_col)) else ""
 
                 title_match = m_title and (row_m == m_title or m_title in row_m or row_m in m_title)
-                date_match = True
-                if row_d and m_date:
-                    date_match = (row_d == m_date or m_date in row_d or row_d in m_date)
 
-                if title_match and date_match:
+                # 구글 시트 열 밀림 현상 자동 감지 및 보정 (예: 날짜 컬럼에 회원명/이메일이 들어간 경우)
+                is_shifted = False
+                if row_d and ("@" in row_d or ("-" in row_d and not row_d[:4].isdigit())):
+                    is_shifted = True
+
+                if is_shifted:
+                    # 열 밀림: row_d가 회원명, name_col이 이메일, email_col이 참여방식
+                    r_name = row_d
+                    r_email = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else ""
+                    r_type = str(row.get(email_col, '자유책')).strip() if email_col and pd.notna(row.get(email_col)) else "자유책"
+                    date_match = True
+                else:
+                    date_match = True
+                    if row_d and m_date:
+                        date_match = (row_d == m_date or m_date in row_d or row_d in m_date)
                     r_name = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else "회원"
                     r_email = str(row.get(email_col, '')).strip() if email_col and pd.notna(row.get(email_col)) else ""
                     r_type = str(row.get(type_col, '자유책')).strip() if type_col and pd.notna(row.get(type_col)) else "자유책"
 
+                if title_match and date_match:
                     identifier = r_email.strip().lower() if r_email else r_name.strip()
                     # 동일 모임에 한 회원이 중복 신청된 경우 1명만 표시 (중복 방지)
                     if identifier and identifier in seen_identifiers:

@@ -5,7 +5,7 @@ from database import (
     get_all_meetings, get_rsvps_for_meeting, 
     get_all_members, add_rsvp, cancel_rsvp, add_meeting, delete_meeting
 )
-from utils import LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count
+from utils import LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, get_current_kst
 
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False):
     rsvps = get_rsvps_for_meeting(meeting['id'])
@@ -333,7 +333,7 @@ def render_schedule():
         st.markdown("---")
 
         # 모임 날짜 기준으로 예정된 모임과 지난 모임(최근 60일 내) 분류
-        today_date = datetime.date.today()
+        today_date = get_current_kst().date()
         from datetime import timedelta
         cutoff_date = today_date - timedelta(days=60)
 
@@ -431,7 +431,7 @@ def render_schedule():
 
                     c1, c2 = st.columns(2)
                     with c1:
-                        m_date = st.date_input("모임 날짜 선택", min_value=datetime.date.today(), key="reg_mdate")
+                        m_date = st.date_input("모임 날짜 선택", min_value=get_current_kst().date(), key="reg_mdate")
                     with c2:
                         st.text_input("모임 시간 (고정)", value="오후 14:00 ~ 16:30", disabled=True, key="reg_mtime_dis")
                         m_time_str = "14:00 ~ 16:30"
@@ -473,7 +473,7 @@ def render_schedule():
 
                     c1, c2 = st.columns(2)
                     with c1:
-                        m_date = st.date_input("모임 날짜 선택", min_value=datetime.date.today(), key="jijung_mdate")
+                        m_date = st.date_input("모임 날짜 선택", min_value=get_current_kst().date(), key="jijung_mdate")
                     with c2:
                         st.text_input("모임 시간 (고정)", value="오후 14:00 ~ 16:30", disabled=True, key="jijung_mtime_dis")
                         m_time_str = "14:00 ~ 16:30"
@@ -524,7 +524,7 @@ def render_schedule():
 
                     c1, c2 = st.columns(2)
                     with c1:
-                        m_date = st.date_input("모임 날짜 선택", min_value=datetime.date.today(), key="bung_mdate")
+                        m_date = st.date_input("모임 날짜 선택", min_value=get_current_kst().date(), key="bung_mdate")
                     with c2:
                         m_time_val = st.time_input("모임 시간", value=datetime.time(15, 0), key="bung_mtime")
                         m_time_str = m_time_val.strftime("%H:%M")
