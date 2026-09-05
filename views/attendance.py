@@ -110,11 +110,12 @@ def render_attendance():
         st.warning("개설된 모임이 없습니다.")
         return
 
-    # 본인이 실제로 참가 신청(RSVP)한 정규모임 중 오늘 및 향후 예정된 모임만 필터링
+    # 본인이 실제로 참가 신청(RSVP)한 정규모임 (관리자는 모든 예정된 정규모임) 중 오늘 및 향후 예정된 모임만 필터링
     import datetime
     today_date = datetime.date.today()
 
     my_meetings = []
+    is_admin = (google_user and google_user.get("is_admin", 0) == 1)
 
     for m in meetings:
         is_bung = ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
@@ -127,24 +128,30 @@ def render_attendance():
         except Exception:
             m_date = today_date
 
-        # 지난 모임 제외 & 정규모임 중 본인이 참가 신청한 모임만 포함
+        # 지난 모임 제외
         if m_date >= today_date and not is_bung and not is_jijung:
-            rsvps = get_rsvps_for_meeting(m['id'])
-            user_email = str(google_user.get('email', '')).strip().lower()
-            user_display = str(google_user.get('display_name', '')).strip()
-            user_name = str(google_user.get('name', '')).strip()
-            
-            has_rsvp = any(
-                (user_email and str(r.get('member_phone', '')).strip().lower() == user_email) or
-                (user_display and str(r.get('member_name', '')).strip() == user_display) or
-                (user_name and str(r.get('member_name', '')).strip() == user_name)
-                for r in rsvps
-            )
-            if has_rsvp:
+            if is_admin:
                 my_meetings.append(m)
+            else:
+                rsvps = get_rsvps_for_meeting(m['id'])
+                user_email = str(google_user.get('email', '')).strip().lower()
+                user_display = str(google_user.get('display_name', '')).strip()
+                user_name = str(google_user.get('name', '')).strip()
+                
+                has_rsvp = any(
+                    (user_email and str(r.get('member_phone', '')).strip().lower() == user_email) or
+                    (user_display and str(r.get('member_name', '')).strip() == user_display) or
+                    (user_name and str(r.get('member_name', '')).strip() == user_name)
+                    for r in rsvps
+                )
+                if has_rsvp:
+                    my_meetings.append(m)
 
     if not my_meetings:
-        st.info(f"📌 [{google_user['display_name']}] 님은 현재 참가 신청한 예정된 정규모임이 없습니다. 먼저 **'모임 일정 & 신청'** 메뉴에서 정규모임 신청을 진행해 주세요.")
+        if is_admin:
+            st.info("📌 현재 예정된 정규모임이 없습니다.")
+        else:
+            st.info(f"📌 [{google_user['display_name']}] 님은 현재 참가 신청한 예정된 정규모임이 없습니다. 먼저 **'모임 일정 & 신청'** 메뉴에서 정규모임 신청을 진행해 주세요.")
         return
 
     meeting_dict = {f"[{m['meeting_date']}] {m['title']}\n📍 {m['location_name']}": m for m in my_meetings}
@@ -162,18 +169,43 @@ def render_attendance():
            (user_display and str(r.get('member_name', '')).strip() == user_display) or
            (user_name and str(r.get('member_name', '')).strip() == user_name)
     ), None)
-    is_admin = (google_user and google_user.get("is_admin", 0) == 1)
 
     if not my_rsvp:
         if is_admin:
+            st.info("ℹ️ 현재 선택하신 모임은 참가 신청(RSVP) 내역이 없어 **본인의 출석체크 입력란**이 표시되지 않습니다. (👑 운영진 모드: 전체 출석 현황 확인 가능)")
+            
+            # 구글 시트에서 실시간 출석 기록 조회하여 출석 완료 명단 표시
+            from utils import fetch_google_sheet_attendances
+            ok_att, att_df = fetch_google_sheet_attendances()
+            gs_attendances = []
+            if ok_att and att_df is not None and not att_df.empty:
+                m_title = selected_meeting['title'].strip()
+                for idx, row in att_df.iterrows():
+                    r_meeting = str(row.get('모임명', '')).strip()
+                    if r_meeting == m_title or selected_meeting['title'] in r_meeting:
+                        gs_attendances.append({
+                            "member_name": str(row.get('회원 성함', '')).strip(),
+                            "book_read": str(row.get('도서명', '')),
+                            "checked_at": str(row.get('출석 일시 (KST)', ''))
+                        })
+
             st.markdown("---")
             st.markdown("#### 📋 이 모임 출석 완료 명단 [👑 운영진 전용]")
-            attendances = get_attendances_for_meeting(selected_meeting['id'])
-            if attendances:
-                for att in attendances:
-                    st.write(f"• **{att['member_name']}**님 ({att['checked_at'].split()[1] if ' ' in att['checked_at'] else att['checked_at']} 출석완료)")
+            if gs_attendances:
+                for att in gs_attendances:
+                    t_str = str(att['checked_at']).split()[1][:5] if ' ' in str(att['checked_at']) else str(att['checked_at'])[:5]
+                    raw_b = str(att.get('book_read', ''))
+                    pure_b = raw_b.split(" (💬 ")[0].strip() if " (💬 " in raw_b else raw_b
+                    b_str = f" (📖 {pure_b})" if pure_b else ""
+                    st.write(f"• **{att['member_name']}**{b_str} - {t_str} 출석완료")
             else:
-                st.info("아직 출석 완료한 부원이 없습니다.")
+                from database import get_attendances_for_meeting
+                local_atts = get_attendances_for_meeting(selected_meeting['id'])
+                if local_atts:
+                    for att in local_atts:
+                        st.write(f"• **{att['member_name']}**님 ({att['checked_at'].split()[1] if ' ' in att['checked_at'] else att['checked_at']} 출석완료)")
+                else:
+                    st.info("아직 출석 완료한 부원이 없습니다.")
         return
 
     # 시간 체크 로직 (해당 모임 날짜의 16:00 ~ 17:00만 허용)
