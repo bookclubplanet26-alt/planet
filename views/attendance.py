@@ -262,7 +262,7 @@ def render_attendance():
 
     if not my_rsvp:
         if is_admin:
-            st.info("ℹ️ 현재 선택하신 모임은 참가 신청 내역이 없어 **본인의 출석체크 입력란**이 표시되지 않습니다. (👑 운영진 모드: 전체 출석 현황 확인 가능)")
+            st.info("👑 **운영진 모니터링 모드**: 해당 모임의 실시간 출석 현황을 조회 중입니다. *(본인 미신청 모임으로 개인 출석체크는 제외됩니다)*")
             st.markdown("---")
             st.markdown(f"#### 📋 [{selected_meeting['meeting_date']}] {selected_meeting['title']} 출석 완료 명단 [👑 운영진 전용]")
             if gs_attendances:
