@@ -824,3 +824,329 @@ def fetch_korean_book_search(query, kakao_key=None, size=5):
         pass
         
     return []
+
+# ==========================================
+# 💰 예치금 & 회계장부 파이프라인 연동 모듈
+# ==========================================
+GOOGLE_SHEET_ACCOUNTING_ID = "17Puv1lLwzZy9M-rJIVGzMhEHrF3hb_zrWBjzgxXnKsk"
+
+def calculate_deposit_season(deposit_date=None, memo=""):
+    """
+    예치금 입금 시점 및 메모/적요를 바탕으로 소속 시즌 자동 판정 (20일 컷오프 룰 & 키워드 파싱)
+    - 1순위: 적요나 메모에 명시된 시즌 코드 (예: '2609', '9월', '10월' 등)
+    - 2순위: 입금일자 기준 20일 컷오프 룰:
+      - 입금일이 매월 20일 이상인 경우 -> 다음 달 시작 시즌 (조기/사전 입금)
+        (예: 8월 25일 입금 -> 2609시즌)
+      - 입금일이 매월 19일 이하인 경우 -> 당월 시작 시즌 (정규/지각 입금)
+        (예: 9월 5일 입금 -> 2609시즌)
+    """
+    import re
+    from datetime import datetime, date
+    
+    # 1. 메모/적요에서 4자리 시즌 코드 탐색 (예: 2609, 2610)
+    if memo:
+        memo_str = str(memo).strip()
+        m4 = re.search(r'(2[5-9]\d{2})', memo_str)
+        if m4:
+            return m4.group(1)
+        m_month = re.search(r'(\d{1,2})\s*월', memo_str)
+        if m_month:
+            month_num = int(m_month.group(1))
+            dt_base = get_current_kst()
+            year_short = dt_base.strftime("%y")
+            return f"{year_short}{month_num:02d}"
+
+    # 2. 날짜 파싱
+    dt = None
+    if isinstance(deposit_date, (datetime, date)):
+        dt = deposit_date
+    elif deposit_date and str(deposit_date).strip():
+        d_str = str(deposit_date).strip().replace('.', '-').replace('/', '-')
+        for fmt in ["%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%y-%m-%d"]:
+            try:
+                dt = datetime.strptime(d_str[:10], fmt).date()
+                break
+            except Exception:
+                pass
+
+    if dt is None:
+        dt = get_current_kst().date()
+
+    # 3. 20일 컷오프 자동 판정
+    year_val = dt.year
+    month_val = dt.month
+    day_val = dt.day
+
+    if day_val >= 20:
+        if month_val == 12:
+            year_val += 1
+            month_val = 1
+        else:
+            month_val += 1
+
+    year_short = str(year_val)[2:]
+    return f"{year_short}{month_val:02d}"
+
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_google_sheet_accounting():
+    """
+    회계장부 구글 시트 연동 (gspread 보안 인증 사용)
+    - 입금내역 및 출금내역 추출
+    """
+    gc = get_gspread_client()
+    if gc:
+        try:
+            sh = gc.open_by_key(GOOGLE_SHEET_ACCOUNTING_ID)
+            worksheets = sh.worksheets()
+            data = {}
+            for ws in worksheets:
+                recs = ws.get_all_records()
+                if recs:
+                    data[ws.title] = pd.DataFrame(recs)
+            if data:
+                return True, data, None
+        except Exception as e:
+            err_text = str(e)
+            if "403" in err_text or "Permission" in err_text:
+                return False, None, "permission_denied"
+            return False, None, err_text
+
+    # fallback CSV
+    url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ACCOUNTING_ID}/export?format=csv&gid=0"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        res = requests.get(url, headers=headers, timeout=4)
+        if res.status_code == 200 and "html" not in res.text[:100].lower():
+            df = pd.read_csv(io.BytesIO(res.content))
+            return True, {"기본": df}, None
+    except Exception:
+        pass
+
+    return False, None, "permission_denied"
+
+def get_member_deposit_info(user_email="", user_name="", user_season=None):
+    """
+    회원의 예치금 상태, 시즌 출석 목표(신규 4회 vs 기존 3회 vs 운영진 면제), 
+    현재 출석 횟수, 환급 달성 여부를 종합 판정하여 반환
+    """
+    ok_mem, df_mem, _ = fetch_google_sheet_members()
+    member_row = None
+    if ok_mem and df_mem is not None and not df_mem.empty:
+        e_clean = str(user_email).strip().lower()
+        n_clean = str(user_name).split(" - ")[0].strip() if " - " in str(user_name) else str(user_name).strip()
+        
+        email_col = next((c for c in df_mem.columns if any(k in str(c).lower() for k in ["이메일", "email"])), None)
+        name_col = next((c for c in df_mem.columns if any(k in str(c).lower() for k in ["이름", "성함", "name"])), None)
+
+        for idx, r in df_mem.iterrows():
+            r_email = str(r.get(email_col, '')).strip().lower() if email_col else ""
+            r_name = str(r.get(name_col, '')).strip() if name_col else ""
+            if (e_clean and r_email == e_clean) or (n_clean and r_name == n_clean):
+                member_row = r
+                break
+
+    is_admin = False
+    reg_val = 1
+    curr_season = str(user_season).strip() if user_season else get_club_season_code()
+    first_season = curr_season
+    refund_memo = ""
+
+    if member_row is not None:
+        admin_col = next((c for c in df_mem.columns if any(k in str(c).lower() for k in ["운영진", "admin"])), None)
+        reg_col = next((c for c in df_mem.columns if any(k in str(c).lower() for k in ["등록", "상태", "status"])), None)
+        curr_s_col = next((c for c in df_mem.columns if any(k in str(c).lower() for k in ["현재등록시즌", "등록시즌", "시즌"])), None)
+        first_s_col = next((c for c in df_mem.columns if any(k in str(c).lower() for k in ["처음등록시즌", "최초등록시즌", "가입시즌"])), None)
+        refund_col = next((c for c in df_mem.columns if any(k in str(c).lower() for k in ["환급", "반환", "비고"])), None)
+
+        if admin_col and pd.notna(member_row.get(admin_col)):
+            raw_adm = str(member_row.get(admin_col)).strip()
+            is_admin = (raw_adm in ["1", "운영진", "관리자", "True", "true"])
+        if reg_col and pd.notna(member_row.get(reg_col)):
+            reg_val = 1 if str(member_row.get(reg_col)).strip() in ["1", "등록", "승인", "True", "true", "완료"] else 0
+        if curr_s_col and pd.notna(member_row.get(curr_s_col)):
+            c_val = str(member_row.get(curr_s_col)).strip()
+            if c_val:
+                curr_season = c_val
+        if first_s_col and pd.notna(member_row.get(first_s_col)):
+            f_val = str(member_row.get(first_s_col)).strip()
+            if f_val:
+                first_season = f_val
+        if refund_col and pd.notna(member_row.get(refund_col)):
+            refund_memo = str(member_row.get(refund_col)).strip()
+
+    # 신규 부원 판정: 처음등록시즌과 현재등록시즌이 일치하는 경우
+    is_first_season = (first_season == curr_season)
+    
+    # 목표 출석 수: 운영진 0회(면제), 신규 부원 4회, 기존 부원 3회
+    target_count = 0 if is_admin else (4 if is_first_season else 3)
+
+    # 현재 시즌 누적 출석 수 (라운징 0.5회, 정규 1회)
+    current_count = get_member_attendance_count(user_email, user_name, target_season=curr_season)
+    remaining_count = max(0.0, float(target_count) - float(current_count))
+    if remaining_count.is_integer():
+        remaining_count = int(remaining_count)
+
+    is_eligible = (current_count >= target_count) if not is_admin else False
+    
+    if is_admin:
+        status_label = "운영진 면제"
+    elif "환급완료" in refund_memo or "반환완료" in refund_memo:
+        status_label = "환급 완료"
+    elif is_eligible:
+        status_label = "환급 요건 달성"
+    else:
+        status_label = "진행 중"
+
+    return {
+        "is_admin": is_admin,
+        "is_first_season": is_first_season,
+        "registered": reg_val,
+        "current_season": curr_season,
+        "first_season": first_season,
+        "target_count": target_count,
+        "current_count": current_count,
+        "remaining_count": remaining_count,
+        "is_eligible": is_eligible,
+        "status_label": status_label,
+        "deposit_amount": 0 if is_admin else 20000
+    }
+
+def render_deposit_refund_card(google_user):
+    """
+    회원의 예치금 및 시즌 출석 환급 달성 현황 카드 UI 컴포넌트
+    - 첫 등록 신규 부원: 시즌 4회 출석 시 100% 반환 (20,000원)
+    - 기존 활동 부원: 시즌 3회 출석 시 100% 반환 (20,000원)
+    - 운영진: 예치금 면제 대상
+    """
+    if not google_user:
+        return
+    
+    dep_info = get_member_deposit_info(
+        user_email=google_user.get('email', ''),
+        user_name=google_user.get('name', ''),
+        user_season=google_user.get('season')
+    )
+    
+    is_admin = dep_info['is_admin']
+    curr_s_label = format_season_display(dep_info['current_season'])
+    
+    if is_admin:
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #FFFDF5, #FFF9E6); border: 1px solid #FFE082; border-radius: 12px; padding: 14px 18px; margin: 10px 0 16px 0; box-shadow: 0 2px 6px rgba(255, 179, 0, 0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 800; font-size: 1.0rem; color: #B78103;">👑 운영진 예치금 안내</span>
+                <span style="background-color: #FFE082; color: #8C6200; font-size: 0.78rem; font-weight: bold; padding: 2px 8px; border-radius: 10px;">예치금 면제</span>
+            </div>
+            <p style="margin: 6px 0 0 0; color: #6D4C00; font-size: 0.88rem; line-height: 1.4;">
+                운영진은 모임 기획 및 운영을 총괄하므로 시즌 예치금(20,000원) 납부 및 환급 요건이 적용되지 않습니다.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        return
+
+    # 일반 부원
+    is_first = dep_info['is_first_season']
+    member_type_tag = "🌱 첫 등록 신규 부원" if is_first else "⭐ 기존 활동 부원"
+    tag_bg = "#E8F5E9" if is_first else "#E3F2FD"
+    tag_color = "#2E7D32" if is_first else "#1565C0"
+    
+    target = dep_info['target_count']
+    curr = dep_info['current_count']
+    remain = dep_info['remaining_count']
+    is_eligible = dep_info['is_eligible']
+    
+    progress_pct = min(100, int((curr / target * 100))) if target > 0 else 100
+    
+    if is_eligible:
+        border_color = "#81C784"
+        bg_color = "#F1F8E9"
+        status_badge = '<span style="background-color: #4CAF50; color: white; font-size: 0.8rem; font-weight: bold; padding: 4px 10px; border-radius: 12px;">🎉 환급 요건 달성!</span>'
+        status_msg = f"축하합니다! 이번 <b>{curr_s_label}</b> 목표 출석(<b>{target}회</b>)을 모두 달성하셨습니다.<br/>시즌 종료 후 등록하신 계좌로 예치금 <b>20,000원</b>이 100% 전액 반환됩니다. 💸"
+    else:
+        border_color = "#90CAF9"
+        bg_color = "#F6FAFD"
+        status_badge = f'<span style="background-color: #1976D2; color: white; font-size: 0.8rem; font-weight: bold; padding: 4px 10px; border-radius: 12px;">활동 중 ({curr}/{target}회)</span>'
+        status_msg = f"앞으로 <b>{remain}회 더 출석</b>하시면 시즌 종료 후 예치금(20,000원) 100% 반환 대상이 됩니다! 🏃‍♂️"
+
+    st.markdown(f"""
+    <div style="background-color: {bg_color}; border: 1px solid {border_color}; border-radius: 14px; padding: 16px 18px; margin: 10px 0 18px 0; box-shadow: 0 3px 8px rgba(0,0,0,0.03);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+                <span style="font-weight: 800; font-size: 1.02rem; color: #1E293B;">💰 나의 예치금 & 환급 현황</span>
+                <span style="background-color: {tag_bg}; color: {tag_color}; font-size: 0.78rem; font-weight: bold; padding: 3px 8px; border-radius: 8px; margin-left: 6px;">{member_type_tag}</span>
+            </div>
+            {status_badge}
+        </div>
+        <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.86rem; color: #475569; margin-bottom: 4px;">
+                <span><b>{curr_s_label}</b> 출석 달성률 ({curr}회 / {target}회)</span>
+                <b>{progress_pct}%</b>
+            </div>
+            <div style="background-color: #E2E8F0; border-radius: 10px; height: 10px; overflow: hidden;">
+                <div style="background: linear-gradient(90deg, #4CAF50, #2E7D32); height: 100%; width: {progress_pct}%; border-radius: 10px; transition: width 0.5s ease;"></div>
+            </div>
+        </div>
+        <div style="background-color: #FFFFFF; border-radius: 10px; padding: 10px 14px; border: 1px solid #E2E8F0; font-size: 0.88rem; color: #334155; line-height: 1.45;">
+            {status_msg}
+            <div style="font-size: 0.8rem; color: #64748B; margin-top: 6px; border-top: 1px dashed #E2E8F0; padding-top: 5px;">
+                • 기준: <b>신규 첫 등록</b>은 1시즌(2개월) 내 <b>4회</b> / <b>다음 시즌부터</b>는 <b>3회</b> 출석 시 반환 (정규 1회, 라운징 0.5회 인정)
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def sync_accounting_pipeline_with_members():
+    """
+    회계장부 시트와 회원목록 시트를 연동하여 입출금에 따라 등록 및 환급 상태 자동 동기화
+    """
+    ok_acc, acc_data, err = fetch_google_sheet_accounting()
+    if not ok_acc:
+        return False, err
+
+    gc = get_gspread_client()
+    if not gc:
+        return False, "구글 서비스 계정 인증 클라이언트가 필요합니다."
+
+    sh_mem = gc.open_by_key(GOOGLE_SHEET_ID)
+    ws_mem = sh_mem.worksheet("회원목록") if "회원목록" in [w.title for w in sh_mem.worksheets()] else sh_mem.sheet1
+    all_members = ws_mem.get_all_records()
+    
+    updated_count = 0
+    # 회계장부 각 워크시트(수입/지출/입출금내역 등) 검사
+    for sheet_title, df_acc in acc_data.items():
+        if df_acc is None or df_acc.empty:
+            continue
+        
+        name_col = next((c for c in df_acc.columns if any(k in str(c) for k in ["이름", "성명", "입금자", "출금자", "대상자", "내용", "적요"])), None)
+        date_col = next((c for c in df_acc.columns if any(k in str(c) for k in ["일자", "날짜", "일시", "date"])), None)
+        in_col = next((c for c in df_acc.columns if any(k in str(c) for k in ["입금", "수입", "수납"])), None)
+        out_col = next((c for c in df_acc.columns if any(k in str(c) for k in ["출금", "지출", "반환", "환급"])), None)
+        
+        if not name_col:
+            continue
+
+        for _, row in df_acc.iterrows():
+            row_text = str(row.get(name_col, '')).strip()
+            row_date = str(row.get(date_col, '')).strip() if date_col else ""
+            in_amt = row.get(in_col, 0) if in_col else 0
+            
+            for m_idx, m in enumerate(all_members):
+                m_name = str(m.get("이름", '')).strip()
+                if not m_name:
+                    continue
+                
+                # 입금 매칭
+                if m_name in row_text and (in_amt or in_col is None):
+                    target_season = calculate_deposit_season(row_date, row_text)
+                    if str(m.get("등록여부")) != "1" or str(m.get("현재등록시즌")) != str(target_season):
+                        sheet_row = m_idx + 2
+                        ws_mem.update_cell(sheet_row, 3, "1")
+                        ws_mem.update_cell(sheet_row, 8, target_season)
+                        if not str(m.get("처음등록시즌", "")).strip():
+                            ws_mem.update_cell(sheet_row, 9, target_season)
+                        updated_count += 1
+
+    fetch_google_sheet_members.clear()
+    st.cache_data.clear()
+    return True, f"{updated_count}명의 회원이 회계장부와 동기화되었습니다."
+

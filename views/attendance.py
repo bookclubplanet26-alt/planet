@@ -11,7 +11,7 @@ from utils import (
     get_member_attendance_count, get_meeting_target_gps, 
     format_season_display, ATTENDANCE_WEBHOOK_URL, 
     append_attendance_to_google_sheet_async, get_club_season_code,
-    get_current_kst
+    get_current_kst, render_deposit_refund_card
 )
 
 def filter_attendances_for_meeting(att_df, selected_meeting):
@@ -177,6 +177,9 @@ def render_attendance():
             if st.button("🚪 로그아웃", key="att_google_logout_btn"):
                 st.session_state.google_user = None
                 st.rerun()
+
+        # 💰 나의 예치금 & 환급 현황 카드 실시간 렌더링
+        render_deposit_refund_card(google_user)
 
     st.markdown("---")
 
