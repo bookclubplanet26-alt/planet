@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, time
+from datetime import datetime, time, date
 from database import (
     get_all_meetings, get_rsvps_for_meeting, 
     get_attendances_for_meeting, init_db, get_connection
@@ -184,8 +184,7 @@ def render_attendance():
         st.warning("개설된 모임이 없습니다.")
         return
 
-    import datetime
-    today_date = datetime.date.today()
+    today_date = date.today()
 
     my_meetings = []
     is_admin = (google_user and google_user.get("is_admin", 0) == 1)
@@ -196,7 +195,7 @@ def render_attendance():
         
         m_date_str = m['meeting_date'] if (isinstance(m, dict) and 'meeting_date' in m) else getattr(m, 'meeting_date', '')
         try:
-            m_date = datetime.datetime.strptime(str(m_date_str).strip(), "%Y-%m-%d").date()
+            m_date = datetime.strptime(str(m_date_str).strip(), "%Y-%m-%d").date()
         except Exception:
             m_date = today_date
 
@@ -259,7 +258,6 @@ def render_attendance():
                     b_str = f" (📖 {pure_b})" if pure_b else ""
                     st.write(f"• **{att['member_name']}**{b_str} - {t_str} 출석완료")
             else:
-                from database import get_attendances_for_meeting
                 local_atts = get_attendances_for_meeting(selected_meeting['id'])
                 if local_atts:
                     for att in local_atts:
@@ -269,7 +267,7 @@ def render_attendance():
         return
 
     # 시간 체크 로직 (해당 모임 날짜의 16:00 ~ 17:00만 허용)
-    now = datetime.datetime.now()
+    now = datetime.now()
     today_str = now.strftime("%Y-%m-%d")
 
     is_correct_day = (today_str == selected_meeting['meeting_date'])
@@ -357,7 +355,7 @@ def render_attendance():
                     is_lounging_val = 1 if att_type_name == "라운징" else 0
                     record_book_text = book_title_val if book_title_val else ("라운징" if is_lounging_val == 1 else "자유책")
 
-                    now_sync = datetime.datetime.now()
+                    now_sync = datetime.now()
                     now_str = now_sync.strftime("%Y-%m-%d %H:%M:%S")
                     try:
                         conn = get_connection()
