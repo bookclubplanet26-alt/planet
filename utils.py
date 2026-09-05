@@ -445,6 +445,38 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
 
     return True
 
+def cancel_rsvp_from_google_sheet_async(webhook_url, title, email, name, meeting_date=""):
+    """
+    백그라운드 비동기 스레드로 구글 시트 웹훅에 참가 신청 취소 요청 전송
+    """
+    import threading
+    if not webhook_url:
+        return False
+
+    payload = {
+        "type": "cancel_rsvp",
+        "action": "cancel_rsvp",
+        "title": title,
+        "meeting_name": title,
+        "모임명": title,
+        "email": email,
+        "회원이메일": email,
+        "name": name,
+        "회원성함": name,
+        "meeting_date": meeting_date,
+        "모임일자": meeting_date
+    }
+
+    try:
+        fetch_google_sheet_rsvps.clear()
+        st.cache_data.clear()
+    except Exception:
+        pass
+
+    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
+    t.start()
+    return True
+
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_google_sheet_rsvps():
     """
