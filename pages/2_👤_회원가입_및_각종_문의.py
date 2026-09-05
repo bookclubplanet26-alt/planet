@@ -1,31 +1,30 @@
 import streamlit as st
 from database import init_db
 from styles import apply_custom_css
+from views.register import render_register
 
 st.set_page_config(page_title="회원가입 및 각종 문의 | 북클럽 플래닛", page_icon="👤", layout="wide")
 init_db()
 apply_custom_css()
 
-st.subheader("👤 회원가입 및 각종 문의")
+col_nav_left, col_nav_right = st.columns([1, 2])
+with col_nav_left:
+    if st.button("⬅️ 메인 메뉴로", key="p2_top_back_home_btn", use_container_width=True):
+        st.session_state.current_page = "home"
+        try:
+            st.switch_page("app.py")
+        except Exception:
+            st.rerun()
+with col_nav_right:
+    st.markdown("<div style='text-align:right; font-weight:bold; color:#795548; padding-top:6px;'>🪐 북클럽 플래닛</div>", unsafe_allow_html=True)
+st.markdown("<hr style='margin: 8px 0 16px 0; border: 0; border-top: 1px solid #EAE5D9;'/>", unsafe_allow_html=True)
 
-st.markdown("""
-<div class="club-card" style="border-left: 4px solid #FEE500; background-color: #FFFDF0; padding: 24px; text-align: center;">
-    <h3 style="margin-top: 0; color: #3C1E1E;">💬 회원가입 및 각종 문의</h3>
-    <p style="font-size: 1.1rem; color: #3C1E1E; margin-bottom: 20px; line-height: 1.6;">
-        북클럽 플래닛 회원가입 및 각종 문의사항은 아래 카카오톡 오픈채팅 링크로 편하게 연락 주세요!
-    </p>
-    <a href="https://open.kakao.com/o/sWLBJTue" target="_blank" style="
-        display: inline-block;
-        background-color: #FEE500;
-        color: #191919;
-        font-weight: bold;
-        font-size: 1.1rem;
-        padding: 14px 28px;
-        border-radius: 12px;
-        text-decoration: none;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    ">
-        👉 카카오톡 오픈채팅 문의하기 (클릭)
-    </a>
-</div>
-""", unsafe_allow_html=True)
+render_register()
+
+st.markdown("<br/><hr style='border: 0; border-top: 1px dashed #DDD;'/>", unsafe_allow_html=True)
+if st.button("⬅️ 메인 메뉴로 돌아가기", key="p2_bottom_back_home_btn", use_container_width=True):
+    st.session_state.current_page = "home"
+    try:
+        st.switch_page("app.py")
+    except Exception:
+        st.rerun()

@@ -222,6 +222,21 @@ def render_attendance():
             st.info("📌 현재 예정된 정규모임이 없습니다.")
         else:
             st.info(f"📌 [{google_user['display_name']}] 님은 현재 참가 신청한 예정된 정규모임이 없습니다. 먼저 **'모임 일정 & 신청'** 메뉴에서 정규모임 신청을 진행해 주세요.")
+            col_b1, col_b2 = st.columns(2)
+            with col_b1:
+                if st.button("📅 '모임 일정 & 신청' 바로가기", key="att_goto_sched_btn", type="primary", use_container_width=True):
+                    st.session_state.current_page = "schedule"
+                    try:
+                        st.switch_page("pages/3_📅_모임_일정_및_신청.py")
+                    except Exception:
+                        st.rerun()
+            with col_b2:
+                if st.button("⬅️ 메인 메뉴로 돌아가기", key="att_goto_home_btn", use_container_width=True):
+                    st.session_state.current_page = "home"
+                    try:
+                        st.switch_page("app.py")
+                    except Exception:
+                        st.rerun()
         return
 
     meeting_dict = {f"[{m['meeting_date']}] {m['title']}\n📍 {m['location_name']}": m for m in my_meetings}
