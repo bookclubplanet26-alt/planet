@@ -100,48 +100,7 @@ def init_db():
         pass
 
     conn.commit()
-
-    # 시드 데이터 삽입 (초기 데이터가 없을 경우)
-    cursor.execute("SELECT COUNT(*) FROM members")
-    if cursor.fetchone()[0] == 0:
-        seed_data(cursor)
-        conn.commit()
-
     conn.close()
-
-def seed_data(cursor):
-    # 샘플 회원
-    sample_members = [
-        ("김독서", "010-1234-5678", "book_kim@email.com", "승인", 20000, "인문/철학"),
-        ("이문학", "010-2345-6789", "lee_lit@email.com", "승인", 20000, "소설/문학"),
-        ("박과학", "010-3456-7890", "park_sci@email.com", "대기", 20000, "과학/지식"),
-        ("최에세이", "010-4567-8901", "choi_essay@email.com", "승인", 20000, "에세이/자기계발"),
-    ]
-    cursor.executemany("""
-    INSERT INTO members (name, phone, email, deposit_status, deposit_amount, fav_genre)
-    VALUES (?, ?, ?, ?, ?, ?)
-    """, sample_members)
-
-    # 샘플 모임 (서울 시청, 강남역, 홍대입구 북카페 등 주요 GPS 좌표 포함)
-    sample_meetings = [
-        ("토요일 아침 문학 클럽", "데미안", "헤르만 헤세", "2026-08-15", "10:30", "강남 북카페 북클럽 플래닛", 37.4979, 127.0276, 6, "헤르만 헤세의 데미안을 함께 읽고 '자아 찾기'를 주제로 깊은 대화를 나눕니다."),
-        ("수요일 저녁 인문학 모임", "사피엔스", "유발 하라리", "2026-08-19", "19:30", "홍대입구 문학살롱", 37.5563, 126.9226, 8, "인류의 역사와 미래에 대해 자유롭게 의견을 공유하는 저녁 정기 모임입니다."),
-        ("일요일 오후 과학독서회", "코스모스", "칼 세이건", "2026-08-23", "14:00", "광화문 교보문고 미팅룸", 37.5709, 126.9778, 5, "우주와 인간의 존재에 관한 칼 세이건의 통찰을 나눕니다."),
-    ]
-    cursor.executemany("""
-    INSERT INTO meetings (title, book_title, author, meeting_date, meeting_time, location_name, latitude, longitude, max_participants, description)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, sample_meetings)
-
-    # 샘플 RSVP
-    cursor.execute("""
-    INSERT INTO rsvps (meeting_id, member_id, member_name, member_phone, participation_type)
-    VALUES (1, 1, '김독서', '010-1234-5678', '자유책')
-    """)
-    cursor.execute("""
-    INSERT INTO rsvps (meeting_id, member_id, member_name, member_phone, participation_type)
-    VALUES (1, 2, '이문학', '010-2345-6789', '라운징')
-    """)
 
 # CRUD 함수들
 def get_all_members():
