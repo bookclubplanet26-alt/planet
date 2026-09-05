@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, time
 from database import (
     init_db, get_all_meetings, get_rsvps_for_meeting, 
-    get_attendances_for_meeting, get_member_attendance_count, get_connection
+    get_attendances_for_meeting, get_connection
 )
 from utils import (
     haversine_distance, render_geolocation_button, LOCATION_PRESETS, 

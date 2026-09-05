@@ -345,7 +345,7 @@ def get_attendances_for_meeting(meeting_id):
     conn.close()
     return records
 
-def get_member_attendance_count(email, display_name=""):
+def get_member_attendance_count(email, display_name="", target_season=None):
     conn = get_connection()
     cursor = conn.cursor()
     name_only = display_name.split(" - ")[0].strip() if " - " in display_name else display_name

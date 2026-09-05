@@ -3,9 +3,15 @@ import pandas as pd
 from datetime import datetime, time
 from database import (
     get_all_meetings, get_rsvps_for_meeting, 
-    get_attendances_for_meeting, get_member_attendance_count, init_db, get_connection
+    get_attendances_for_meeting, init_db, get_connection
 )
-from utils import haversine_distance, render_geolocation_button, LOCATION_PRESETS, fetch_google_sheet_members, fetch_google_sheet_attendances, get_meeting_target_gps, format_season_display, ATTENDANCE_WEBHOOK_URL, append_attendance_to_google_sheet_async, get_club_season_code
+from utils import (
+    haversine_distance, render_geolocation_button, LOCATION_PRESETS, 
+    fetch_google_sheet_members, fetch_google_sheet_attendances, 
+    get_member_attendance_count, get_meeting_target_gps, 
+    format_season_display, ATTENDANCE_WEBHOOK_URL, 
+    append_attendance_to_google_sheet_async, get_club_season_code
+)
 
 def filter_attendances_for_meeting(att_df, selected_meeting):
     """
