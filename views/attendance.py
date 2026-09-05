@@ -1,13 +1,79 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime, time
 from database import (
     get_all_meetings, get_rsvps_for_meeting, 
-    get_attendances_for_meeting, get_member_attendance_count
+    get_attendances_for_meeting, get_member_attendance_count, init_db, get_connection
 )
-from utils import haversine_distance, render_geolocation_button, LOCATION_PRESETS, fetch_google_sheet_members
+from utils import haversine_distance, render_geolocation_button, LOCATION_PRESETS, fetch_google_sheet_members, fetch_google_sheet_attendances, get_meeting_target_gps, format_season_display, ATTENDANCE_WEBHOOK_URL, append_attendance_to_google_sheet_async, get_club_season_code
+
+def filter_attendances_for_meeting(att_df, selected_meeting):
+    """
+    구글 시트 출석 데이터프레임에서 특정 모임(모임명 & 모임 일자)과 일치하는 출석 기록만 정확히 필터링
+    """
+    if att_df is None or att_df.empty:
+        return []
+        
+    m_title = str(selected_meeting.get('title', '')).strip()
+    m_date_str = str(selected_meeting.get('meeting_date', '')).strip()
+    
+    target_dt = None
+    if m_date_str:
+        try:
+            target_dt = datetime.strptime(m_date_str, "%Y-%m-%d").date()
+        except Exception:
+            pass
+
+    results = []
+    for idx, row in att_df.iterrows():
+        r_email = str(row.get('회원 이메일', '')).strip()
+        r_name = str(row.get('회원 성함', '')).strip()
+        r_meeting = str(row.get('모임명', '')).strip()
+        r_checked_at = str(row.get('출석 일시 (KST)', '')).strip()
+        r_book = str(row.get('도서명', '')).strip()
+
+        # 1. 모임명 일치 검사
+        is_meeting_match = (r_meeting == m_title or m_title in r_meeting or r_meeting in m_title)
+        if not is_meeting_match:
+            continue
+
+        # 2. 모임 일자(날짜) 일치 검사
+        is_date_match = False
+        if target_dt and r_checked_at:
+            r_date_part = r_checked_at.split()[0].strip()
+            for fmt in ["%Y-%m-%d", "%Y.%m.%d", "%Y/%m/%d"]:
+                try:
+                    att_dt = datetime.strptime(r_date_part, fmt).date()
+                    if att_dt == target_dt:
+                        is_date_match = True
+                        break
+                except Exception:
+                    continue
+            if not is_date_match and m_date_str in r_checked_at:
+                is_date_match = True
+        elif not target_dt:
+            is_date_match = True
+
+        if is_date_match:
+            results.append({
+                "member_name": r_name,
+                "email": r_email,
+                "book_read": r_book,
+                "checked_at": r_checked_at
+            })
+
+    return results
 
 def render_attendance():
-    st.subheader("📍 모임 출석체크")
+    """모임 출석체크 뷰"""
+    init_db()
+
+    st.markdown("""
+    <div style="margin-bottom: 24px;">
+        <h2 style="margin-bottom: 4px; font-weight: 800; color: #1E293B;">📍 모임 출석체크</h2>
+        <p style="color: #64748B; font-size: 0.95rem; margin: 0;">현장 도착 후 시간 및 GPS 위치를 확인하여 출석을 완료하세요.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # 세션 스테이트 초기화
     if "google_user" not in st.session_state:
@@ -38,7 +104,7 @@ def render_attendance():
                 if success and df_sheet is not None:
                     email_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["이메일", "email", "mail"])), df_sheet.columns[1] if len(df_sheet.columns)>1 else None)
                     name_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["이름", "성함", "name", "성명"])), df_sheet.columns[0] if len(df_sheet.columns)>0 else None)
-                    nick_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["닉네임", "별명", "nick"])), df_sheet.columns[-1] if len(df_sheet.columns)>5 else None)
+                    nick_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["닉네임", "별명", "nick"])), None)
                     reg_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["등록", "상태", "reg", "status"])), None)
                     admin_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["운영진", "관리자", "admin"])), None)
                     season_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["등록시즌", "등록 시즌", "시즌"])), None)
@@ -73,7 +139,6 @@ def render_attendance():
                     st.session_state.google_user = None
                 else:
                     st.session_state.google_user = found_member
-                    from utils import get_member_attendance_count, format_season_display
                     m_season = found_member.get('season')
                     season_label = format_season_display(m_season)
                     att_cnt = get_member_attendance_count(found_member['email'], found_member['display_name'], target_season=m_season)
@@ -85,23 +150,26 @@ def render_attendance():
 
     else:
         admin_badge = " [👑 운영진]" if google_user.get("is_admin", 0) == 1 else ""
-        from utils import get_member_attendance_count, format_season_display
         m_season = google_user.get('season')
         season_label = format_season_display(m_season)
         att_cnt = get_member_attendance_count(google_user['email'], google_user['display_name'], target_season=m_season)
         att_txt = f"🏆 {season_label} 출석 횟수: <b>{att_cnt}회</b>"
         
-        st.markdown(f"""
-        <div class="info-callout" style="background-color: #E8F0FE; border-left-color: #1A73E8; color: #174EA6; padding: 16px; font-size: 1.05rem;">
-            <b>✅ Google 인증 완료{admin_badge}:</b><br/>
-            환영합니다. <b>{google_user['name']} - {google_user['nickname']}</b> ({google_user['email']})<br/>
-            <span style="font-size: 0.98rem; color: #185ABC;">{att_txt}</span>
-        </div>
-        """, unsafe_allow_html=True)
+        col_box, col_logout = st.columns([4, 1])
+        with col_box:
+            st.markdown(f"""
+            <div class="info-callout" style="background-color: #E8F0FE; border-left-color: #1A73E8; color: #174EA6; padding: 16px; font-size: 1.05rem;">
+                <b>✅ Google 인증 완료{admin_badge}:</b><br/>
+                환영합니다. <b>{google_user['name']} - {google_user['nickname']}</b> ({google_user['email']})<br/>
+                <span style="font-size: 0.98rem; color: #185ABC;">{att_txt}</span>
+            </div>
+            """, unsafe_allow_html=True)
 
-        if st.button("🚪 다른 이메일로 인증 (로그아웃)", key="att_google_logout_btn"):
-            st.session_state.google_user = None
-            st.rerun()
+        with col_logout:
+            st.write("")
+            if st.button("🚪 로그아웃", key="att_google_logout_btn"):
+                st.session_state.google_user = None
+                st.rerun()
 
     st.markdown("---")
 
@@ -110,7 +178,6 @@ def render_attendance():
         st.warning("개설된 모임이 없습니다.")
         return
 
-    # 본인이 실제로 참가 신청(RSVP)한 정규모임 (관리자는 모든 예정된 정규모임) 중 오늘 및 향후 예정된 모임만 필터링
     import datetime
     today_date = datetime.date.today()
 
@@ -121,14 +188,12 @@ def render_attendance():
         is_bung = ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
         is_jijung = ("지정책" in m['title'] or "지정책" in (m['book_title'] or ""))
         
-        # 모임 날짜 파싱
         m_date_str = m['meeting_date'] if (isinstance(m, dict) and 'meeting_date' in m) else getattr(m, 'meeting_date', '')
         try:
             m_date = datetime.datetime.strptime(str(m_date_str).strip(), "%Y-%m-%d").date()
         except Exception:
             m_date = today_date
 
-        # 지난 모임 제외
         if m_date >= today_date and not is_bung and not is_jijung:
             if is_admin:
                 my_meetings.append(m)
@@ -162,6 +227,7 @@ def render_attendance():
     user_email = str(google_user.get('email', '')).strip().lower()
     user_display = str(google_user.get('display_name', '')).strip()
     user_name = str(google_user.get('name', '')).strip()
+    user_nick = str(google_user.get('nickname', '')).strip()
     
     my_rsvp = next((
         r for r in rsvps
@@ -170,27 +236,15 @@ def render_attendance():
            (user_name and str(r.get('member_name', '')).strip() == user_name)
     ), None)
 
+    # 구글 시트에서 실시간 출석 기록 조회
+    ok_att, att_df = fetch_google_sheet_attendances()
+    gs_attendances = filter_attendances_for_meeting(att_df, selected_meeting)
+
     if not my_rsvp:
         if is_admin:
             st.info("ℹ️ 현재 선택하신 모임은 참가 신청(RSVP) 내역이 없어 **본인의 출석체크 입력란**이 표시되지 않습니다. (👑 운영진 모드: 전체 출석 현황 확인 가능)")
-            
-            # 구글 시트에서 실시간 출석 기록 조회하여 출석 완료 명단 표시
-            from utils import fetch_google_sheet_attendances
-            ok_att, att_df = fetch_google_sheet_attendances()
-            gs_attendances = []
-            if ok_att and att_df is not None and not att_df.empty:
-                m_title = selected_meeting['title'].strip()
-                for idx, row in att_df.iterrows():
-                    r_meeting = str(row.get('모임명', '')).strip()
-                    if r_meeting == m_title or selected_meeting['title'] in r_meeting:
-                        gs_attendances.append({
-                            "member_name": str(row.get('회원 성함', '')).strip(),
-                            "book_read": str(row.get('도서명', '')),
-                            "checked_at": str(row.get('출석 일시 (KST)', ''))
-                        })
-
             st.markdown("---")
-            st.markdown("#### 📋 이 모임 출석 완료 명단 [👑 운영진 전용]")
+            st.markdown(f"#### 📋 [{selected_meeting['meeting_date']}] {selected_meeting['title']} 출석 완료 명단 [👑 운영진 전용]")
             if gs_attendances:
                 for att in gs_attendances:
                     t_str = str(att['checked_at']).split()[1][:5] if ' ' in str(att['checked_at']) else str(att['checked_at'])[:5]
@@ -205,70 +259,59 @@ def render_attendance():
                     for att in local_atts:
                         st.write(f"• **{att['member_name']}**님 ({att['checked_at'].split()[1] if ' ' in att['checked_at'] else att['checked_at']} 출석완료)")
                 else:
-                    st.info("아직 출석 완료한 부원이 없습니다.")
+                    st.info(f"아직 [{selected_meeting['meeting_date']}] 모임에 출석 완료한 부원이 없습니다.")
         return
 
     # 시간 체크 로직 (해당 모임 날짜의 16:00 ~ 17:00만 허용)
-    from datetime import datetime, time
-    now = datetime.now()
+    now = datetime.datetime.now()
     today_str = now.strftime("%Y-%m-%d")
 
     is_correct_day = (today_str == selected_meeting['meeting_date'])
     is_correct_time = (time(16, 0) <= now.time() <= time(17, 0))
     is_valid_time_window = is_correct_day and is_correct_time
 
-    # 구글 시트에서 실시간 출석 기록 조회하여 출석 완료 여부 판단
-    from utils import fetch_google_sheet_attendances
-    ok_att, att_df = fetch_google_sheet_attendances()
+    # 이미 출석 완료했는지 판단
     already_checked_in = False
-    gs_attendances = []
-
-    if ok_att and att_df is not None and not att_df.empty:
-        # 이메일 또는 회원 성함, 모임명이 일치하는 기록이 있는지 확인
-        user_email = google_user.get('email', '').strip()
-        user_name = my_rsvp['member_name'].strip()
-        m_title = selected_meeting['title'].strip()
-
-        for idx, row in att_df.iterrows():
-            r_email = str(row.get('회원 이메일', '')).strip()
-            r_name = str(row.get('회원 성함', '')).strip()
-            r_meeting = str(row.get('모임명', '')).strip()
-
-            # 이 모임의 출석 목록 수집
-            if r_meeting == m_title or selected_meeting['title'] in r_meeting:
-                gs_attendances.append({
-                    "member_name": r_name,
-                    "book_read": str(row.get('도서명', '')),
-                    "checked_at": str(row.get('출석 일시 (KST)', ''))
-                })
-                # 현재 사용자가 이미 출석 기록이 있는지 판단
-                if (user_email and r_email.lower() == user_email.lower()) or (user_name and r_name == user_name):
-                    already_checked_in = True
+    for att in gs_attendances:
+        att_email = str(att.get('email', '')).strip().lower()
+        att_name = str(att.get('member_name', '')).strip()
+        
+        match_email = (user_email and att_email == user_email)
+        match_name = (
+            (user_display and user_display == att_name) or
+            (user_name and user_name == att_name) or
+            (user_nick and user_nick in att_name) or
+            (user_name and user_name in att_name)
+        )
+        if match_email or match_name:
+            already_checked_in = True
+            break
 
     if "checked_meetings" not in st.session_state:
         st.session_state.checked_meetings = set()
 
-    # 로컬 세션 상태 또는 로컬 DB에서 이미 출석했는지 이중 검증
     if selected_meeting['id'] in st.session_state.checked_meetings:
         already_checked_in = True
     else:
-        from database import get_attendances_for_meeting
         local_atts = get_attendances_for_meeting(selected_meeting['id'])
-        if any(a['member_name'] == my_rsvp['member_name'] or a['member_id'] == google_user['id'] for a in local_atts):
-            already_checked_in = True
+        m_date_str = str(selected_meeting.get('meeting_date', '')).strip()
+        for a in local_atts:
+            a_dict = dict(a)
+            a_checked = str(a_dict.get('checked_at', ''))
+            if (a_dict.get('member_name') == my_rsvp['member_name'] or a_dict.get('member_id') == google_user['id']):
+                if not m_date_str or m_date_str in a_checked:
+                    already_checked_in = True
+                    break
 
-    # 📍 모임 기준 위치 파악 (일요일: 종각 할리스 vs 토요일: 역삼 뚜레쥬르)
-    from utils import get_meeting_target_gps, haversine_distance
     target_name, target_lat, target_lng = get_meeting_target_gps(selected_meeting)
 
-    # 👑 운영진 전용 테스트 옵션 (시간/위치 제한 해제)
     bypass_time = False
     if is_admin:
         st.info("👑 **운영진 전용 모드**: 출석체크 시간/위치 제한을 해제할 수 있습니다.")
         bypass_time = st.checkbox("🔓 출석체크 조건(시간/위치 제한) 해제하기", value=True, key="att_admin_bypass_time_top")
 
     if already_checked_in:
-        st.info("✅ 해당 모임의 출석체크가 완료되었습니다!")
+        st.info(f"✅ [{selected_meeting['meeting_date']}] {selected_meeting['title']} 출석체크가 완료되었습니다!")
     else:
         att_choice = st.radio(
             "📌 출석 유형 선택", 
@@ -278,27 +321,17 @@ def render_attendance():
         )
 
         current_att_choice = st.session_state.get("att_type_radio_choice", att_choice)
-        if "라운징" in str(current_att_choice):
-            att_type_name = "라운징"
-        else:
-            att_type_name = "정규모임"
+        att_type_name = "라운징" if "라운징" in str(current_att_choice) else "정규모임"
 
-        if att_type_name == "라운징":
-            book_read_input = st.text_input("📖 지참 책 제목 (선택)", placeholder="지참한 책이 있다면 입력해주세요 (선택)", key="att_book_read_input")
-            book_author_input = st.text_input("✍️ 저자 / 작가 (선택)", placeholder="예: 어니스트 헤밍웨이 (선택)", key="att_book_author_input")
-            rating_val = st.radio("⭐ 도서 별점 (선택)", [5, 4, 3, 2, 1], format_func=lambda x: "⭐" * x + f" ({x}점)", horizontal=True, key="att_rating_input")
-            book_review_input = st.text_area("💬 책에 대한 간단한 감상평 (선택)", placeholder="책을 읽고 느낀 점이나 공유하고 싶은 한 줄 생각을 적어주세요 (선택)", key="att_book_review_input", height=80)
-        else:
-            book_read_input = st.text_input("📖 지참 책 제목", placeholder="예: 데미안, 사피엔스 등", key="att_book_read_input")
-            book_author_input = st.text_input("✍️ 저자 / 작가 (선택)", placeholder="예: 헤르만 헤세 (선택)", key="att_book_author_input")
-            rating_val = st.radio("⭐ 도서 별점 (선택)", [5, 4, 3, 2, 1], format_func=lambda x: "⭐" * x + f" ({x}점)", horizontal=True, key="att_rating_input")
-            book_review_input = st.text_area("💬 책에 대한 간단한 감상평 (선택)", placeholder="책을 읽고 느낀 점이나 공유하고 싶은 한 줄 생각을 적어주세요 (선택)", key="att_book_review_input", height=80)
+        book_read_input = st.text_input("📖 지참 책 제목", placeholder="예: 데미안, 사피엔스 등", key="att_book_read_input")
+        book_author_input = st.text_input("✍️ 저자 / 작가 (선택)", placeholder="예: 헤르만 헤세 (선택)", key="att_book_author_input")
+        rating_val = st.radio("⭐ 도서 별점 (선택)", [5, 4, 3, 2, 1], format_func=lambda x: "⭐" * x + f" ({x}점)", horizontal=True, key="att_rating_input")
+        book_review_input = st.text_area("💬 책에 대한 간단한 감상평 (선택)", placeholder="책을 읽고 느낀 점이나 공유하고 싶은 한 줄 생각을 적어주세요 (선택)", key="att_book_review_input", height=80)
 
         if not is_valid_time_window and not bypass_time:
             st.warning(f"⏱️ **출석체크 가능 시간 안내**: **{selected_meeting['meeting_date']} 모임 당일 16:00 ~ 17:00**에만 출석체크가 가능합니다.")
 
         if st.button("✅ 출석체크 완료하기", type="primary", use_container_width=True, key="att_confirm_btn"):
-            # 위치 검증 (기본값: 현장 도착)
             u_lat, u_lng = target_lat, target_lng
             dist_m = haversine_distance(u_lat, u_lng, target_lat, target_lng)
             is_within_200m = (dist_m <= 200)
@@ -314,15 +347,11 @@ def render_attendance():
                 st.error(f"⚠️ 모임 시간을 확인해주세요. ({selected_meeting['meeting_date']} 모임 당일 16:00 ~ 17:00만 출석체크 가능)")
             else:
                 with st.spinner("🔄 출석 처리 중입니다... 잠시만 기다려 주세요."):
-                    # 세션에 즉시 완료 기록 (프론트엔드 버튼 숨김 처리)
                     st.session_state.checked_meetings.add(selected_meeting['id'])
-
-                    is_lounging_val = 1 if (att_type_name == "라운징" or "라운징" in str(st.session_state.get("att_type_radio_choice", ""))) else 0
+                    is_lounging_val = 1 if att_type_name == "라운징" else 0
                     record_book_text = book_title_val if book_title_val else ("라운징" if is_lounging_val == 1 else "자유책")
 
-                    # 백엔드(로컬 DB)에도 즉시 저장 (중복 저장 방지 백엔드 검증용)
-                    from database import get_connection
-                    now_sync = datetime.now()
+                    now_sync = datetime.datetime.now()
                     now_str = now_sync.strftime("%Y-%m-%d %H:%M:%S")
                     try:
                         conn = get_connection()
@@ -336,8 +365,6 @@ def render_attendance():
                     except Exception:
                         pass
 
-                    # 백그라운드 비동기 스레드로 구글 시트에 전송
-                    from utils import ATTENDANCE_WEBHOOK_URL, append_attendance_to_google_sheet_async, get_club_season_code
                     season_code = get_club_season_code(now_sync)
                     append_attendance_to_google_sheet_async(
                         ATTENDANCE_WEBHOOK_URL,
@@ -357,10 +384,9 @@ def render_attendance():
                     st.success("✅ 출석체크가 정상적으로 완료되었습니다!")
                     st.rerun()
 
-    # 관리자인 경우에만 구글 시트 출석 완료 명단 표시
     if is_admin:
         st.markdown("---")
-        st.markdown("#### 📋 이 모임 출석 완료 명단 [👑 운영진 전용]")
+        st.markdown(f"#### 📋 [{selected_meeting['meeting_date']}] {selected_meeting['title']} 출석 완료 명단 [👑 운영진 전용]")
         if gs_attendances:
             for att in gs_attendances:
                 t_str = str(att['checked_at']).split()[1][:5] if ' ' in str(att['checked_at']) else str(att['checked_at'])[:5]
