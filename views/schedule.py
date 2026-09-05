@@ -376,6 +376,23 @@ def render_schedule():
             elif m_date >= cutoff_date:
                 past_meetings.append(m)
 
+        # 🕒 지난 모임은 최신순(최근 일시가 위)으로 정렬
+        past_meetings.sort(
+            key=lambda x: (
+                str(x.get('meeting_date', '') if isinstance(x, dict) else getattr(x, 'meeting_date', '')),
+                str(x.get('meeting_time', '') if isinstance(x, dict) else getattr(x, 'meeting_time', ''))
+            ),
+            reverse=True
+        )
+
+        # 예정된 모임은 다가오는 순(가까운 일시가 위)으로 정렬
+        upcoming_meetings.sort(
+            key=lambda x: (
+                str(x.get('meeting_date', '') if isinstance(x, dict) else getattr(x, 'meeting_date', '')),
+                str(x.get('meeting_time', '') if isinstance(x, dict) else getattr(x, 'meeting_time', ''))
+            )
+        )
+
         bung_meetings = [
             m for m in upcoming_meetings 
             if ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
