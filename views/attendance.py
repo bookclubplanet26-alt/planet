@@ -363,7 +363,7 @@ def render_attendance():
 
         # 📍 실제 스마트폰 GPS 현장 위치 인증 섹션 (통합 네이티브 컴포넌트)
         st.markdown("<hr style='margin: 16px 0 12px 0;'/>", unsafe_allow_html=True)
-        st.markdown("#### 🧭 현장 위치(GPS) 인증")
+        st.markdown("#### 📍 현장 위치(GPS) 인증")
 
         if "last_gps_data" not in st.session_state:
             st.session_state.last_gps_data = None
