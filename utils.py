@@ -892,6 +892,7 @@ def fetch_google_sheet_accounting():
     """
     회계장부 구글 시트 연동 (gspread 보안 인증 사용)
     - 입금내역 및 출금내역 추출
+    - 헤더에 공백이나 중복이 있더라도 안전하게 파싱
     """
     gc = get_gspread_client()
     if gc:
@@ -900,9 +901,27 @@ def fetch_google_sheet_accounting():
             worksheets = sh.worksheets()
             data = {}
             for ws in worksheets:
-                recs = ws.get_all_records()
-                if recs:
-                    data[ws.title] = pd.DataFrame(recs)
+                try:
+                    recs = ws.get_all_records()
+                    if recs:
+                        data[ws.title] = pd.DataFrame(recs)
+                except Exception:
+                    # 중복 헤더나 빈 열이 있을 경우 get_all_values로 안전하게 파싱
+                    vals = ws.get_all_values()
+                    if vals and len(vals) > 1:
+                        header = vals[0]
+                        seen = {}
+                        clean_header = []
+                        for i, h in enumerate(header):
+                            h_str = str(h).strip() or f"col_{i}"
+                            if h_str in seen:
+                                seen[h_str] += 1
+                                clean_header.append(f"{h_str}_{seen[h_str]}")
+                            else:
+                                seen[h_str] = 0
+                                clean_header.append(h_str)
+                        df = pd.DataFrame(vals[1:], columns=clean_header)
+                        data[ws.title] = df
             if data:
                 return True, data, None
         except Exception as e:
@@ -1101,7 +1120,15 @@ def render_deposit_refund_card(google_user):
 def sync_accounting_pipeline_with_members():
     """
     회계장부 시트와 회원목록 시트를 연동하여 입출금에 따라 등록 및 환급 상태 자동 동기화
+    [안전장치] 동명이인 감지 및 분기 처리
+    - 동명이인이 없는 고유 이름: 기존처럼 100% 즉시 자동 연동
+    - 동명이인이 존재하는 이름:
+      - 입금자 적요에 전화번호 뒤 4자리 또는 닉네임이 기재되어 식별 가능한 경우: 해당 회원 자동 연동
+      - 식별자가 없는 경우: 오승인 방지를 위해 자동 연동을 건너뛰고 수동 확인 필요 알림 리포트 반환
     """
+    from collections import Counter
+    import re
+
     ok_acc, acc_data, err = fetch_google_sheet_accounting()
     if not ok_acc:
         return False, err
@@ -1114,8 +1141,29 @@ def sync_accounting_pipeline_with_members():
     ws_mem = sh_mem.worksheet("회원목록") if "회원목록" in [w.title for w in sh_mem.worksheets()] else sh_mem.sheet1
     all_members = ws_mem.get_all_records()
     
+    if not all_members:
+        return False, "회원목록 시트에 회원 데이터가 없습니다."
+
+    # 1. 회원 명단 전체에서 이름별 인원수 카운트 (동명이인 판별)
+    name_counts = Counter([str(m.get("이름", '')).strip() for m in all_members if str(m.get("이름", '')).strip()])
+    duplicate_names = {name for name, count in name_counts.items() if count > 1}
+
+    # 2. 회원 시트의 컬럼 인덱스 탐색 (헤더 기준)
+    headers = list(all_members[0].keys())
+    def find_col_idx(candidates, default_idx):
+        for idx, h in enumerate(headers, start=1):
+            if any(k in str(h).lower() for k in candidates):
+                return idx
+        return default_idx
+
+    col_reg = find_col_idx(["등록여부", "등록", "상태"], 3)
+    col_curr_s = find_col_idx(["현재등록시즌", "등록시즌", "시즌"], 8)
+    col_first_s = find_col_idx(["처음등록시즌", "최초등록시즌", "가입시즌"], 9)
+
     updated_count = 0
-    # 회계장부 각 워크시트(수입/지출/입출금내역 등) 검사
+    unresolved_duplicates = []
+
+    # 3. 회계장부 각 워크시트(수입/지출/입출금내역 등) 검사
     for sheet_title, df_acc in acc_data.items():
         if df_acc is None or df_acc.empty:
             continue
@@ -1133,23 +1181,84 @@ def sync_accounting_pipeline_with_members():
             row_date = str(row.get(date_col, '')).strip() if date_col else ""
             in_amt = row.get(in_col, 0) if in_col else 0
             
+            if not row_text:
+                continue
+
+            # 해당 입금 건과 이름이 일치하는 회원 후보군 추출
+            candidate_matches = []
             for m_idx, m in enumerate(all_members):
                 m_name = str(m.get("이름", '')).strip()
                 if not m_name:
                     continue
-                
-                # 입금 매칭
+                # 입금 매칭 (이름이 적요에 포함되어 있고 입금액이 있는 경우)
                 if m_name in row_text and (in_amt or in_col is None):
-                    target_season = calculate_deposit_season(row_date, row_text)
-                    if str(m.get("등록여부")) != "1" or str(m.get("현재등록시즌")) != str(target_season):
-                        sheet_row = m_idx + 2
-                        ws_mem.update_cell(sheet_row, 3, "1")
-                        ws_mem.update_cell(sheet_row, 8, target_season)
-                        if not str(m.get("처음등록시즌", "")).strip():
-                            ws_mem.update_cell(sheet_row, 9, target_season)
-                        updated_count += 1
+                    candidate_matches.append((m_idx, m, m_name))
+
+            if not candidate_matches:
+                continue
+
+            # 후보군 처리 분기
+            target_to_update = None
+
+            for m_idx, m, m_name in candidate_matches:
+                # A. 동명이인이 아닌 고유 이름인 경우 -> 즉시 자동 연동
+                if m_name not in duplicate_names:
+                    target_to_update = (m_idx, m)
+                    break
+                
+                # B. 동명이인인 경우 -> 2차 식별자(전화번호 뒷자리, 닉네임) 검증
+                m_nick = str(m.get("닉네임", '')).strip()
+                raw_phone = re.sub(r'\D', '', str(m.get("회원번호", '') or m.get("전화번호", '') or ''))
+                phone_last4 = raw_phone[-4:] if len(raw_phone) >= 4 else ""
+
+                has_nick = bool(m_nick and len(m_nick) >= 2 and m_nick.lower() in row_text.lower())
+                has_phone = bool(phone_last4 and phone_last4 in row_text)
+
+                if has_nick or has_phone:
+                    target_to_update = (m_idx, m)
+                    break
+
+            if target_to_update:
+                m_idx, m = target_to_update
+                target_season = calculate_deposit_season(row_date, row_text)
+                if str(m.get("등록여부")) != "1" or str(m.get("현재등록시즌")) != str(target_season):
+                    sheet_row = m_idx + 2
+                    ws_mem.update_cell(sheet_row, col_reg, "1")
+                    ws_mem.update_cell(sheet_row, col_curr_s, target_season)
+                    if not str(m.get("처음등록시즌", "")).strip():
+                        ws_mem.update_cell(sheet_row, col_first_s, target_season)
+                    updated_count += 1
+            else:
+                # 동명이인이지만 적요에 2차 식별자가 없어 특정하지 못한 경우 -> 자동 승인 보류 및 수동 확인 대상 기록
+                for _, _, m_name in candidate_matches:
+                    if m_name in duplicate_names:
+                        unresolved_duplicates.append({
+                            "name": m_name,
+                            "row_text": row_text,
+                            "row_date": row_date,
+                            "in_amt": in_amt
+                        })
 
     fetch_google_sheet_members.clear()
     st.cache_data.clear()
-    return True, f"{updated_count}명의 회원이 회계장부와 동기화되었습니다."
+
+    # 결과 메시지 구성
+    result_msgs = [f"✅ {updated_count}명의 회원이 회계장부와 정상 동기화되었습니다."]
+    if unresolved_duplicates:
+        # 중복 로그 정리
+        seen = set()
+        unique_unresolved = []
+        for item in unresolved_duplicates:
+            key = (item['name'], item['row_text'], item['row_date'])
+            if key not in seen:
+                seen.add(key)
+                unique_unresolved.append(item)
+
+        result_msgs.append(f"\n⚠️ **[동명이인 수동 확인 필요: {len(unique_unresolved)}건]**")
+        for item in unique_unresolved:
+            date_str = f" ({item['row_date']})" if item['row_date'] else ""
+            result_msgs.append(f"- **{item['name']}** | 입금적요: `{item['row_text']}`{date_str} -> 닉네임/전화번호 미기재로 자동승인 보류")
+        result_msgs.append("\n💡 *동명이인 입금 건은 회원 확인 후 구글 시트의 [회원목록]에서 수동으로 등록여부('1') 및 시즌을 입력해 주세요.*")
+
+    return True, "\n".join(result_msgs)
 
