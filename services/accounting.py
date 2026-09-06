@@ -129,7 +129,7 @@ def calculate_deposit_season(deposit_date=None, memo=""):
     year_short = str(year_val)[2:]
     return f"{year_short}{month_val:02d}"
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner="💰 회계 및 예치금 내역을 동기화하는 중...")
 def fetch_google_sheet_accounting():
     """
     회계장부 구글 시트 연동 (gspread 보안 인증 사용)

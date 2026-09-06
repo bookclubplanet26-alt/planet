@@ -29,7 +29,8 @@ def render_bookshelf():
             if "@" not in email_str or "." not in email_str:
                 st.error("올바른 Google 이메일 주소를 입력해 주세요.")
             else:
-                success, df_sheet, err_msg = fetch_google_sheet_members()
+                with st.spinner("🔑 회원 정보를 확인하는 중입니다..."):
+                    success, df_sheet, err_msg = fetch_google_sheet_members()
                 found_member = None
 
                 if success and df_sheet is not None:

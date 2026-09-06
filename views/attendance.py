@@ -101,13 +101,14 @@ def render_attendance():
             st.write("")
             login_submitted = st.button("🔑 Google 인증", key="att_google_login_btn", type="primary", use_container_width=True)
 
-        if login_submitted:
-            email_str = g_email_input.strip().lower()
-            if "@" not in email_str or "." not in email_str:
-                st.error("올바른 Google 이메일 주소를 입력해 주세요.")
-            else:
-                success, df_sheet, err_msg = fetch_google_sheet_members()
-                found_member = None
+            if login_submitted:
+                email_str = g_email_input.strip().lower()
+                if "@" not in email_str or "." not in email_str:
+                    st.error("올바른 Google 이메일 주소를 입력해 주세요.")
+                else:
+                    with st.spinner("🔑 회원 정보를 확인하는 중입니다..."):
+                        success, df_sheet, err_msg = fetch_google_sheet_members()
+                    found_member = None
 
                 if success and df_sheet is not None:
                     email_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["이메일", "email", "mail"])), df_sheet.columns[1] if len(df_sheet.columns)>1 else None)

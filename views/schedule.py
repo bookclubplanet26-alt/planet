@@ -267,7 +267,8 @@ def render_schedule():
                 if "@" not in email_str or "." not in email_str:
                     st.error("올바른 Google 이메일 주소를 입력해 주세요.")
                 else:
-                    success, df_sheet, err_msg = fetch_google_sheet_members()
+                    with st.spinner("🔑 회원 정보를 확인하는 중입니다..."):
+                        success, df_sheet, err_msg = fetch_google_sheet_members()
                     found_member = None
 
                     if success and df_sheet is not None:
@@ -488,9 +489,10 @@ def render_schedule():
 
                     submit_reg = st.form_submit_button("🚀 정규 모임 개설 완료", type="primary", use_container_width=True)
                     if submit_reg:
-                        from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
-                        m_season = get_club_season_code()
-                        append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
+                        with st.spinner("🚀 정규 모임을 개설하는 중입니다..."):
+                            from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
+                            m_season = get_club_season_code()
+                            append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
                         created_msg = f"🎉 '{m_title}' 정규 모임이 성공적으로 개설되었습니다!"
                         st.session_state["meeting_created_toast"] = created_msg
                         st.session_state["reset_admin_category"] = True
@@ -530,18 +532,19 @@ def render_schedule():
                         if not m_title or not m_book:
                             st.error("모임 제목과 지정 도서명은 필수 입력 사항입니다.")
                         else:
-                            pure_desc = m_desc.strip() if m_desc else ""
-                            # 앱 화면용 (태그 포함)
-                            extra_desc = pure_desc
-                            if jijung_leader.strip():
-                                extra_desc = f"[책장:{jijung_leader.strip()}]\n" + extra_desc
-                            if kakao_link.strip():
-                                extra_desc = extra_desc + f"\n[카톡:{kakao_link.strip()}]"
+                            with st.spinner("🚀 지정책 모임을 개설하는 중입니다..."):
+                                pure_desc = m_desc.strip() if m_desc else ""
+                                # 앱 화면용 (태그 포함)
+                                extra_desc = pure_desc
+                                if jijung_leader.strip():
+                                    extra_desc = f"[책장:{jijung_leader.strip()}]\n" + extra_desc
+                                if kakao_link.strip():
+                                    extra_desc = extra_desc + f"\n[카톡:{kakao_link.strip()}]"
 
-                            from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
-                            m_season = get_club_season_code()
-                            # 구글 시트에는 순수 모임설명만 전송 (책장/카톡 태그 제거)
-                            append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, pure_desc, m_season, jijung_leader=jijung_leader.strip(), kakao_url=kakao_link.strip())
+                                from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
+                                m_season = get_club_season_code()
+                                # 구글 시트에는 순수 모임설명만 전송 (책장/카톡 태그 제거)
+                                append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, pure_desc, m_season, jijung_leader=jijung_leader.strip(), kakao_url=kakao_link.strip())
                             created_msg = f"🎉 '{m_title}' 지정책 모임이 성공적으로 개설되었습니다!"
                             st.session_state["meeting_created_toast"] = created_msg
                             st.session_state["reset_admin_category"] = True
@@ -574,9 +577,10 @@ def render_schedule():
                         if not m_title or not m_loc_name:
                             st.error("모임 제목과 장소는 필수 입력 사항입니다.")
                         else:
-                            from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
-                            m_season = get_club_season_code()
-                            append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
+                            with st.spinner("🚀 소모임을 개설하는 중입니다..."):
+                                from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
+                                m_season = get_club_season_code()
+                                append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
                             created_msg = f"🎉 '{m_title}' 소모임/벙 모임이 성공적으로 개설되었습니다!"
                             st.session_state["meeting_created_toast"] = created_msg
                             st.session_state["reset_admin_category"] = True
