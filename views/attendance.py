@@ -1,17 +1,14 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, time, date
-from database import (
-    get_all_meetings, get_rsvps_for_meeting, 
-    get_attendances_for_meeting, init_db, get_connection
-)
 from utils import (
     haversine_distance, render_geolocation_button, LOCATION_PRESETS, 
     fetch_google_sheet_members, fetch_google_sheet_attendances, 
     get_member_attendance_count, get_meeting_target_gps, 
     format_season_display, ATTENDANCE_WEBHOOK_URL, 
     append_attendance_to_google_sheet_async, get_club_season_code,
-    get_current_kst, format_member_attendance_and_deposit_text, check_member_season_eligibility
+    get_current_kst, format_member_attendance_and_deposit_text, check_member_season_eligibility,
+    get_all_meetings, get_rsvps_for_meeting
 )
 try:
     from streamlit_geolocation import streamlit_geolocation
@@ -344,16 +341,6 @@ def render_attendance():
 
     if selected_meeting['id'] in st.session_state.checked_meetings:
         already_checked_in = True
-    else:
-        local_atts = get_attendances_for_meeting(selected_meeting['id'])
-        m_date_str = str(selected_meeting.get('meeting_date', '')).strip()
-        for a in local_atts:
-            a_dict = dict(a)
-            a_checked = str(a_dict.get('checked_at', ''))
-            if (a_dict.get('member_name') == my_rsvp['member_name'] or a_dict.get('member_id') == google_user['id']):
-                if not m_date_str or m_date_str in a_checked:
-                    already_checked_in = True
-                    break
 
     target_name, target_lat, target_lng = get_meeting_target_gps(selected_meeting)
 
@@ -431,18 +418,6 @@ def render_attendance():
                     final_lat = user_gps_lat if user_gps_lat is not None else target_lat
                     final_lng = user_gps_lng if user_gps_lng is not None else target_lng
                     final_dist = measured_dist_m if measured_dist_m is not None else 0.0
-
-                    try:
-                        conn = get_connection()
-                        cursor = conn.cursor()
-                        cursor.execute("""
-                        INSERT OR REPLACE INTO attendance (meeting_id, member_id, member_name, latitude, longitude, distance_m, checked_at, book_read, is_lounging)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (selected_meeting['id'], google_user['id'], my_rsvp['member_name'], final_lat, final_lng, final_dist, now_str, record_book_text, is_lounging_val))
-                        conn.commit()
-                        conn.close()
-                    except Exception:
-                        pass
 
                     season_code = get_club_season_code(now_sync)
                     append_attendance_to_google_sheet_async(

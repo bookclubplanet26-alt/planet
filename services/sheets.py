@@ -197,6 +197,126 @@ def get_google_sheet_meetings_list():
             })
     return meetings
 
+def get_all_meetings():
+    """
+    구글 시트 기반 전체 모임 목록 반환
+    """
+    return get_google_sheet_meetings_list()
+
+def get_meeting_by_id(meeting_id):
+    """
+    모임 ID로 모임 상세 정보 검색
+    """
+    meetings = get_all_meetings()
+    for m in meetings:
+        if m['id'] == meeting_id or str(m['id']) == str(meeting_id):
+            return m
+    return None
+
+def get_rsvps_for_meeting(meeting_id):
+    """
+    구글 시트 '신청명단' 탭에서 특정 모임의 신청자 목록 반환
+    """
+    meeting = get_meeting_by_id(meeting_id)
+    if not meeting:
+        return []
+
+    m_title = meeting.get('title', '')
+    m_date = str(meeting.get('meeting_date', '')).strip()
+
+    rsvps = []
+    seen_identifiers = set()
+
+    ok, df = fetch_google_sheet_rsvps()
+    if ok and df is not None and not df.empty:
+        m_col = next((c for c in df.columns if any(k in str(c) for k in ["모임명", "모임", "title"])), df.columns[0])
+        date_col = next((c for c in df.columns if any(k in str(c) for k in ["모임일자", "일자", "날짜", "date"])), None)
+        name_col = next((c for c in df.columns if any(k in str(c) for k in ["회원명", "이름", "성함", "name"])), None)
+        email_col = next((c for c in df.columns if any(k in str(c) for k in ["이메일", "email", "mail"])), None)
+        type_col = next((c for c in df.columns if any(k in str(c) for k in ["참여방식", "방식", "type"])), None)
+
+        for idx, row in df.iterrows():
+            row_m = str(row.get(m_col, '')).strip()
+            row_d = str(row.get(date_col, '')).strip() if date_col and pd.notna(row.get(date_col)) else ""
+
+            title_match = bool(m_title and (row_m == m_title or m_title in row_m or row_m in m_title))
+            is_shifted = bool(row_d and ("@" in row_d or ("-" in row_d and not row_d[:4].isdigit())))
+
+            if is_shifted:
+                r_name = row_d
+                r_email = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else ""
+                r_type = str(row.get(email_col, '자유책')).strip() if email_col and pd.notna(row.get(email_col)) else "자유책"
+                date_match = True
+            else:
+                date_match = True
+                if row_d and m_date:
+                    date_match = (row_d == m_date or m_date in row_d or row_d in m_date)
+                r_name = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else "회원"
+                r_email = str(row.get(email_col, '')).strip() if email_col and pd.notna(row.get(email_col)) else ""
+                r_type = str(row.get(type_col, '자유책')).strip() if type_col and pd.notna(row.get(type_col)) else "자유책"
+
+            if title_match and date_match:
+                identifier = r_email.strip().lower() if r_email else r_name.strip()
+                if identifier and identifier in seen_identifiers:
+                    continue
+                if identifier:
+                    seen_identifiers.add(identifier)
+
+                rsvps.append({
+                    "id": idx + 1,
+                    "meeting_id": meeting_id,
+                    "member_id": hash(r_email) % 100000 if r_email else idx + 100,
+                    "member_name": r_name,
+                    "member_phone": r_email,
+                    "participation_type": r_type
+                })
+    return rsvps
+
+def add_rsvp(meeting_id, member_id, member_name, member_phone, participation_type="자유책"):
+    """
+    모임 참가 신청 (순수 구글 시트 연동)
+    """
+    meeting = get_meeting_by_id(meeting_id)
+    if not meeting:
+        return False, "존재하지 않는 모임입니다."
+
+    max_p = meeting.get('max_participants', 8)
+    if participation_type != "대기":
+        current_rsvps = get_rsvps_for_meeting(meeting_id)
+        confirmed_count = len([r for r in current_rsvps if str(r.get('participation_type', '') or '') != '대기'])
+        if confirmed_count >= max_p and max_p < 900:
+            return False, "모임 정원이 마감되어 대기 신청만 가능합니다."
+
+    from services.config import ATTENDANCE_WEBHOOK_URL
+    add_rsvp_to_google_sheet_async(
+        ATTENDANCE_WEBHOOK_URL,
+        meeting_name=meeting.get('title', ''),
+        member_name=member_name,
+        email=member_phone,
+        participation_type=participation_type,
+        meeting_date=meeting.get('meeting_date', '')
+    )
+    msg_type = "대기 신청" if participation_type == "대기" else "참가 신청"
+    return True, f"{msg_type}이 성공적으로 완료되었습니다!"
+
+def cancel_rsvp(meeting_id, member_id, member_name="", member_phone=""):
+    """
+    모임 참가 신청 취소 (순수 구글 시트 연동)
+    """
+    meeting = get_meeting_by_id(meeting_id)
+    if not meeting:
+        return False
+
+    from services.config import ATTENDANCE_WEBHOOK_URL
+    cancel_rsvp_from_google_sheet_async(
+        ATTENDANCE_WEBHOOK_URL,
+        meeting_name=meeting.get('title', ''),
+        email=member_phone,
+        member_name=member_name,
+        meeting_date=meeting.get('meeting_date', '')
+    )
+    return True
+
 def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name, year, season, meeting_name, book_read, book_review="", is_lounging=0, book_author="", rating=5):
     """
     백그라운드 비동기 스레드로 구글 시트에 출석 정보 전송 (사용자 대기시간 0초)

@@ -1,5 +1,4 @@
 import streamlit as st
-from database import init_db
 from styles import apply_custom_css
 
 # 뷰 모듈 임포트
@@ -17,8 +16,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# DB 및 스타일 초기화
-init_db()
+# 스타일 초기화
 apply_custom_css()
 
 # 세션 상태 초기화 (메인 메뉴 controller)

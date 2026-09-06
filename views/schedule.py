@@ -1,14 +1,11 @@
 import streamlit as st
 import datetime
 import pandas as pd
-from database import (
-    get_all_meetings, get_rsvps_for_meeting, 
-    get_all_members, add_rsvp, cancel_rsvp, add_meeting, delete_meeting
-)
 from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
-    check_member_season_eligibility
+    check_member_season_eligibility, get_all_meetings, get_rsvps_for_meeting,
+    add_rsvp, cancel_rsvp
 )
 
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False):
@@ -76,7 +73,6 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                 if st.button("❌ 모임 삭제", key=f"{key_prefix}_del_m_{m_id}", help="이 모임을 목록에서 삭제합니다"):
                     from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
                     delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_date)
-                    delete_meeting(m_id)
                     del_msg = f"🗑️ '{m_title}' 모임이 삭제되었습니다."
                     st.session_state["meeting_deleted_toast"] = del_msg
                     st.toast(del_msg, icon="🗑️")
@@ -492,7 +488,6 @@ def render_schedule():
 
                     submit_reg = st.form_submit_button("🚀 정규 모임 개설 완료", type="primary", use_container_width=True)
                     if submit_reg:
-                        add_meeting(m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_lat, m_lng, m_max, m_desc)
                         from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
                         m_season = get_club_season_code()
                         append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
@@ -543,7 +538,6 @@ def render_schedule():
                             if kakao_link.strip():
                                 extra_desc = extra_desc + f"\n[카톡:{kakao_link.strip()}]"
 
-                            add_meeting(m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_lat, m_lng, m_max, extra_desc)
                             from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
                             m_season = get_club_season_code()
                             # 구글 시트에는 순수 모임설명만 전송 (책장/카톡 태그 제거)
@@ -580,7 +574,6 @@ def render_schedule():
                         if not m_title or not m_loc_name:
                             st.error("모임 제목과 장소는 필수 입력 사항입니다.")
                         else:
-                            add_meeting(m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_lat, m_lng, m_max, m_desc)
                             from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
                             m_season = get_club_season_code()
                             append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)

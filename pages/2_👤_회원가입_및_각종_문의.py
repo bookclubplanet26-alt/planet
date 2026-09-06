@@ -1,10 +1,8 @@
 import streamlit as st
-from database import init_db
 from styles import apply_custom_css
 from views.register import render_register
 
 st.set_page_config(page_title="회원가입 및 각종 문의 | 북클럽 플래닛", page_icon="👤", layout="wide")
-init_db()
 apply_custom_css()
 
 col_nav_left, col_nav_right = st.columns([1, 2])
