@@ -365,14 +365,14 @@ def render_attendance():
         st.markdown("<hr style='margin: 16px 0 12px 0;'/>", unsafe_allow_html=True)
         st.markdown("#### 📍 현장 위치(GPS) 인증")
 
-        col_gps_btn, col_gps_info = st.columns([1.3, 3.7])
+        col_gps_btn, col_gps_info = st.columns([0.8, 4.2], gap="small", vertical_alignment="center")
         with col_gps_btn:
             loc_data = None
             if streamlit_geolocation:
                 loc_data = streamlit_geolocation()
         with col_gps_info:
             st.markdown(
-                f"<div style='padding-top: 6px; font-size: 0.95rem; color: #334155; line-height: 1.5;'>"
+                f"<div style='font-size: 0.95rem; color: #334155; line-height: 1.5;'>"
                 f"모임 장소: <b style='color: #0F172A;'>{target_name}</b> "
                 f"<span style='color: #64748B; font-size: 0.88rem;'>(현장 반경 <b>350m</b> 이내 인증 필요)</span>"
                 f"</div>",
