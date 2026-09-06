@@ -4,5 +4,6 @@ cloudflared.exe
 club.db
 .env
 *.json
-.streamlit/
+.streamlit/secrets.toml
+!.streamlit/secrets.toml.example
 
