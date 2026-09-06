@@ -13,6 +13,10 @@ from utils import (
     append_attendance_to_google_sheet_async, get_club_season_code,
     get_current_kst, format_member_attendance_and_deposit_text, check_member_season_eligibility
 )
+try:
+    from streamlit_geolocation import streamlit_geolocation
+except Exception:
+    streamlit_geolocation = None
 
 def filter_attendances_for_meeting(att_df, selected_meeting):
     """
@@ -310,12 +314,12 @@ def render_attendance():
             st.warning("⚠️ 현재 선택하신 모임은 참가 신청 내역이 없어 출석체크를 진행할 수 없습니다.")
             return
 
-    # 시간 체크 로직 (해당 모임 날짜의 16:00 ~ 17:00 KST, 여유 버퍼 15:50 ~ 17:30 허용)
+    # 시간 체크 로직 (해당 모임 날짜의 16:00 ~ 17:00 KST)
     now_kst = get_current_kst()
     today_str = now_kst.strftime("%Y-%m-%d")
 
     is_correct_day = (today_str == selected_meeting['meeting_date'])
-    is_correct_time = (time(15, 50) <= now_kst.time() <= time(17, 30))
+    is_correct_time = (time(16, 0) <= now_kst.time() <= time(17, 0))
     is_valid_time_window = is_correct_day and is_correct_time
 
     # 이미 출석 완료했는지 판단
@@ -371,23 +375,50 @@ def render_attendance():
         rating_val = st.radio("⭐ 도서 별점 (선택)", [5, 4, 3, 2, 1], format_func=lambda x: "⭐" * x + f" ({x}점)", horizontal=True, key="att_rating_input")
         book_review_input = st.text_area("💬 책에 대한 간단한 감상평 (선택)", placeholder="책을 읽고 느낀 점이나 공유하고 싶은 한 줄 생각을 적어주세요 (선택)", key="att_book_review_input", height=80)
 
+        # 📍 실제 스마트폰 GPS 현장 위치 인증 섹션
+        st.markdown("<hr style='margin: 16px 0 12px 0;'/>", unsafe_allow_html=True)
+        st.markdown("#### 📍 현장 위치(GPS) 인증")
+        st.caption(f"모임 장소: **{target_name}** (현장 반경 **350m** 이내 인증 필요)")
+
+        loc_data = None
+        if streamlit_geolocation:
+            loc_data = streamlit_geolocation()
+        
+        user_gps_lat = None
+        user_gps_lng = None
+        measured_dist_m = None
+        is_within_350m = False
+
+        if loc_data and loc_data.get('latitude') is not None and loc_data.get('longitude') is not None:
+            user_gps_lat = float(loc_data['latitude'])
+            user_gps_lng = float(loc_data['longitude'])
+            measured_dist_m = round(haversine_distance(user_gps_lat, user_gps_lng, target_lat, target_lng), 1)
+            is_within_350m = (measured_dist_m <= 350)
+
+            if is_within_350m:
+                st.success(f"✅ **현장 인증 완료**: {target_name} 인근 (거리: **{measured_dist_m}m** / 허용 350m 이내)")
+            else:
+                st.error(f"❌ **현장 거리 초과**: 모임 장소({target_name})로부터 **{measured_dist_m}m** 떨어져 있습니다. (350m 이내 현장에서만 출석 가능)")
+        else:
+            if not bypass_time:
+                st.info("💡 위 **'Get Location'** 버튼을 눌러 스마트폰 현재 위치를 인증해 주세요. (브라우저 위치 권한 '허용' 필요)")
+
         if not is_valid_time_window and not bypass_time:
             st.warning(f"⏱️ **출석체크 가능 시간 안내**: **{selected_meeting['meeting_date']} 모임 당일 16:00 ~ 17:00**에만 출석체크가 가능합니다.")
 
         if st.button("✅ 출석체크 완료하기", type="primary", use_container_width=True, key="att_confirm_btn"):
-            u_lat, u_lng = target_lat, target_lng
-            dist_m = haversine_distance(u_lat, u_lng, target_lat, target_lng)
-            is_within_200m = (dist_m <= 200)
-
             book_title_val = book_read_input.strip()
             book_author_val = book_author_input.strip()
             book_review_val = book_review_input.strip()
+
             if att_type_name == "정규모임" and not book_title_val:
                 st.error("⚠️ 정규모임 출석체크를 완료하려면 지참 책 제목을 입력해 주세요.")
-            elif not is_within_200m and not bypass_time:
-                st.error("⚠️ 위치를 확인해주세요.")
             elif not is_valid_time_window and not bypass_time:
-                st.error(f"⚠️ 모임 시간을 확인해주세요. ({selected_meeting['meeting_date']} 모임 당일 16:00 ~ 17:00만 출석체크 가능)")
+                st.error(f"⚠️ 모임 시간을 확인해 주세요. ({selected_meeting['meeting_date']} 모임 당일 16:00 ~ 17:00만 출석체크 가능)")
+            elif not bypass_time and (user_gps_lat is None or user_gps_lng is None):
+                st.error("⚠️ 먼저 위 'Get Location' 버튼을 눌러 현장 위치(GPS) 인증을 진행해 주세요.")
+            elif not bypass_time and not is_within_350m:
+                st.error(f"⚠️ 모임 장소({target_name})로부터 {measured_dist_m}m 떨어져 있어 출석체크할 수 없습니다. (350m 이내 현장에서만 가능)")
             else:
                 with st.spinner("🔄 출석 처리 중입니다... 잠시만 기다려 주세요."):
                     st.session_state.checked_meetings.add(selected_meeting['id'])
@@ -396,13 +427,18 @@ def render_attendance():
 
                     now_sync = get_current_kst()
                     now_str = now_sync.strftime("%Y-%m-%d %H:%M:%S")
+
+                    final_lat = user_gps_lat if user_gps_lat is not None else target_lat
+                    final_lng = user_gps_lng if user_gps_lng is not None else target_lng
+                    final_dist = measured_dist_m if measured_dist_m is not None else 0.0
+
                     try:
                         conn = get_connection()
                         cursor = conn.cursor()
                         cursor.execute("""
                         INSERT OR REPLACE INTO attendance (meeting_id, member_id, member_name, latitude, longitude, distance_m, checked_at, book_read, is_lounging)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (selected_meeting['id'], google_user['id'], my_rsvp['member_name'], target_lat, target_lng, 0.0, now_str, record_book_text, is_lounging_val))
+                        """, (selected_meeting['id'], google_user['id'], my_rsvp['member_name'], final_lat, final_lng, final_dist, now_str, record_book_text, is_lounging_val))
                         conn.commit()
                         conn.close()
                     except Exception:
