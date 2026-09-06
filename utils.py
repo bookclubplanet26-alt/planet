@@ -492,37 +492,15 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
 
     return True
 
-def cancel_rsvp_from_google_sheet_async(webhook_url, title, email, name, meeting_date=""):
+def _async_send_post(webhook_url, payload):
     """
-    백그라운드 비동기 스레드로 구글 시트 웹훅에 참가 신청 취소 요청 전송
+    백그라운드 비동기 스레드로 웹훅 URL에 POST 전송 (요청 대기시간 0초)
     """
-    import threading
-    if not webhook_url:
-        return False
-
-    payload = {
-        "type": "cancel_rsvp",
-        "action": "cancel_rsvp",
-        "title": title,
-        "meeting_name": title,
-        "모임명": title,
-        "email": email,
-        "회원이메일": email,
-        "name": name,
-        "회원성함": name,
-        "meeting_date": meeting_date,
-        "모임일자": meeting_date
-    }
-
     try:
-        fetch_google_sheet_rsvps.clear()
-        st.cache_data.clear()
+        if webhook_url:
+            requests.post(webhook_url, json=payload, timeout=8)
     except Exception:
         pass
-
-    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
-    t.start()
-    return True
 
 @st.cache_data(ttl=60, show_spinner=False)
 def fetch_google_sheet_rsvps():
@@ -636,6 +614,42 @@ def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email
     t.start()
     return True
 
+def _async_cancel_rsvp(webhook_url, payload, meeting_name, email, member_name="", meeting_date=""):
+    """
+    백그라운드에서 구글 시트 신청명단 탭의 신청 행을 직접 삭제하거나 웹훅으로 취소 요청
+    """
+    # 1순위: gspread 서비스 계정 직접 삭제
+    try:
+        gc = get_gspread_client()
+        if gc:
+            sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+            ws = sh.worksheet("신청명단") if "신청명단" in [w.title for w in sh.worksheets()] else None
+            if ws:
+                records = ws.get_all_records()
+                for idx, r in enumerate(records, start=2):
+                    r_mname = str(r.get("모임명") or r.get("meeting_name") or "")
+                    r_email = str(r.get("이메일") or r.get("email") or "").strip().lower()
+                    r_name = str(r.get("회원명") or r.get("member_name") or r.get("이름") or "").strip()
+                    r_date = str(r.get("모임일자") or r.get("meeting_date") or "").strip()
+
+                    m_match = (meeting_name in r_mname or r_mname in meeting_name) if meeting_name else False
+                    e_match = bool(email and email.strip().lower() == r_email)
+                    n_match = bool(member_name and (member_name.strip() in r_name or r_name in member_name.strip()))
+                    d_match = (not meeting_date or not r_date or meeting_date == r_date)
+
+                    if m_match and (e_match or n_match) and d_match:
+                        ws.delete_rows(idx)
+                        return
+    except Exception:
+        pass
+
+    # 2순위: Apps Script Webhook fallback
+    try:
+        if webhook_url:
+            requests.post(webhook_url, json=payload, timeout=8)
+    except Exception:
+        pass
+
 def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member_name="", meeting_date=""):
     """
     백그라운드 비동기 스레드로 구글 시트 신청명단에서 참가 신청 삭제 전송 (대기시간 0초)
@@ -663,7 +677,7 @@ def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member
     except Exception:
         pass
 
-    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
+    t = threading.Thread(target=_async_cancel_rsvp, args=(webhook_url, payload, meeting_name, email, member_name, meeting_date), daemon=True)
     t.start()
     return True
 
