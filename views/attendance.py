@@ -365,7 +365,11 @@ def render_attendance():
         st.markdown("<hr style='margin: 16px 0 12px 0;'/>", unsafe_allow_html=True)
         st.markdown("#### 📍 현장 위치(GPS) 인증")
 
-        col_gps_info, col_gps_btn = st.columns([3, 1.2])
+        col_gps_btn, col_gps_info = st.columns([1.3, 3.7])
+        with col_gps_btn:
+            loc_data = None
+            if streamlit_geolocation:
+                loc_data = streamlit_geolocation()
         with col_gps_info:
             st.markdown(
                 f"<div style='padding-top: 6px; font-size: 0.95rem; color: #334155; line-height: 1.5;'>"
@@ -374,10 +378,6 @@ def render_attendance():
                 f"</div>",
                 unsafe_allow_html=True
             )
-        with col_gps_btn:
-            loc_data = None
-            if streamlit_geolocation:
-                loc_data = streamlit_geolocation()
         
         user_gps_lat = None
         user_gps_lng = None
