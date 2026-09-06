@@ -49,6 +49,26 @@ def get_meeting_target_gps(meeting):
     # 기본값: 종각역점
     return "할리스 종각역점", 37.5699, 126.9823
 
+import os
+_GPS_COMP_DIR = os.path.join(os.path.dirname(__file__), "gps_component")
+_planet_gps = components.declare_component("planet_gps", path=_GPS_COMP_DIR)
+
+def render_gps_verifier(target_name="할리스 종각역점", already_verified=False, key="planet_gps_loc"):
+    """
+    모임 현장 위치(GPS) 인증을 위한 네이티브 플래닛 컴포넌트 렌더링
+    - 버튼과 장소 안내 텍스트가 한 줄(Flexbox)에 완벽하게 일체화
+    - 모던하고 깔끔한 한국어 [📍 위치 인증] 버튼 및 반응형 상태 전환
+    """
+    try:
+        return _planet_gps(
+            target_name=target_name,
+            already_verified=already_verified,
+            key=key,
+            default=None
+        )
+    except Exception:
+        return None
+
 def render_geolocation_button():
     """
     현장 출석 인증 버튼 HTML 컴포넌트를 렌더링

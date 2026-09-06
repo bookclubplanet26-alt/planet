@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, time, date
 from utils import (
-    haversine_distance, render_geolocation_button, LOCATION_PRESETS, 
+    haversine_distance, render_geolocation_button, render_gps_verifier, LOCATION_PRESETS, 
     fetch_google_sheet_members, fetch_google_sheet_attendances, 
     get_member_attendance_count, get_meeting_target_gps, 
     format_season_display, ATTENDANCE_WEBHOOK_URL, 
@@ -361,32 +361,31 @@ def render_attendance():
         rating_val = st.radio("⭐ 도서 별점 (선택)", [5, 4, 3, 2, 1], format_func=lambda x: "⭐" * x + f" ({x}점)", horizontal=True, key="att_rating_input")
         book_review_input = st.text_area("💬 책에 대한 간단한 감상평 (선택)", placeholder="책을 읽고 느낀 점이나 공유하고 싶은 한 줄 생각을 적어주세요 (선택)", key="att_book_review_input", height=80)
 
-        # 📍 실제 스마트폰 GPS 현장 위치 인증 섹션
+        # 📍 실제 스마트폰 GPS 현장 위치 인증 섹션 (통합 네이티브 컴포넌트)
         st.markdown("<hr style='margin: 16px 0 12px 0;'/>", unsafe_allow_html=True)
         st.markdown("#### 📍 현장 위치(GPS) 인증")
 
-        col_gps_btn, col_gps_info = st.columns([0.8, 4.2], gap="small", vertical_alignment="center")
-        with col_gps_btn:
-            loc_data = None
-            if streamlit_geolocation:
-                loc_data = streamlit_geolocation()
-        with col_gps_info:
-            st.markdown(
-                f"<div style='font-size: 0.95rem; color: #334155; line-height: 1.5;'>"
-                f"모임 장소: <b style='color: #0F172A;'>{target_name}</b> "
-                f"<span style='color: #64748B; font-size: 0.88rem;'>(현장 반경 <b>350m</b> 이내 인증 필요)</span>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
+        if "last_gps_data" not in st.session_state:
+            st.session_state.last_gps_data = None
+
+        loc_data = render_gps_verifier(
+            target_name=target_name,
+            already_verified=(st.session_state.last_gps_data is not None),
+            key=f"planet_gps_{selected_meeting['id']}"
+        )
+        if loc_data and loc_data.get('latitude') is not None:
+            st.session_state.last_gps_data = loc_data
+
+        effective_loc = loc_data or st.session_state.last_gps_data
         
         user_gps_lat = None
         user_gps_lng = None
         measured_dist_m = None
         is_within_350m = False
 
-        if loc_data and loc_data.get('latitude') is not None and loc_data.get('longitude') is not None:
-            user_gps_lat = float(loc_data['latitude'])
-            user_gps_lng = float(loc_data['longitude'])
+        if effective_loc and effective_loc.get('latitude') is not None and effective_loc.get('longitude') is not None:
+            user_gps_lat = float(effective_loc['latitude'])
+            user_gps_lng = float(effective_loc['longitude'])
             measured_dist_m = round(haversine_distance(user_gps_lat, user_gps_lng, target_lat, target_lng), 1)
             is_within_350m = (measured_dist_m <= 350)
 

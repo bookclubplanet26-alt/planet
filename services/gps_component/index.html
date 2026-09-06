@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    }
+    body {
+      background: transparent;
+      overflow: hidden;
+    }
+    .gps-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 4px 0;
+      flex-wrap: wrap;
+    }
+    .gps-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #2563EB;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
+    }
+    .gps-btn:hover {
+      background: #1D4ED8;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 6px rgba(37, 99, 235, 0.35);
+    }
+    .gps-btn:active {
+      transform: translateY(0);
+    }
+    .gps-btn:disabled {
+      background: #94A3B8;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .gps-btn.verified {
+      background: #059669;
+    }
+    .location-info {
+      font-size: 0.95rem;
+      color: #334155;
+      line-height: 1.5;
+    }
+    .location-info b.place-name {
+      color: #0F172A;
+      font-weight: 700;
+    }
+    .location-info .radius-tag {
+      color: #64748B;
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="gps-row">
+    <button id="gpsBtn" class="gps-btn" onclick="requestGps()">
+      <span id="btnIcon">📍</span>
+      <span id="btnText">위치 인증</span>
+    </button>
+    <div class="location-info">
+      모임 장소: <b id="placeName" class="place-name">할리스 종각역점</b>
+      <span class="radius-tag">(현장 반경 <b>350m</b> 이내 인증 필요)</span>
+    </div>
+  </div>
+
+  <script>
+    function sendMsg(type, payload) {
+      window.parent.postMessage(Object.assign({
+        isStreamlitMessage: true,
+        type: type
+      }, payload || {}), "*");
+    }
+
+    // Streamlit render listener
+    window.addEventListener("message", function(event) {
+      if (event.data && event.data.type === "streamlit:render") {
+        var args = event.data.args || {};
+        if (args.target_name) {
+          document.getElementById("placeName").innerText = args.target_name;
+        }
+        if (args.already_verified) {
+          var btn = document.getElementById("gpsBtn");
+          btn.classList.add("verified");
+          document.getElementById("btnIcon").innerText = "✅";
+          document.getElementById("btnText").innerText = "인증 완료";
+        }
+        sendMsg("streamlit:setFrameHeight", { height: document.body.scrollHeight || 44 });
+      }
+    });
+
+    // Notify Streamlit that component is ready
+    sendMsg("streamlit:componentReady", { apiVersion: 1 });
+    sendMsg("streamlit:setFrameHeight", { height: 44 });
+
+    function requestGps() {
+      var btn = document.getElementById("gpsBtn");
+      var btnIcon = document.getElementById("btnIcon");
+      var btnText = document.getElementById("btnText");
+
+      if (!navigator.geolocation) {
+        alert("현재 브라우저에서는 위치 서비스(GPS)를 지원하지 않습니다.");
+        return;
+      }
+
+      btn.disabled = true;
+      btnIcon.innerText = "⏳";
+      btnText.innerText = "위치 확인 중...";
+
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          btn.disabled = false;
+          btn.classList.add("verified");
+          btnIcon.innerText = "✅";
+          btnText.innerText = "위치 갱신";
+          sendMsg("streamlit:setComponentValue", {
+            value: {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy
+            }
+          });
+        },
+        function(error) {
+          btn.disabled = false;
+          btnIcon.innerText = "📍";
+          btnText.innerText = "위치 인증";
+          var msg = "위치 정보를 가져올 수 없습니다.";
+          if (error.code === 1) {
+            msg = "위치 권한이 차단되었습니다. 브라우저 주소창의 자물쇠/설정 아이콘을 눌러 '위치 권한'을 허용해 주세요.";
+          } else if (error.code === 3) {
+            msg = "위치 정보 요청 시간이 초과되었습니다. 다시 시도해 주세요.";
+          }
+          alert(msg);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+  </script>
+</body>
+</html>

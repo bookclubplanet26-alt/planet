@@ -21,6 +21,7 @@ from services.geo import (
     LOCATION_PRESETS,
     get_meeting_target_gps,
     render_geolocation_button,
+    render_gps_verifier,
 )
 
 # 3. 구글 시트 연동 전담 모듈 (services/sheets.py)
