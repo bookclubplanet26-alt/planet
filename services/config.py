@@ -22,9 +22,12 @@ ATTENDANCE_WEBHOOK_URL = _get_secret(
     "https://script.google.com/macros/s/AKfycbw1KwJAy3_GGXkQ_pYISTxExafydX2JGPyY6BsS711V1m4s49N7VwDL2dmeJbF8qBFMrA/exec"
 )
 
-# GCP 서비스 계정 키 파일 경로
+# GCP 서비스 계정 키 파일 경로 (st.secrets 또는 환경변수 우선 조회, 없으면 일반 service_account.json)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
-SERVICE_ACCOUNT_FILE = os.path.join(PROJECT_ROOT, "planet-app-507608-f8729d5756b5.json")
+SERVICE_ACCOUNT_FILE = _get_secret(
+    "SERVICE_ACCOUNT_FILE", 
+    os.getenv("GOOGLE_APPLICATION_CREDENTIALS", os.path.join(PROJECT_ROOT, "service_account.json"))
+)
 
 def get_current_kst():
     """

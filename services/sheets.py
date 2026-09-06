@@ -14,8 +14,8 @@ from services.config import (
 def get_gspread_client():
     """
     100% 비공개 구글 시트를 가져오기 위한 서비스 계정 클라이언트 생성
-    - 1순위: Streamlit secrets (Cloud 배포 환경)
-    - 2순위: 로컬 planet-app-507608-f8729d5756b5.json 키 파일
+    - 1순위: Streamlit secrets (Cloud 배포 및 로컬 .streamlit/secrets.toml)
+    - 2순위: 로컬 SERVICE_ACCOUNT_FILE 키 파일 (fallback)
     """
     try:
         if hasattr(st, "secrets") and "gcp_service_account" in st.secrets:
