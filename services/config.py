@@ -16,7 +16,6 @@ def _get_secret(key, default_val):
 # 구글 시트 ID 및 Webhook 설정 (st.secrets 우선 조회, 미설정 시 기존 기본값 자동 fallback)
 GOOGLE_SHEET_ID = _get_secret("GOOGLE_SHEET_ID", "1UbvS5tDzQvGlOh-TVagtYJ31pW9u8CNw-wENIK8iK48")
 GOOGLE_SHEET_ATTENDANCE_ID = _get_secret("GOOGLE_SHEET_ATTENDANCE_ID", "1k1lJmH6fmsPKD8h_-QMbTVy6nrh-RTJt-fUJAQWukKE")
-GOOGLE_SHEET_ACCOUNTING_ID = _get_secret("GOOGLE_SHEET_ACCOUNTING_ID", "17Puv1lLwzZy9M-rJIVGzMhEHrF3hb_zrWBjzgxXnKsk")
 ATTENDANCE_WEBHOOK_URL = _get_secret(
     "ATTENDANCE_WEBHOOK_URL", 
     "https://script.google.com/macros/s/AKfycbw1KwJAy3_GGXkQ_pYISTxExafydX2JGPyY6BsS711V1m4s49N7VwDL2dmeJbF8qBFMrA/exec"

@@ -8,7 +8,6 @@ utils.py - 북클럽 플래닛 통합 유틸리티 Facade 브릿지 모듈
 from services.config import (
     GOOGLE_SHEET_ID,
     GOOGLE_SHEET_ATTENDANCE_ID,
-    GOOGLE_SHEET_ACCOUNTING_ID,
     ATTENDANCE_WEBHOOK_URL,
     SERVICE_ACCOUNT_FILE,
     get_current_kst,
@@ -44,15 +43,13 @@ from services.sheets import (
     cancel_rsvp_from_google_sheet_async,
 )
 
-# 4. 예치금 및 회계장부 파이프라인 모듈 (services/accounting.py)
+# 4. 예치금 및 출석 통계 모듈 (services/accounting.py)
 from services.accounting import (
     get_member_attendance_count,
     count_member_season_attendances,
     calculate_deposit_season,
-    fetch_google_sheet_accounting,
     get_member_deposit_info,
     check_member_season_eligibility,
     format_member_attendance_and_deposit_text,
     render_deposit_refund_card,
-    sync_accounting_pipeline_with_members,
 )
