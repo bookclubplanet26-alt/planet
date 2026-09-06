@@ -74,8 +74,6 @@ def filter_attendances_for_meeting(att_df, selected_meeting):
 
 def render_attendance():
     """모임 출석체크 뷰"""
-    init_db()
-
     st.markdown("""
     <div style="margin-bottom: 24px;">
         <h2 style="margin-bottom: 4px; font-weight: 800; color: #1E293B;">📍 모임 출석체크</h2>
