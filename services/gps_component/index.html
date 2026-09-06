@@ -72,7 +72,7 @@
 <body>
   <div class="gps-row">
     <button id="gpsBtn" class="gps-btn" onclick="requestGps()">
-      <span id="btnIcon">📍</span>
+      <span id="btnIcon">🧭</span>
       <span id="btnText">위치 인증</span>
     </button>
     <div class="location-info">
@@ -140,7 +140,7 @@
         },
         function(error) {
           btn.disabled = false;
-          btnIcon.innerText = "📍";
+          btnIcon.innerText = "🧭";
           btnText.innerText = "위치 인증";
           var msg = "위치 정보를 가져올 수 없습니다.";
           if (error.code === 1) {

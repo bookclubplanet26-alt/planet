@@ -363,7 +363,7 @@ def render_attendance():
 
         # 📍 실제 스마트폰 GPS 현장 위치 인증 섹션 (통합 네이티브 컴포넌트)
         st.markdown("<hr style='margin: 16px 0 12px 0;'/>", unsafe_allow_html=True)
-        st.markdown("#### 📍 현장 위치(GPS) 인증")
+        st.markdown("#### 🧭 현장 위치(GPS) 인증")
 
         if "last_gps_data" not in st.session_state:
             st.session_state.last_gps_data = None
@@ -395,7 +395,7 @@ def render_attendance():
                 st.error(f"❌ **현장 거리 초과**: 모임 장소({target_name})로부터 **{measured_dist_m}m** 떨어져 있습니다. (350m 이내 현장에서만 출석 가능)")
         else:
             if not bypass_time:
-                st.info("💡 위 **'Get Location'** 버튼을 눌러 스마트폰 현재 위치를 인증해 주세요. (브라우저 위치 권한 '허용' 필요)")
+                st.info("💡 위 **'🧭 위치 인증'** 버튼을 눌러 스마트폰 현재 위치를 인증해 주세요. (브라우저 위치 권한 '허용' 필요)")
 
         if not is_valid_time_window and not bypass_time:
             st.warning(f"⏱️ **출석체크 가능 시간 안내**: **{selected_meeting['meeting_date']} 모임 당일 16:00 ~ 17:00**에만 출석체크가 가능합니다.")
@@ -410,7 +410,7 @@ def render_attendance():
             elif not is_valid_time_window and not bypass_time:
                 st.error(f"⚠️ 모임 시간을 확인해 주세요. ({selected_meeting['meeting_date']} 모임 당일 16:00 ~ 17:00만 출석체크 가능)")
             elif not bypass_time and (user_gps_lat is None or user_gps_lng is None):
-                st.error("⚠️ 먼저 위 'Get Location' 버튼을 눌러 현장 위치(GPS) 인증을 진행해 주세요.")
+                st.error("⚠️ 먼저 위 '🧭 위치 인증' 버튼을 눌러 현장 위치(GPS) 인증을 진행해 주세요.")
             elif not bypass_time and not is_within_350m:
                 st.error(f"⚠️ 모임 장소({target_name})로부터 {measured_dist_m}m 떨어져 있어 출석체크할 수 없습니다. (350m 이내 현장에서만 가능)")
             else:
