@@ -5,7 +5,7 @@ from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
     check_member_season_eligibility, get_all_meetings, get_rsvps_for_meeting,
-    add_rsvp, cancel_rsvp, fetch_google_sheet_meetings
+    add_rsvp, cancel_rsvp
 )
 
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False):
@@ -212,17 +212,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
 
 def render_schedule():
-    col_hdr1, col_hdr2 = st.columns([3, 1])
-    with col_hdr1:
-        st.subheader("📅 모임 일정 및 신청")
-    with col_hdr2:
-        if st.button("🔄 최신 일정 새로고침", key="refresh_schedule_top_btn", use_container_width=True):
-            try:
-                fetch_google_sheet_meetings.clear()
-                st.cache_data.clear()
-            except Exception:
-                pass
-            st.rerun()
+    st.subheader("📅 모임 일정 및 신청")
 
     # 리셋 플래그 처리 (widget 생성 전 세션 스테이트 설정)
     if "reset_admin_category" in st.session_state and st.session_state["reset_admin_category"]:
