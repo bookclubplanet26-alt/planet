@@ -106,7 +106,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             if is_eligible or is_admin:
                 st.markdown(f"💬 **오픈 카톡방 주소**: [{kakao_url}]({kakao_url})")
             else:
-                st.warning("🔒 오픈 카톡방 주소는 **이번 시즌 예치금 등록(입금 완료) 회원**에게만 공개됩니다. 먼저 시즌 등록 및 예치금을 입금해 주세요.")
+                st.warning("🔒 오픈 카톡방 주소는 **이번 시즌 등록 회원**에게만 공개됩니다. 먼저 시즌 등록을 해주세요.")
     
     if is_ended:
         st.info(f"🏁 **모임 종료** (최종 {confirmed_count}명 참가 완료)")
