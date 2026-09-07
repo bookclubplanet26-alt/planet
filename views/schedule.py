@@ -5,7 +5,7 @@ from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
     check_member_season_eligibility, get_all_meetings, get_rsvps_for_meeting,
-    add_rsvp, cancel_rsvp
+    add_rsvp, cancel_rsvp, fetch_google_sheet_meetings
 )
 
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False):
@@ -212,7 +212,17 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
 
 def render_schedule():
-    st.subheader("📅 모임 일정 및 신청")
+    col_hdr1, col_hdr2 = st.columns([3, 1])
+    with col_hdr1:
+        st.subheader("📅 모임 일정 및 신청")
+    with col_hdr2:
+        if st.button("🔄 최신 일정 새로고침", key="refresh_schedule_top_btn", use_container_width=True):
+            try:
+                fetch_google_sheet_meetings.clear()
+                st.cache_data.clear()
+            except Exception:
+                pass
+            st.rerun()
 
     # 리셋 플래그 처리 (widget 생성 전 세션 스테이트 설정)
     if "reset_admin_category" in st.session_state and st.session_state["reset_admin_category"]:
@@ -305,7 +315,7 @@ def render_schedule():
                                 }
 
                     if not found_member:
-                        st.error("🚨 미등록 회원입니다. 구글 시트 등록 상태 및 이메일을 확인해 주세요.")
+                        st.error("🚨 미등록 회원입니다. 모임장에게 연락해 주세요.")
                         st.session_state.google_user = None
                     else:
                         st.session_state.google_user = found_member
@@ -492,14 +502,17 @@ def render_schedule():
                         with st.spinner("🚀 정규 모임을 개설하는 중입니다..."):
                             from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
                             m_season = get_club_season_code()
-                            append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
-                        created_msg = f"🎉 '{m_title}' 정규 모임이 성공적으로 개설되었습니다!"
-                        st.session_state["meeting_created_toast"] = created_msg
-                        st.session_state["reset_admin_category"] = True
-                        st.toast(created_msg, icon="🎉")
-                        st.success(created_msg)
-                        st.balloons()
-                        st.rerun()
+                            ok = append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
+                        if ok:
+                            created_msg = f"🎉 '{m_title}' 정규 모임이 성공적으로 개설되었습니다!"
+                            st.session_state["meeting_created_toast"] = created_msg
+                            st.session_state["reset_admin_category"] = True
+                            st.toast(created_msg, icon="🎉")
+                            st.success(created_msg)
+                            st.balloons()
+                            st.rerun()
+                        else:
+                            st.error("🚨 구글 시트에 모임을 저장하지 못했습니다. 서비스 계정 권한 또는 네트워크 상태를 확인해 주세요.")
 
             elif category_choice == "지정책":
                 with st.form("form_jijung_meeting"):
@@ -544,14 +557,17 @@ def render_schedule():
                                 from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
                                 m_season = get_club_season_code()
                                 # 구글 시트에는 순수 모임설명만 전송 (책장/카톡 태그 제거)
-                                append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, pure_desc, m_season, jijung_leader=jijung_leader.strip(), kakao_url=kakao_link.strip())
-                            created_msg = f"🎉 '{m_title}' 지정책 모임이 성공적으로 개설되었습니다!"
-                            st.session_state["meeting_created_toast"] = created_msg
-                            st.session_state["reset_admin_category"] = True
-                            st.toast(created_msg, icon="🎉")
-                            st.success(created_msg)
-                            st.balloons()
-                            st.rerun()
+                                ok = append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, pure_desc, m_season, jijung_leader=jijung_leader.strip(), kakao_url=kakao_link.strip())
+                            if ok:
+                                created_msg = f"🎉 '{m_title}' 지정책 모임이 성공적으로 개설되었습니다!"
+                                st.session_state["meeting_created_toast"] = created_msg
+                                st.session_state["reset_admin_category"] = True
+                                st.toast(created_msg, icon="🎉")
+                                st.success(created_msg)
+                                st.balloons()
+                                st.rerun()
+                            else:
+                                st.error("🚨 구글 시트에 모임을 저장하지 못했습니다. 서비스 계정 권한 또는 네트워크 상태를 확인해 주세요.")
 
             else: # 소모임/벙
                 with st.form("form_bung_meeting"):
@@ -580,12 +596,15 @@ def render_schedule():
                             with st.spinner("🚀 소모임을 개설하는 중입니다..."):
                                 from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
                                 m_season = get_club_season_code()
-                                append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
-                            created_msg = f"🎉 '{m_title}' 소모임/벙 모임이 성공적으로 개설되었습니다!"
-                            st.session_state["meeting_created_toast"] = created_msg
-                            st.session_state["reset_admin_category"] = True
-                            st.toast(created_msg, icon="🎉")
-                            st.success(created_msg)
-                            st.balloons()
-                            st.rerun()
+                                ok = append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
+                            if ok:
+                                created_msg = f"🎉 '{m_title}' 소모임/벙 모임이 성공적으로 개설되었습니다!"
+                                st.session_state["meeting_created_toast"] = created_msg
+                                st.session_state["reset_admin_category"] = True
+                                st.toast(created_msg, icon="🎉")
+                                st.success(created_msg)
+                                st.balloons()
+                                st.rerun()
+                            else:
+                                st.error("🚨 구글 시트에 모임을 저장하지 못했습니다. 서비스 계정 권한 또는 네트워크 상태를 확인해 주세요.")
 

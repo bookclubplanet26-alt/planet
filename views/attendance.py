@@ -99,14 +99,14 @@ def render_attendance():
             st.write("")
             login_submitted = st.button("🔑 Google 인증", key="att_google_login_btn", type="primary", use_container_width=True)
 
-            if login_submitted:
-                email_str = g_email_input.strip().lower()
-                if "@" not in email_str or "." not in email_str:
-                    st.error("올바른 Google 이메일 주소를 입력해 주세요.")
-                else:
-                    with st.spinner("🔑 회원 정보를 확인하는 중입니다..."):
-                        success, df_sheet, err_msg = fetch_google_sheet_members()
-                    found_member = None
+        if login_submitted:
+            email_str = g_email_input.strip().lower()
+            if "@" not in email_str or "." not in email_str:
+                st.error("올바른 Google 이메일 주소를 입력해 주세요.")
+            else:
+                with st.spinner("🔑 회원 정보를 확인하는 중입니다..."):
+                    success, df_sheet, err_msg = fetch_google_sheet_members()
+                found_member = None
 
                 if success and df_sheet is not None:
                     email_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["이메일", "email", "mail"])), df_sheet.columns[1] if len(df_sheet.columns)>1 else None)
@@ -142,7 +142,7 @@ def render_attendance():
                             }
 
                 if not found_member:
-                    st.error("🚨 미등록 회원입니다. 구글 시트 등록 상태 및 이메일을 확인해 주세요.")
+                    st.error("🚨 미등록 회원입니다. 모임장에게 연락해 주세요.")
                     st.session_state.google_user = None
                 else:
                     st.session_state.google_user = found_member
@@ -246,21 +246,12 @@ def render_attendance():
             st.info("📌 현재 예정된 정규모임이 없습니다.")
         else:
             st.info(f"📌 [{google_user['display_name']}] 님은 현재 참가 신청한 예정된 정규모임이 없습니다. 먼저 **'모임 일정 & 신청'** 메뉴에서 정규모임 신청을 진행해 주세요.")
-            col_b1, col_b2 = st.columns(2)
-            with col_b1:
-                if st.button("📅 '모임 일정 & 신청' 바로가기", key="att_goto_sched_btn", type="primary", use_container_width=True):
-                    st.session_state.current_page = "schedule"
-                    try:
-                        st.switch_page("pages/3_📅_모임_일정_및_신청.py")
-                    except Exception:
-                        st.rerun()
-            with col_b2:
-                if st.button("⬅️ 메인 메뉴로 돌아가기", key="att_goto_home_btn", use_container_width=True):
-                    st.session_state.current_page = "home"
-                    try:
-                        st.switch_page("app.py")
-                    except Exception:
-                        st.rerun()
+            if st.button("📅 '모임 일정 & 신청' 바로가기", key="att_goto_sched_btn", type="primary", use_container_width=True):
+                st.session_state.current_page = "schedule"
+                try:
+                    st.switch_page("pages/3_📅_모임_일정_및_신청.py")
+                except Exception:
+                    st.rerun()
         return
 
     meeting_dict = {f"[{m['meeting_date']}] {m['title']}\n📍 {m['location_name']}": m for m in my_meetings}

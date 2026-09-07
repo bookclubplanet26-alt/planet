@@ -67,7 +67,7 @@ def render_bookshelf():
                             }
 
                 if not found_member:
-                    st.error("🚨 미등록 회원입니다. 구글 시트 등록 상태 및 이메일을 확인해 주세요.")
+                    st.error("🚨 미등록 회원입니다. 모임장에게 연락해 주세요.")
                     st.session_state.google_user = None
                 else:
                     st.session_state.google_user = found_member

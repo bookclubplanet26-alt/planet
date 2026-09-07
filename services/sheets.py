@@ -117,7 +117,7 @@ def fetch_google_sheet_attendances():
         pass
     return False, None
 
-@st.cache_data(ttl=300, show_spinner="📅 최신 모임 목록을 불러오는 중...")
+@st.cache_data(ttl=60, show_spinner="📅 최신 모임 목록을 불러오는 중...")
 def fetch_google_sheet_meetings():
     """
     모임 목록 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
@@ -168,8 +168,15 @@ def get_google_sheet_meetings_list():
         loc_name = str(row.get('장소명', '')).strip()
         book_title = str(row.get('도서명', '')).strip()
         author = str(row.get('저자', '')).strip()
-        desc = str(row.get('설명', '')).strip()
-        
+        desc = str(row.get('모임설명', row.get('설명', ''))).strip()
+        leader = str(row.get('지정책장', row.get('책장', ''))).strip()
+        kakao = str(row.get('오픈카톡방', row.get('카톡방', ''))).strip()
+
+        if leader and f"[책장:{leader}]" not in desc:
+            desc = f"[책장:{leader}]\n" + desc
+        if kakao and f"[카톡:{kakao}]" not in desc:
+            desc = desc + f"\n[카톡:{kakao}]"
+
         try:
             max_p = int(row.get('정원', 8))
         except Exception:
@@ -366,11 +373,8 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
 
 def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author, meeting_date, meeting_time, location_name, max_participants=8, description="", season="", jijung_leader="", kakao_url=""):
     """
-    새로 개설된 모임 정보를 구글 시트 웹훅으로 비동기 전송
+    새로 개설된 모임 정보를 구글 시트 '모임목록' 탭에 직접 저장하고 캐시를 즉시 갱신
     """
-    if not webhook_url:
-        return False
-
     leader_name = jijung_leader.strip()
     k_url = kakao_url.strip()
     clean_desc = description or ""
@@ -385,24 +389,55 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
         except Exception:
             pass
 
-    payload = {
-        "type": "add_meeting",
-        "action": "add_meeting",
-        "title": title,
-        "book_title": book_title,
-        "author": author,
-        "meeting_date": meeting_date,
-        "meeting_time": meeting_time,
-        "location_name": location_name,
-        "max_participants": max_participants,
-        "description": description,
-        "season": season,
-        "시즌": season,
-        "jijung_leader": leader_name,
-        "지정책장": leader_name,
-        "kakao_url": k_url,
-        "오픈카톡방": k_url
-    }
+    row_data = [
+        title,
+        str(meeting_date),
+        str(meeting_time),
+        str(location_name),
+        str(book_title),
+        str(author),
+        str(season),
+        max_participants,
+        clean_desc,
+        leader_name,
+        k_url
+    ]
+
+    # 1순위: gspread 서비스 계정으로 '모임목록' 시트에 즉시 행 추가
+    appended = False
+    try:
+        gc = get_gspread_client()
+        if gc:
+            sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+            ws = sh.worksheet("모임목록") if "모임목록" in [w.title for w in sh.worksheets()] else None
+            if ws:
+                ws.append_row(row_data)
+                appended = True
+    except Exception:
+        pass
+
+    # 2순위: 웹훅 비동기 통지 (fallback 및 로그용)
+    if webhook_url:
+        payload = {
+            "type": "add_meeting",
+            "action": "add_meeting",
+            "title": title,
+            "book_title": book_title,
+            "author": author,
+            "meeting_date": meeting_date,
+            "meeting_time": meeting_time,
+            "location_name": location_name,
+            "max_participants": max_participants,
+            "description": description,
+            "season": season,
+            "시즌": season,
+            "jijung_leader": leader_name,
+            "지정책장": leader_name,
+            "kakao_url": k_url,
+            "오픈카톡방": k_url
+        }
+        t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
+        t.start()
 
     try:
         fetch_google_sheet_meetings.clear()
@@ -410,31 +445,47 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
     except Exception:
         pass
 
-    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
-    t.start()
-    return True
+    return appended
 
 def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
     """
-    구글 시트에서 모임 삭제 요청 전송
+    구글 시트 '모임목록' 탭에서 모임 삭제 및 캐시 즉시 갱신
     """
-    if not webhook_url:
-        return False
-
-    payload = {
-        "type": "delete_meeting",
-        "action": "delete_meeting",
-        "title": title,
-        "meeting_name": title,
-        "모임명": title,
-        "meeting_date": meeting_date,
-        "모임일자": meeting_date
-    }
-
+    deleted = False
     try:
-        requests.post(webhook_url, json=payload, timeout=5)
+        gc = get_gspread_client()
+        if gc:
+            sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+            ws = sh.worksheet("모임목록") if "모임목록" in [w.title for w in sh.worksheets()] else None
+            if ws:
+                records = ws.get_all_records()
+                for idx, r in enumerate(records, start=2):
+                    r_title = str(r.get("모임명") or "").strip()
+                    r_date = str(r.get("모임일자") or "").strip()
+                    t_match = (title == r_title or title in r_title or r_title in title)
+                    d_match = (not meeting_date or not r_date or str(meeting_date).strip() == r_date)
+                    if t_match and d_match:
+                        ws.delete_rows(idx)
+                        deleted = True
+                        break
     except Exception:
         pass
+
+    if webhook_url:
+        payload = {
+            "type": "delete_meeting",
+            "action": "delete_meeting",
+            "title": title,
+            "meeting_name": title,
+            "모임명": title,
+            "meeting_date": meeting_date,
+            "모임일자": meeting_date
+        }
+        try:
+            t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
+            t.start()
+        except Exception:
+            pass
 
     try:
         fetch_google_sheet_meetings.clear()
@@ -443,7 +494,7 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
     except Exception:
         pass
 
-    return True
+    return deleted
 
 @st.cache_data(ttl=60, show_spinner="📝 참가 신청 명단을 동기화하는 중...")
 def fetch_google_sheet_rsvps():
