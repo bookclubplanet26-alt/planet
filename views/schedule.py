@@ -586,6 +586,7 @@ def render_schedule():
                     m_loc_name = st.text_input("장소", placeholder="예: 강남역 인근 보드게임 카페", key="bung_loc")
                     m_lat, m_lng = 37.4979, 127.0276
                     m_max = st.number_input("정원 (명)", min_value=2, max_value=30, value=6, key="bung_max")
+                    kakao_link = st.text_input("오픈 카카오톡방 주소 (URL)", placeholder="예: https://open.kakao.com/o/...", key="bung_kakao_link")
                     m_desc = st.text_area("소모임 내용 및 안내", placeholder="벙개 모임의 자세한 내용을 적어주세요.", key="bung_desc")
 
                     submit_bung = st.form_submit_button("🚀 소모임/벙 개설 완료", type="primary", use_container_width=True)
@@ -596,7 +597,8 @@ def render_schedule():
                             with st.spinner("🚀 소모임을 개설하는 중입니다..."):
                                 from utils import ATTENDANCE_WEBHOOK_URL, append_meeting_to_google_sheet_async, get_club_season_code
                                 m_season = get_club_season_code()
-                                ok = append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
+                                pure_desc = m_desc.strip() if m_desc else ""
+                                ok = append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, pure_desc, m_season, kakao_url=kakao_link.strip())
                             if ok:
                                 created_msg = f"🎉 '{m_title}' 소모임/벙 모임이 성공적으로 개설되었습니다!"
                                 st.session_state["meeting_created_toast"] = created_msg
