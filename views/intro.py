@@ -70,11 +70,11 @@ def render_intro():
 
     st.markdown("<br/><hr style='margin: 20px 0;'/>", unsafe_allow_html=True)
 
-    # 📸 플래닛 인스타그램 링크 버튼 (기존 시그니처 인스타그램 컬러)
+    # 📸 플래닛 인스타그램 링크 버튼 (기존 원본 스타일 100% 복원 - 선명한 흰색 텍스트)
     st.markdown("""
-    <a href="https://www.instagram.com/bookclubplanet/" target="_blank" style="text-decoration: none;">
-        <div style="background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045); padding: 14px 20px; border-radius: 12px; color: #FFFFFF !important; font-weight: 700; text-align: center; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 4px 14px rgba(253, 29, 29, 0.25); font-size: 1.05rem;">
-            <span style="color: #FFFFFF !important;">📸 <b>북클럽 플래닛 공식 인스타그램 구경하기</b> (@bookclubplanet) 🔗</span>
+    <a href="https://www.instagram.com/bookclubplanet/" target="_blank" style="text-decoration: none; color: white !important;">
+        <div style="background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045); padding: 14px 20px; border-radius: 12px; color: white !important; font-weight: bold; text-align: center; margin-top: 10px; margin-bottom: 30px; box-shadow: 0 4px 14px rgba(253, 29, 29, 0.25); font-size: 1.05rem;">
+            📸 <b>북클럽 플래닛 공식 인스타그램 구경하기</b> (@bookclubplanet) 🔗
         </div>
     </a>
     """, unsafe_allow_html=True)

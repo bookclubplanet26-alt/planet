@@ -310,5 +310,17 @@ def apply_custom_css():
             border-color: #424242 !important;
         }
     }
+    
+    /* 인스타그램 링크 버튼 (방문 후 색상 변경 및 다크모드 반전 방지 - 순백색 고정) */
+    a[href*="instagram.com"],
+    a[href*="instagram.com"]:visited,
+    a[href*="instagram.com"]:hover,
+    a[href*="instagram.com"]:active,
+    a[href*="instagram.com"] div,
+    a[href*="instagram.com"] b,
+    a[href*="instagram.com"] span {
+        color: #FFFFFF !important;
+        text-decoration: none !important;
+    }
     </style>
     ''', unsafe_allow_html=True)
