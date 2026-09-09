@@ -198,30 +198,6 @@ def apply_custom_css():
     }
 
     
-    /* 10-1. 인스타그램 바로가기 버튼 (모던 플랫 & 일관된 톤앤매너) */
-    .instagram-flat-btn {
-        display: block;
-        background-color: #FFFFFF;
-        color: #1E1E1E !important;
-        border: 1.5px solid #E0DCD3;
-        border-radius: 12px;
-        padding: 14px 18px;
-        text-align: center;
-        font-weight: 700;
-        font-size: 1.02rem;
-        text-decoration: none !important;
-        margin-top: 10px;
-        margin-bottom: 24px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-        transition: all 0.15s ease;
-    }
-    .instagram-flat-btn:hover {
-        border-color: #C13584;
-        background-color: #FDF9FB;
-        color: #C13584 !important;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(193, 53, 132, 0.08);
-    }
 
     /* 10. 카카오톡 링크 버튼 */
     .kakao-link-btn {
@@ -257,16 +233,6 @@ def apply_custom_css():
 
     /* 12. 다크모드 대응 완성도 제고
 
-        .instagram-flat-btn {
-            background-color: #201E1B !important;
-            color: #EDEDED !important;
-            border-color: #383430 !important;
-        }
-        .instagram-flat-btn:hover {
-            border-color: #E1306C !important;
-            background-color: #281E24 !important;
-            color: #FF80AB !important;
-        }
      (눈부심 방지 및 반전 시 가독성 보장) */
     @media (prefers-color-scheme: dark) {
         .main {
