@@ -117,41 +117,38 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             if leader_name:
                 st.markdown(f"<div style='font-size:0.92rem; color:#5D4037; margin-bottom:6px;'>👤 <b>지정책장</b>: <span style='background:#F0ECE1; padding:2px 8px; border-radius:6px; font-weight:600;'>{leader_name}</span></div>", unsafe_allow_html=True)
 
-        # 2. 본문 정보 영역 (백틱 제거, 고대비 및 가독성 최적화 박스)
-        book_info_html = ""
-        if is_bung:
-            pass
-        elif is_unlimited:
-            book_info_html = '<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">모임형태:</span> <span class="meta-strong">자유책 (각자 읽은 책 지참)</span></div>'
-        else:
-            author_str = f" <span style='color:#777; font-size:0.9rem;'>(저자: {meeting['author']})</span>" if meeting['author'] and str(meeting['author']).strip() and str(meeting['author']).strip() != "자율" else ""
-            book_info_html = f'<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">선정도서:</span> <span class="meta-strong">{meeting["book_title"]}</span>{author_str}</div>'
+        # 2. 본문 정보 영역 (마크다운 인덴트 오류 방지 - 공백 없는 한 덩어리 HTML)
+        meta_items = [
+            f'<div class="meeting-meta-item">🗓️ <span style="color:#6D4C41; font-weight:600;">일시:</span> <span class="meta-strong" style="font-size:1.02rem;">{meeting["meeting_date"]} {meeting["meeting_time"]}</span></div>',
+            f'<div class="meeting-meta-item">📍 <span style="color:#6D4C41; font-weight:600;">장소:</span> <span class="meta-strong">{meeting["location_name"]}</span></div>'
+        ]
 
-        desc_html = ""
+        if not is_bung:
+            if is_unlimited:
+                meta_items.append('<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">모임형태:</span> <span class="meta-strong">자유책 (각자 읽은 책 지참)</span></div>')
+            else:
+                author_str = f" <span style='color:#777; font-size:0.9rem;'>(저자: {meeting['author']})</span>" if meeting['author'] and str(meeting['author']).strip() and str(meeting['author']).strip() != "자율" else ""
+                meta_items.append(f'<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">선정도서:</span> <span class="meta-strong">{meeting["book_title"]}</span>{author_str}</div>')
+
         if clean_desc and clean_desc.strip():
-            desc_html = f'<div class="meeting-meta-item" style="margin-top:6px; padding-top:6px; border-top:1px dashed #EAE5D9;">📝 <span style="color:#6D4C41; font-weight:600;">모임안내:</span> <span>{clean_desc}</span></div>'
+            formatted_desc = clean_desc.strip().replace("\n", "<br/>")
+            desc_html = (
+                f'<div class="meeting-meta-item" style="margin-top:8px; padding-top:8px; border-top:1px dashed #EAE5D9;">'
+                f'📝 <span style="color:#6D4C41; font-weight:600;">모임안내:</span>'
+                f'<div style="margin-top:4px; line-height:1.55; word-break:break-word; color:#2D2D2D;">{formatted_desc}</div>'
+                f'</div>'
+            )
+            meta_items.append(desc_html)
 
-        meta_box_content = f"""
-        <div class="meeting-meta-box">
-            <div class="meeting-meta-item">🗓️ <span style="color:#6D4C41; font-weight:600;">일시:</span> <span class="meta-strong" style="font-size:1.02rem;">{meeting['meeting_date']} {meeting['meeting_time']}</span></div>
-            <div class="meeting-meta-item">📍 <span style="color:#6D4C41; font-weight:600;">장소:</span> <span class="meta-strong">{meeting['location_name']}</span></div>
-            {book_info_html}
-            {desc_html}
-        </div>
-        """
-        st.markdown(meta_box_content, unsafe_allow_html=True)
+        meta_box_html = f'<div class="meeting-meta-box">{"".join(meta_items)}</div>'
+        st.markdown(meta_box_html, unsafe_allow_html=True)
 
-        # 3. 오픈 카카오톡방 주소 (시즌 회원에게 전용 링크 버튼 제공)
+        # 3. 오픈 카카오톡방 주소 (시즌 회원에게 전용 링크 버튼 제공 - 인덴트 제거)
         if kakao_url:
             is_eligible, _, _ = check_member_season_eligibility(google_user)
             if is_eligible or is_admin:
-                st.markdown(f'''
-                <div style="margin: 6px 0 10px 0;">
-                    <a href="{kakao_url}" target="_blank" class="kakao-link-btn">
-                        💬 <b>오픈 카톡방 입장하기</b> ↗
-                    </a>
-                </div>
-                ''', unsafe_allow_html=True)
+                kakao_btn_html = f'<div style="margin:6px 0 10px 0;"><a href="{kakao_url}" target="_blank" class="kakao-link-btn">💬 <b>오픈 카톡방 입장하기</b> ↗</a></div>'
+                st.markdown(kakao_btn_html, unsafe_allow_html=True)
             else:
                 st.warning("🔒 오픈 카톡방 주소는 **이번 시즌 등록 회원**에게만 공개됩니다. 먼저 시즌 등록을 해주세요.")
 
