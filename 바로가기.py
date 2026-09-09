@@ -35,7 +35,7 @@ if st.session_state.current_page != "home":
         if st.button("⬅️ 메인 메뉴로", key="top_back_home_btn", use_container_width=True):
             go_to_home()
     with col_nav_right:
-        st.markdown("<div style='text-align:right; font-weight:bold; color:#795548; padding-top:6px;'>🪐 북클럽 플래닛</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:right; font-weight:700; font-size:0.95rem; color:#6D4C41; padding-top:12px;'>🪐 북클럽 플래닛</div>", unsafe_allow_html=True)
     st.markdown("<hr style='margin: 8px 0 16px 0; border: 0; border-top: 1px solid #EAE5D9;'/>", unsafe_allow_html=True)
 
 # 페이지 라우팅
@@ -46,6 +46,7 @@ if page == "home":
     st.markdown("""
     <div class="hero-box">
         <div class="hero-title">🪐 북클럽 플래닛</div>
+        <div class="hero-subtitle">느슨한 지식 교류 모임 Since 2017</div>
     </div>
     """, unsafe_allow_html=True)
 
