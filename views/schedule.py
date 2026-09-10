@@ -91,13 +91,13 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             with col_t1:
                 st.markdown(
                     f'<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:6px;">'
-                    f'<div style="font-size:1.18rem; font-weight:700; color:#1E1E1E;">📖 {m_title}</div>'
+                    f'<div class="meeting-card-title">📖 {m_title}</div>'
                     f'<div>{status_chip_html}</div>'
                     f'</div>', 
                     unsafe_allow_html=True
                 )
                 if leader_name:
-                    st.markdown(f"<div style='font-size:0.92rem; color:#5D4037; margin-bottom:6px;'>👤 <b>지정책장</b>: <span style='background:#F0ECE1; padding:2px 8px; border-radius:6px; font-weight:600;'>{leader_name}</span></div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='meeting-leader-badge'>👤 <b>지정책장</b>: <span>{leader_name}</span></div>", unsafe_allow_html=True)
             with col_t2:
                 if st.button("❌", key=f"{key_prefix}_del_m_{m_id}", help="이 모임을 목록에서 삭제합니다"):
                     from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
@@ -110,13 +110,13 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         else:
             st.markdown(
                 f'<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:6px;">'
-                f'<div style="font-size:1.18rem; font-weight:700; color:#1E1E1E;">📖 {m_title}</div>'
+                f'<div class="meeting-card-title">📖 {m_title}</div>'
                 f'<div>{status_chip_html}</div>'
                 f'</div>', 
                 unsafe_allow_html=True
             )
             if leader_name:
-                st.markdown(f"<div style='font-size:0.92rem; color:#5D4037; margin-bottom:6px;'>👤 <b>지정책장</b>: <span style='background:#F0ECE1; padding:2px 8px; border-radius:6px; font-weight:600;'>{leader_name}</span></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='meeting-leader-badge'>👤 <b>지정책장</b>: <span>{leader_name}</span></div>", unsafe_allow_html=True)
 
         # 2. 본문 정보 영역 (마크다운 인덴트 오류 방지 - 공백 없는 한 덩어리 HTML)
         meta_items = [
@@ -136,7 +136,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             desc_html = (
                 f'<div class="meeting-meta-item" style="margin-top:8px; padding-top:8px; border-top:1px dashed #EAE5D9;">'
                 f'📝 <span style="color:#6D4C41; font-weight:600;">모임안내:</span>'
-                f'<div style="margin-top:4px; line-height:1.55; word-break:break-word; color:#2D2D2D;">{formatted_desc}</div>'
+                f'<div class="meeting-desc-text">{formatted_desc}</div>'
                 f'</div>'
             )
             meta_items.append(desc_html)

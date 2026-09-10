@@ -234,6 +234,40 @@ def apply_custom_css():
     /* 12. 다크모드 대응 완성도 제고
 
      (눈부심 방지 및 반전 시 가독성 보장) */
+    
+    /* 모임 카드 제목 및 안내글 (다크모드 가독성 완벽 지원) */
+    .meeting-card-title {
+        font-size: 1.18rem;
+        font-weight: 700;
+        color: #1A1A1A;
+        letter-spacing: -0.3px;
+        line-height: 1.35;
+    }
+    .meeting-leader-badge {
+        font-size: 0.92rem;
+        color: #5D4037;
+        margin-bottom: 6px;
+    }
+    .meeting-leader-badge span {
+        background-color: #F0ECE1;
+        color: #3E2723;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+    .meeting-desc-text {
+        margin-top: 4px;
+        line-height: 1.55;
+        word-break: break-word;
+        color: #2D2D2D;
+    }
+    .cal-legend-title {
+        font-weight: 700;
+        font-size: 0.96rem;
+        color: #3E2723;
+        margin-bottom: 8px;
+    }
+
     @media (prefers-color-scheme: dark) {
         .main {
             background-color: #161513 !important;
@@ -246,6 +280,23 @@ def apply_custom_css():
         .hero-title {
             color: #FFFFFF !important;
         }
+        .meeting-card-title {
+            color: #FFFFFF !important;
+        }
+        .meeting-leader-badge {
+            color: #D7CCC8 !important;
+        }
+        .meeting-leader-badge span {
+            background-color: #2E2724 !important;
+            color: #F5EFE6 !important;
+        }
+        .meeting-desc-text {
+            color: #EDEDED !important;
+        }
+        .cal-legend-title {
+            color: #FFFFFF !important;
+        }
+
         .hero-subtitle {
             color: #BCAAA4 !important;
         }
@@ -433,7 +484,8 @@ def apply_custom_css():
         line-height: 1.1;
     }
 
-    /* 다크모드 대응 */
+    /* 캘린더 다크모드 대응 */
+
     @media (prefers-color-scheme: dark) {
         .cal-legend-card {
             background-color: #1E1C1A !important;

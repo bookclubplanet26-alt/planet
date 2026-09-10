@@ -73,7 +73,7 @@ def render_season_calendar_2609():
     # 범례 & 시즌 요약 안내 카드
     legend_html = (
         '<div class="cal-legend-card">'
-        '<div style="font-weight:700; font-size:0.96rem; color:#3E2723; margin-bottom:8px;">'
+        '<div class="cal-legend-title">'
         '🪐 <b>2609 시즌 일정표</b> <span style="font-size:0.85rem; color:#795548; font-weight:500;">(2026.09.12 ~ 2026.11.01, 총 8주)</span>'
         '</div>'
         '<div style="display:flex; flex-wrap:wrap; gap:10px; font-size:0.84rem; line-height:1.4;">'
