@@ -3,21 +3,30 @@ from datetime import date
 import streamlit as st
 
 def generate_month_calendar_html(year, month, season_start, season_end, chuseok_dates):
-    cal = calendar.Calendar(firstweekday=calendar.SUNDAY)
+    # 달력의 시작을 월요일(calendar.MONDAY)로 설정
+    cal = calendar.Calendar(firstweekday=calendar.MONDAY)
     month_days = cal.monthdatescalendar(year, month)
     
     html = []
     html.append('<div class="cal-month-card">')
     html.append(f'<div class="cal-month-title">{year}년 {month}월</div>')
     
-    # Table header (일~토)
+    # 요일 헤더 (월~일 순서)
     html.append('<div class="cal-weekdays-row">')
-    weekdays = [("일", "#E53935"), ("월", "#5D4037"), ("화", "#5D4037"), ("수", "#5D4037"), ("목", "#5D4037"), ("금", "#5D4037"), ("토", "#1E88E5")]
+    weekdays = [
+        ("월", "#5D4037"), 
+        ("화", "#5D4037"), 
+        ("수", "#5D4037"), 
+        ("목", "#5D4037"), 
+        ("금", "#5D4037"), 
+        ("토", "#1E88E5"), 
+        ("일", "#E53935")
+    ]
     for w, color in weekdays:
         html.append(f'<span style="color:{color};">{w}</span>')
     html.append('</div>')
     
-    # Days grid
+    # 날짜 그리드
     html.append('<div class="cal-days-grid">')
     
     for week in month_days:
@@ -26,7 +35,7 @@ def generate_month_calendar_html(year, month, season_start, season_end, chuseok_
             day_str = str(d.day)
             
             if not is_current_month:
-                # Dimmed cell (이전/다음 달 일자)
+                # 이전/다음 달 날짜 (흐림)
                 html.append(f'<div class="cal-cell cal-cell-dimmed">{day_str}</div>')
                 continue
                 
@@ -62,6 +71,7 @@ def generate_month_calendar_html(year, month, season_start, season_end, chuseok_
 def render_season_calendar_2609():
     """
     2609 시즌(2026.09.12 ~ 2026.11.01) 달력 위젯
+    - 월요일 시작 (월~일)
     - 토/일 모임일: 파란색
     - 추석 연휴(9/26, 9/27): 빨간색 (모임 제외)
     - 나머지 일자: 무색
@@ -70,29 +80,8 @@ def render_season_calendar_2609():
     season_end = date(2026, 11, 1)
     chuseok_dates = [date(2026, 9, 26), date(2026, 9, 27)]
 
-    # 범례 & 시즌 요약 안내 카드
-    legend_html = (
-        '<div class="cal-legend-card">'
-        '<div class="cal-legend-title">'
-        '🪐 <b>2609 시즌 일정표</b> <span style="font-size:0.85rem; color:#795548; font-weight:500;">(2026.09.12 ~ 2026.11.01, 총 8주)</span>'
-        '</div>'
-        '<div style="display:flex; flex-wrap:wrap; gap:10px; font-size:0.84rem; line-height:1.4;">'
-        '  <div style="display:flex; align-items:center; gap:5px;">'
-        '    <span class="cal-legend-badge" style="background:#E3F2FD; border:1.5px solid #1E88E5; color:#0D47A1; font-weight:700;">🟦 모임일</span>'
-        '    <span><b>토(강남역) / 일(종각역)</b> 14:00~16:30</span>'
-        '  </div>'
-        '  <div style="display:flex; align-items:center; gap:5px;">'
-        '    <span class="cal-legend-badge" style="background:#FFEBEE; border:1.5px solid #EF5350; color:#C62828; font-weight:700;">🟥 휴무</span>'
-        '    <span><b>9/26(토), 9/27(일)</b> 추석 연휴</span>'
-        '  </div>'
-        '  <div style="display:flex; align-items:center; gap:5px;">'
-        '    <span class="cal-legend-badge" style="background:#F7F7F7; border:1px solid #E0DCD3; color:#666;">⬜ 무색</span>'
-        '    <span>평일 및 비모임일</span>'
-        '  </div>'
-        '</div>'
-        '</div>'
-    )
-    st.markdown(legend_html, unsafe_allow_html=True)
+    # 깔끔한 1줄 시즌 안내 (불필요한 범례 박스 제거)
+    st.caption("🪐 **2609 시즌:** 2026.09.12(토) ~ 2026.11.01(일) [총 8주]")
 
     cal_9 = generate_month_calendar_html(2026, 9, season_start, season_end, chuseok_dates)
     cal_10 = generate_month_calendar_html(2026, 10, season_start, season_end, chuseok_dates)
