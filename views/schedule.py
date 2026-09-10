@@ -151,8 +151,9 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             if is_unlimited:
                 meta_items.append('<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">모임형태:</span> <span class="meta-strong">자유책 (각자 읽은 책 지참)</span></div>')
             else:
-                author_str = f" <span style='color:#777; font-size:0.9rem;'>(저자: {meeting['author']})</span>" if meeting['author'] and str(meeting['author']).strip() and str(meeting['author']).strip() != "자율" else ""
-                meta_items.append(f'<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">선정도서:</span> <span class="meta-strong">{meeting["book_title"]}</span>{author_str}</div>')
+                meta_items.append(f'<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">선정도서:</span> <span class="meta-strong">{meeting["book_title"]}</span></div>')
+                if meeting['author'] and str(meeting['author']).strip() and str(meeting['author']).strip() != "자율":
+                    meta_items.append(f'<div class="meeting-meta-item">✍️ <span style="color:#6D4C41; font-weight:600;">저자:</span> <span class="meta-strong">{meeting["author"]}</span></div>')
 
         if clean_desc and clean_desc.strip():
             formatted_desc = clean_desc.strip().replace("\n", "<br/>")
