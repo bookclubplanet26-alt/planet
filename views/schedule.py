@@ -147,10 +147,6 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             f'<div class="meeting-meta-item">📍 <span style="color:#6D4C41; font-weight:600;">장소:</span> <span class="meta-strong">{meeting["location_name"]}</span></div>'
         ]
 
-        if is_regular and facilitator_name:
-            f_color = "#757575" if facilitator_name == "미정" else "#1A1A1A"
-            meta_items.append(f'<div class="meeting-meta-item">👤 <span style="color:#6D4C41; font-weight:600;">진행자:</span> <span class="meta-strong" style="color:{f_color};">{facilitator_name}</span></div>')
-
         if not is_bung:
             if is_unlimited:
                 meta_items.append('<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">모임형태:</span> <span class="meta-strong">자유책 (각자 읽은 책 지참)</span></div>')
