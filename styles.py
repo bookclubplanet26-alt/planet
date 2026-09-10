@@ -322,5 +322,144 @@ def apply_custom_css():
         color: #FFFFFF !important;
         text-decoration: none !important;
     }
+    
+    /* 13. 2609 시즌 캘린더 스타일 */
+    .cal-legend-card {
+        background-color: #FAF8F5;
+        border: 1px solid #ECE7E0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin-bottom: 12px;
+    }
+    .cal-legend-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-size: 0.78rem;
+    }
+    .cal-months-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 8px;
+    }
+    .cal-month-card {
+        background-color: #FFFFFF;
+        border: 1.5px solid #E2DDD5;
+        border-radius: 12px;
+        padding: 12px 10px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+        flex: 1 1 270px;
+        min-width: 250px;
+    }
+    .cal-month-title {
+        text-align: center;
+        font-weight: 800;
+        font-size: 1.02rem;
+        color: #3E2723;
+        margin-bottom: 8px;
+    }
+    .cal-weekdays-row {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        font-size: 0.78rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: #8D6E63;
+    }
+    .cal-days-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 3px;
+        text-align: center;
+    }
+    .cal-cell {
+        min-height: 40px;
+        border-radius: 7px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.82rem;
+    }
+    .cal-cell-dimmed {
+        color: #D6D0C4 !important;
+        font-size: 0.78rem;
+    }
+    .cal-cell-plain {
+        padding: 4px 1px;
+    }
+    .cal-cell-meeting {
+        background-color: #E3F2FD !important;
+        border: 1.5px solid #1E88E5 !important;
+        padding: 2px 1px;
+        box-shadow: 0 1px 3px rgba(30, 136, 229, 0.15);
+    }
+    .cal-cell-meeting .cal-day-num {
+        font-weight: 800;
+        color: #0D47A1 !important;
+        font-size: 0.86rem;
+    }
+    .cal-badge-meeting {
+        font-size: 0.62rem;
+        background-color: #1976D2;
+        color: #FFFFFF !important;
+        border-radius: 3px;
+        padding: 1px 3px;
+        margin-top: 1px;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+    .cal-cell-chuseok {
+        background-color: #FFEBEE !important;
+        border: 1.5px solid #EF5350 !important;
+        padding: 2px 1px;
+    }
+    .cal-cell-chuseok .cal-day-num {
+        font-weight: 800;
+        color: #C62828 !important;
+        font-size: 0.86rem;
+    }
+    .cal-badge-chuseok {
+        font-size: 0.62rem;
+        background-color: #C62828;
+        color: #FFFFFF !important;
+        border-radius: 3px;
+        padding: 1px 3px;
+        margin-top: 1px;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+
+    /* 다크모드 대응 */
+    @media (prefers-color-scheme: dark) {
+        .cal-legend-card {
+            background-color: #1E1C1A !important;
+            border-color: #383430 !important;
+        }
+        .cal-month-card {
+            background-color: #201E1B !important;
+            border-color: #383430 !important;
+        }
+        .cal-month-title {
+            color: #FFFFFF !important;
+        }
+        .cal-cell-meeting {
+            background-color: #0D2B45 !important;
+            border-color: #1E88E5 !important;
+        }
+        .cal-cell-meeting .cal-day-num {
+            color: #90CAF9 !important;
+        }
+        .cal-cell-chuseok {
+            background-color: #3B1616 !important;
+            border-color: #E53935 !important;
+        }
+        .cal-cell-chuseok .cal-day-num {
+            color: #FF8A80 !important;
+        }
+    }
     </style>
     ''', unsafe_allow_html=True)

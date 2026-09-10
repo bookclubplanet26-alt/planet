@@ -1,3 +1,4 @@
+from views.calendar_widget import render_season_calendar_2609
 import streamlit as st
 import datetime
 import pandas as pd
@@ -242,6 +243,10 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
 def render_schedule():
     st.subheader("📅 모임 일정 및 신청")
+
+    # 🗓️ 2609 시즌 캘린더 전체보기 (접기/펼치기)
+    with st.expander("🗓️ 2609 시즌 캘린더 전체보기 (9/12 ~ 11/1)", expanded=False):
+        render_season_calendar_2609()
 
     # 리셋 플래그 처리 (widget 생성 전 세션 스테이트 설정)
     if "reset_admin_category" in st.session_state and st.session_state["reset_admin_category"]:
