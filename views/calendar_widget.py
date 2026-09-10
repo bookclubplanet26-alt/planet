@@ -81,7 +81,7 @@ def render_season_calendar_2609():
     chuseok_dates = [date(2026, 9, 26), date(2026, 9, 27)]
 
     # 깔끔한 1줄 시즌 안내
-    st.caption("🪐 **2609 시즌:** 2026.09.05(토) ~ 2026.11.01(일) [9/26~27 추석 연휴]")
+    st.caption("🪐 **2609 시즌:** 2026.09.05(토) ~ 2026.11.01(일)")
 
     cal_9 = generate_month_calendar_html(2026, 9, season_start, season_end, chuseok_dates)
     cal_10 = generate_month_calendar_html(2026, 10, season_start, season_end, chuseok_dates)
