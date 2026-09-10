@@ -43,6 +43,8 @@ from services.sheets import (
     delete_meeting_from_google_sheet_async,
     add_rsvp_to_google_sheet_async,
     cancel_rsvp_from_google_sheet_async,
+    fetch_google_sheet_facilitators,
+    get_meeting_facilitator,
 )
 
 # 4. 예치금 및 출석 통계 모듈 (services/accounting.py)

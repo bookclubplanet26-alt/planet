@@ -7,7 +7,7 @@ import streamlit as st
 import gspread
 
 from services.config import (
-    GOOGLE_SHEET_ID, GOOGLE_SHEET_ATTENDANCE_ID,
+    GOOGLE_SHEET_ID, GOOGLE_SHEET_ATTENDANCE_ID, GOOGLE_SHEET_FACILITATOR_ID,
     SERVICE_ACCOUNT_FILE, get_current_kst
 )
 
@@ -663,3 +663,127 @@ def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member
     t = threading.Thread(target=_async_cancel_rsvp, args=(webhook_url, payload, meeting_name, email, member_name, meeting_date), daemon=True)
     t.start()
     return True
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_google_sheet_facilitators():
+    """
+    진행자 목록 구글 시트 데이터를 가져와 캐싱 (5분 캐시)
+    """
+    # 1순위: gspread 서비스 계정 조회
+    try:
+        gc = get_gspread_client()
+        if gc:
+            sh = gc.open_by_key(GOOGLE_SHEET_FACILITATOR_ID)
+            ws = sh.get_worksheet(0)
+            values = ws.get_all_values()
+            if values:
+                return values
+    except Exception:
+        pass
+
+    # 2순위: 공개 gviz CSV 내보내기 fallback
+    try:
+        url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_FACILITATOR_ID}/gviz/tq?tqx=out:csv&gid=0"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        res = requests.get(url, headers=headers, timeout=5)
+        if res.status_code == 200:
+            import csv
+            reader = csv.reader(io.StringIO(res.text))
+            values = list(reader)
+            if values:
+                return values
+    except Exception:
+        pass
+
+    return []
+
+def _parse_month_day(date_val):
+    if not date_val:
+        return None, None
+    s = str(date_val).strip()
+    if "-" in s:
+        parts = s[:10].split("-")
+        if len(parts) >= 3:
+            try:
+                return int(parts[1]), int(parts[2])
+            except Exception:
+                pass
+    if "." in s and len(s) >= 8:
+        parts = s[:10].split(".")
+        if len(parts) >= 3:
+            try:
+                return int(parts[1]), int(parts[2])
+            except Exception:
+                pass
+    if "/" in s:
+        parts = s.split("/")
+        if len(parts) >= 2:
+            try:
+                if len(parts) == 3 and len(parts[0]) == 4:
+                    return int(parts[1]), int(parts[2])
+                return int(parts[0]), int(parts[1])
+            except Exception:
+                pass
+    return None, None
+
+def get_meeting_facilitator(meeting_title, meeting_date):
+    """
+    모임 제목과 일자를 바탕으로 진행자 목록 구글 시트에서 배정된 진행자를 검색
+    - 토요일 강남 (어텀): 어텀(토) 실제/계획 진행자 매칭
+    - 일요일 종각 (윈터블): 윈터블(일) 실제/계획 진행자 매칭
+    - 매칭되지 않거나 미배정된 경우 '미정' 반환
+    """
+    target_m, target_d = _parse_month_day(meeting_date)
+    if target_m is None or target_d is None:
+        return "미정"
+
+    m_title = str(meeting_title or "").strip().lower()
+    is_autumn = any(k in m_title for k in ["어텀", "강남", "토"])
+    is_winter = any(k in m_title for k in ["윈터블", "종각", "일"])
+    is_spring = any(k in m_title for k in ["스프링", "수"])
+
+    values = fetch_google_sheet_facilitators()
+    if not values:
+        return "미정"
+
+    invalid_names = {"", "추석", "설날", "휴무", "휴강", "nan", "none", "미정"}
+
+    for row in values:
+        # 어텀(토) 열 인덱스: 6=실제날짜, 7=실제진행자, 5=계획진행자
+        if is_autumn and len(row) > 7:
+            cell_m, cell_d = _parse_month_day(row[6])
+            if cell_m == target_m and cell_d == target_d:
+                act = str(row[7]).strip()
+                if act and act.lower() not in invalid_names:
+                    return act
+                plan = str(row[5]).strip() if len(row) > 5 else ""
+                if plan and plan.lower() not in invalid_names:
+                    return plan
+                return "미정"
+
+        # 윈터블(일) 열 인덱스: 10=실제날짜, 11=실제진행자, 9=계획진행자
+        if is_winter and len(row) > 11:
+            cell_m, cell_d = _parse_month_day(row[10])
+            if cell_m == target_m and cell_d == target_d:
+                act = str(row[11]).strip()
+                if act and act.lower() not in invalid_names:
+                    return act
+                plan = str(row[9]).strip() if len(row) > 9 else ""
+                if plan and plan.lower() not in invalid_names:
+                    return plan
+                return "미정"
+
+        # 스프링토(수) 열 인덱스: 2=실제날짜, 3=실제진행자, 1=계획진행자
+        if is_spring and len(row) > 3:
+            cell_m, cell_d = _parse_month_day(row[2])
+            if cell_m == target_m and cell_d == target_d:
+                act = str(row[3]).strip()
+                if act and act.lower() not in invalid_names:
+                    return act
+                plan = str(row[1]).strip() if len(row) > 1 else ""
+                if plan and plan.lower() not in invalid_names:
+                    return plan
+                return "미정"
+
+    return "미정"
+

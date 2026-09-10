@@ -6,7 +6,7 @@ from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
     check_member_season_eligibility, get_all_meetings, get_rsvps_for_meeting,
-    add_rsvp, cancel_rsvp
+    add_rsvp, cancel_rsvp, get_meeting_facilitator
 )
 
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False):
@@ -58,6 +58,13 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         except Exception:
             pass
 
+    # 정규모임 판별 및 진행자 조회
+    is_regular = is_unlimited or ("강남 (" in meeting['title']) or ("종각 (" in meeting['title']) or ("정규" in meeting['title']) or ("어텀" in meeting['title']) or ("윈터블" in meeting['title'])
+    facilitator_name = ""
+    if is_regular and not is_bung and not is_jijung:
+        m_date_val = meeting.get('meeting_date', '') if isinstance(meeting, dict) else getattr(meeting, 'meeting_date', '')
+        facilitator_name = get_meeting_facilitator(meeting['title'], m_date_val)
+
     # 상태 계산 및 컴팩트 배지(Chip) 생성
     if is_ended:
         status_chip_html = f'<span class="status-chip chip-ended">🏁 종료 ({confirmed_count}명 완료)</span>'
@@ -86,6 +93,15 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         m_id = meeting['id']
 
         # 1. 헤더 (제목 + 상태 배지 + 관리자 삭제 버튼)
+        leader_html = ""
+        if leader_name:
+            leader_html = f"<div class='meeting-leader-badge'>👤 <b>지정책장</b>: <span>{leader_name}</span></div>"
+        elif is_regular and facilitator_name:
+            if facilitator_name == "미정":
+                leader_html = "<div class='meeting-leader-badge' style='background:#F7F7F7; border-color:#E0E0E0;'>👤 <b style='color:#757575;'>진행자</b>: <span style='background:#EEEEEE; color:#616161;'>미정</span></div>"
+            else:
+                leader_html = f"<div class='meeting-leader-badge'>👤 <b>진행자</b>: <span>{facilitator_name}</span></div>"
+
         if is_admin:
             col_t1, col_t2 = st.columns([5, 1])
             with col_t1:
@@ -96,8 +112,8 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                     f'</div>', 
                     unsafe_allow_html=True
                 )
-                if leader_name:
-                    st.markdown(f"<div class='meeting-leader-badge'>👤 <b>지정책장</b>: <span>{leader_name}</span></div>", unsafe_allow_html=True)
+                if leader_html:
+                    st.markdown(leader_html, unsafe_allow_html=True)
             with col_t2:
                 if st.button("❌", key=f"{key_prefix}_del_m_{m_id}", help="이 모임을 목록에서 삭제합니다"):
                     from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
@@ -115,14 +131,18 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                 f'</div>', 
                 unsafe_allow_html=True
             )
-            if leader_name:
-                st.markdown(f"<div class='meeting-leader-badge'>👤 <b>지정책장</b>: <span>{leader_name}</span></div>", unsafe_allow_html=True)
+            if leader_html:
+                st.markdown(leader_html, unsafe_allow_html=True)
 
         # 2. 본문 정보 영역 (마크다운 인덴트 오류 방지 - 공백 없는 한 덩어리 HTML)
         meta_items = [
             f'<div class="meeting-meta-item">🗓️ <span style="color:#6D4C41; font-weight:600;">일시:</span> <span class="meta-strong" style="font-size:1.02rem;">{meeting["meeting_date"]} {meeting["meeting_time"]}</span></div>',
             f'<div class="meeting-meta-item">📍 <span style="color:#6D4C41; font-weight:600;">장소:</span> <span class="meta-strong">{meeting["location_name"]}</span></div>'
         ]
+
+        if is_regular and facilitator_name:
+            f_color = "#757575" if facilitator_name == "미정" else "#1A1A1A"
+            meta_items.append(f'<div class="meeting-meta-item">👤 <span style="color:#6D4C41; font-weight:600;">진행자:</span> <span class="meta-strong" style="color:{f_color};">{facilitator_name}</span></div>')
 
         if not is_bung:
             if is_unlimited:
