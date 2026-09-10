@@ -6,11 +6,12 @@ from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
     check_member_season_eligibility, get_all_meetings, get_rsvps_for_meeting,
-    add_rsvp, cancel_rsvp, get_meeting_facilitator
+    add_rsvp, cancel_rsvp, get_meeting_facilitator, get_all_meeting_rsvps_map
 )
 
-def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False):
-    rsvps = get_rsvps_for_meeting(meeting['id'])
+def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False, rsvps=None, user_eligibility=None):
+    if rsvps is None:
+        rsvps = get_rsvps_for_meeting(meeting['id'], meeting=meeting)
     current_count = len(rsvps)
     max_count = meeting['max_participants']
     
@@ -18,6 +19,12 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
     waitlist_rsvps = [r for r in rsvps if ('participation_type' in r.keys()) and str(r['participation_type'] or '') == '대기']
     confirmed_count = len(confirmed_rsvps)
     waitlist_count = len(waitlist_rsvps)
+
+    # 회원 자격 판정 (사전 계산된 값 우선 재사용하여 카드별 중복 연산 제거)
+    if user_eligibility is not None:
+        is_eligible, reason_type, reason_msg = user_eligibility
+    else:
+        is_eligible, reason_type, reason_msg = check_member_season_eligibility(google_user) if google_user else (False, "NOT_LOGGED_IN", "Google 인증 필요")
 
     is_bung = ("소모임" in meeting['title'] or "벙" in meeting['title'] or meeting['book_title'] == "자율 / 소모임")
     is_jijung = (
@@ -166,7 +173,6 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
         # 3. 오픈 카카오톡방 주소 (시즌 회원에게 전용 링크 버튼 제공 - 인덴트 제거)
         if kakao_url:
-            is_eligible, _, _ = check_member_season_eligibility(google_user)
             if is_eligible or is_admin:
                 kakao_btn_html = f'<div style="margin:6px 0 10px 0;"><a href="{kakao_url}" target="_blank" class="kakao-link-btn">💬 <b>오픈 카톡방 입장하기</b> ↗</a></div>'
                 st.markdown(kakao_btn_html, unsafe_allow_html=True)
@@ -193,7 +199,6 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                         st.toast("✅ 신청이 취소되었습니다.")
                         st.rerun()
             else:
-                is_eligible, reason_type, reason_msg = check_member_season_eligibility(google_user)
                 if not is_eligible and not is_admin:
                     st.warning(f"""
                     🚫 **모임 신청 제한 (시즌 등록 필요)**  
@@ -301,6 +306,8 @@ def render_schedule():
 
     with tab1:
         meetings = get_all_meetings()
+        rsvps_map = get_all_meeting_rsvps_map(meetings)
+        user_eligibility = check_member_season_eligibility(google_user) if google_user else (False, "NOT_LOGGED_IN", "로그인 필요")
 
         # 🔐 구글 시트 기반 전용 Google 이메일 본인 인증
         st.markdown("#### 🔐 Google 계정 본인 인증")
@@ -472,21 +479,21 @@ def render_schedule():
                 st.info("현재 예정된 정규모임이 없습니다.")
             else:
                 for meeting in regular_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="reg_m")
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="reg_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility)
 
         with m_tab2:
             if not jijung_meetings:
                 st.info("현재 예정된 지정책 모임이 없습니다.")
             else:
                 for meeting in jijung_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="jijung_m")
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="jijung_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility)
 
         with m_tab3:
             if not bung_meetings:
                 st.info("현재 예정된 소모임 및 벙 모임이 없습니다.")
             else:
                 for meeting in bung_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="bung_m")
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="bung_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility)
 
         with m_tab4:
             if not past_meetings:
@@ -494,7 +501,7 @@ def render_schedule():
             else:
                 st.caption("💡 성황리에 마무리된 지난 모임 목록입니다.")
                 for meeting in past_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="past_m", is_ended=True)
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="past_m", is_ended=True, rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility)
 
     if tab2:
         with tab2:

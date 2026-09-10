@@ -46,7 +46,7 @@ def _async_send_post(webhook_url, payload):
     except Exception:
         pass
 
-@st.cache_data(ttl=300, show_spinner="👥 회원 명단을 안전하게 동기화하는 중...")
+@st.cache_data(ttl=600, show_spinner=False)
 def fetch_google_sheet_members():
     """
     회원 명단 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
@@ -83,7 +83,7 @@ def fetch_google_sheet_members():
         pass
     return False, None, "구글 시트 공유 설정('링크가 있는 모든 사용자에게 공개') 확인이 필요합니다."
 
-@st.cache_data(ttl=60, show_spinner="📍 출석 데이터를 동기화하는 중...")
+@st.cache_data(ttl=600, show_spinner=False)
 def fetch_google_sheet_attendances():
     """
     출석전용 구글 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
@@ -117,7 +117,7 @@ def fetch_google_sheet_attendances():
         pass
     return False, None
 
-@st.cache_data(ttl=60, show_spinner="📅 최신 모임 목록을 불러오는 중...")
+@st.cache_data(ttl=600, show_spinner=False)
 def fetch_google_sheet_meetings():
     """
     모임 목록 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
@@ -220,11 +220,85 @@ def get_meeting_by_id(meeting_id):
             return m
     return None
 
-def get_rsvps_for_meeting(meeting_id):
+def get_all_meeting_rsvps_map(meetings=None):
     """
-    구글 시트 '신청명단' 탭에서 특정 모임의 신청자 목록 반환
+    모든 모임의 신청자 목록을 단 한 번의 시트 순회로 사전 집계하여 {meeting_id: [rsvps...]} 딕셔너리로 반환
+    - 각 모임 카드마다 fetch 및 iterrows()를 반복하지 않고 O(1)로 조회 가능
     """
-    meeting = get_meeting_by_id(meeting_id)
+    if meetings is None:
+        meetings = get_all_meetings()
+
+    rsvps_map = {m['id']: [] for m in meetings}
+    if not meetings:
+        return rsvps_map
+
+    ok, df = fetch_google_sheet_rsvps()
+    if not ok or df is None or df.empty:
+        return rsvps_map
+
+    m_col = next((c for c in df.columns if any(k in str(c) for k in ["모임명", "모임", "title"])), df.columns[0])
+    date_col = next((c for c in df.columns if any(k in str(c) for k in ["모임일자", "일자", "날짜", "date"])), None)
+    name_col = next((c for c in df.columns if any(k in str(c) for k in ["회원명", "이름", "성함", "name"])), None)
+    email_col = next((c for c in df.columns if any(k in str(c) for k in ["이메일", "email", "mail"])), None)
+    type_col = next((c for c in df.columns if any(k in str(c) for k in ["참여방식", "방식", "type"])), None)
+
+    seen_map = {m['id']: set() for m in meetings}
+    m_info_list = [(m['id'], str(m.get('title', '')).strip(), str(m.get('meeting_date', '')).strip()) for m in meetings]
+
+    for idx, row in df.iterrows():
+        row_m = str(row.get(m_col, '')).strip()
+        row_d = str(row.get(date_col, '')).strip() if date_col and pd.notna(row.get(date_col)) else ""
+
+        is_shifted = bool(row_d and ("@" in row_d or ("-" in row_d and not row_d[:4].isdigit())))
+        if is_shifted:
+            r_name = row_d
+            r_email = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else ""
+            r_type = str(row.get(email_col, '자유책')).strip() if email_col and pd.notna(row.get(email_col)) else "자유책"
+        else:
+            r_name = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else "회원"
+            r_email = str(row.get(email_col, '')).strip() if email_col and pd.notna(row.get(email_col)) else ""
+            r_type = str(row.get(type_col, '자유책')).strip() if type_col and pd.notna(row.get(type_col)) else "자유책"
+
+        identifier = r_email.strip().lower() if r_email else r_name.strip()
+
+        for m_id, m_title, m_date in m_info_list:
+            title_match = bool(m_title and (row_m == m_title or m_title in row_m or row_m in m_title))
+            if not title_match:
+                continue
+
+            if is_shifted:
+                date_match = True
+            else:
+                date_match = True
+                if row_d and m_date:
+                    date_match = (row_d == m_date or m_date in row_d or row_d in m_date)
+
+            if date_match:
+                if identifier and identifier in seen_map[m_id]:
+                    continue
+                if identifier:
+                    seen_map[m_id].add(identifier)
+
+                rsvps_map[m_id].append({
+                    "id": idx + 1,
+                    "meeting_id": m_id,
+                    "member_id": hash(r_email) % 100000 if r_email else idx + 100,
+                    "member_name": r_name,
+                    "member_phone": r_email,
+                    "participation_type": r_type
+                })
+
+    return rsvps_map
+
+def get_rsvps_for_meeting(meeting_id, meeting=None, rsvps_map=None):
+    """
+    구글 시트 '신청명단' 탭에서 특정 모임의 신청자 목록 반환 (rsvps_map이 있으면 즉시 반환)
+    """
+    if rsvps_map is not None and meeting_id in rsvps_map:
+        return rsvps_map[meeting_id]
+
+    if meeting is None:
+        meeting = get_meeting_by_id(meeting_id)
     if not meeting:
         return []
 
@@ -496,7 +570,7 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
 
     return deleted
 
-@st.cache_data(ttl=60, show_spinner="📝 참가 신청 명단을 동기화하는 중...")
+@st.cache_data(ttl=600, show_spinner=False)
 def fetch_google_sheet_rsvps():
     """
     구글 시트에서 신청명단/참가신청 탭을 가져오는 함수 (gspread 보안 인증 1순위 사용)
@@ -664,7 +738,7 @@ def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member
     t.start()
     return True
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def fetch_google_sheet_facilitators():
     """
     진행자 목록 구글 시트 데이터를 가져와 캐싱 (5분 캐시)
