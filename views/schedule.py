@@ -9,6 +9,9 @@ from utils import (
     add_rsvp, cancel_rsvp, get_meeting_facilitator, get_all_meeting_rsvps_map
 )
 
+# 정규모임 진행자 표시 여부 플래그 (True: 표시, False: 기능 유지한 채 임시 숨김)
+SHOW_REGULAR_FACILITATOR = False
+
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False, rsvps=None, user_eligibility=None):
     if rsvps is None:
         rsvps = get_rsvps_for_meeting(meeting['id'], meeting=meeting)
@@ -68,7 +71,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
     # 정규모임 판별 및 진행자 조회
     is_regular = is_unlimited or ("강남 (" in meeting['title']) or ("종각 (" in meeting['title']) or ("정규" in meeting['title']) or ("어텀" in meeting['title']) or ("윈터블" in meeting['title'])
     facilitator_name = ""
-    if is_regular and not is_bung and not is_jijung:
+    if SHOW_REGULAR_FACILITATOR and is_regular and not is_bung and not is_jijung:
         m_date_val = meeting.get('meeting_date', '') if isinstance(meeting, dict) else getattr(meeting, 'meeting_date', '')
         facilitator_name = get_meeting_facilitator(meeting['title'], m_date_val)
 
@@ -103,7 +106,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         leader_html = ""
         if leader_name:
             leader_html = f"<div class='meeting-leader-badge'>👤 <b>지정책장</b>: <span>{leader_name}</span></div>"
-        elif is_regular and facilitator_name:
+        elif SHOW_REGULAR_FACILITATOR and is_regular and facilitator_name:
             if facilitator_name == "미정":
                 leader_html = "<div class='meeting-leader-badge' style='background:#F7F7F7; border-color:#E0E0E0;'>👤 <b style='color:#757575;'>진행자</b>: <span style='background:#EEEEEE; color:#616161;'>미정</span></div>"
             else:
