@@ -76,12 +76,12 @@ def render_season_calendar_2609():
     - 추석 연휴(9/26, 9/27): 빨간색 (모임 제외)
     - 나머지 일자: 무색
     """
-    season_start = date(2026, 9, 12)
+    season_start = date(2026, 9, 5) # 9월 5일부터 출석 및 모임 시작
     season_end = date(2026, 11, 1)
     chuseok_dates = [date(2026, 9, 26), date(2026, 9, 27)]
 
     # 깔끔한 1줄 시즌 안내 (불필요한 범례 박스 제거)
-    st.caption("🪐 **2609 시즌:** 2026.09.12(토) ~ 2026.11.01(일) [총 8주]")
+    st.caption("🪐 **2609 시즌:** 2026.09.05(토) ~ 2026.11.01(일) [9/5부터 출석 인정, 추석 9/26~27 제외]")
 
     cal_9 = generate_month_calendar_html(2026, 9, season_start, season_end, chuseok_dates)
     cal_10 = generate_month_calendar_html(2026, 10, season_start, season_end, chuseok_dates)

@@ -43,7 +43,7 @@ def get_member_attendance_count(user_email="", user_name="", target_season=None)
         r_season = str(row.get(season_col, '')).strip() if season_col else ""
         r_date = str(row.get(date_col, '')).strip() if date_col else ""
         
-        # 시즌 일치 여부 판정
+        # 시즌 일치 여부 판정 (날짜 범위 및 제외일 완벽 반영)
         if target_s:
             season_match = (r_season == target_s)
             if not season_match and r_date:
@@ -52,6 +52,17 @@ def get_member_attendance_count(user_email="", user_name="", target_season=None)
                     season_match = (get_club_season_code(d_obj) == target_s)
                 except Exception:
                     pass
+            
+            # 날짜 범위 엄격 검증: 2609 시즌의 경우 9월 5일 이전 또는 추석(9/26, 9/27) 제외
+            if season_match and target_s in SEASON_DATE_CONFIG and r_date:
+                try:
+                    d_clean = r_date[:10].replace('.', '-').replace('/', '-')
+                    conf = SEASON_DATE_CONFIG[target_s]
+                    if d_clean < conf["start"] or d_clean > conf["end"] or d_clean in conf.get("excluded_dates", []):
+                        season_match = False
+                except Exception:
+                    pass
+
             if not season_match:
                 continue
 

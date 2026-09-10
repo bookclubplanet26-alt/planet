@@ -39,14 +39,36 @@ def get_current_kst():
     except Exception:
         return datetime.now(timezone(timedelta(hours=9)))
 
+
+# 시즌별 공식 운영 날짜 범위 및 제외일 매핑 테이블
+SEASON_DATE_CONFIG = {
+    "2609": {
+        "start": "2026-09-05",
+        "end": "2026-11-01",
+        "excluded_dates": ["2026-09-26", "2026-09-27"],
+        "display_name": "2609시즌(9~10월)"
+    }
+}
+
 def get_club_season_code(dt=None):
     """
-    2달 간격 시즌 코드 (시작 월 기준 매월 롤링 시즌)
-    - 2601: 1월~2월 시즌
-    - 2609: 9월~10월 시즌 등
+    날짜 기준 소속 시즌 코드 반환 (공식 시즌 날짜 범위 우선 매핑)
+    - 2609 시즌: 2026-09-05 ~ 2026-11-01 (11월 1일도 2609 시즌으로 완벽 매핑)
+    - 그 외: 기존 2달 롤링 규칙
     """
     if dt is None:
         dt = get_current_kst()
+    
+    if hasattr(dt, 'date'):
+        d_val = dt.date()
+    else:
+        d_val = dt
+    
+    d_str = d_val.strftime("%Y-%m-%d")
+    for s_code, s_conf in SEASON_DATE_CONFIG.items():
+        if s_conf["start"] <= d_str <= s_conf["end"]:
+            return s_code
+            
     year_short = dt.strftime("%y")
     return f"{year_short}{dt.month:02d}"
 

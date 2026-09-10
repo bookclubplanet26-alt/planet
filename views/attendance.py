@@ -417,7 +417,14 @@ def render_attendance():
                     final_lng = user_gps_lng if user_gps_lng is not None else target_lng
                     final_dist = measured_dist_m if measured_dist_m is not None else 0.0
 
-                    season_code = get_club_season_code(now_sync)
+                    # 출석체크 모임 날짜 기준으로 시즌 코드 판정 (11월 1일 모임도 2609 시즌으로 완벽 기록)
+                    m_date_val = None
+                    if selected_meeting and selected_meeting.get('meeting_date'):
+                        try:
+                            m_date_val = datetime.strptime(str(selected_meeting['meeting_date']).strip(), "%Y-%m-%d").date()
+                        except Exception:
+                            pass
+                    season_code = get_club_season_code(m_date_val if m_date_val else now_sync)
                     append_attendance_to_google_sheet_async(
                         ATTENDANCE_WEBHOOK_URL,
                         checked_at=now_str,
