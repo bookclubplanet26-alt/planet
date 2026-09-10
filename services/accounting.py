@@ -53,12 +53,12 @@ def get_member_attendance_count(user_email="", user_name="", target_season=None)
                 except Exception:
                     pass
             
-            # 날짜 범위 엄격 검증: 2609 시즌의 경우 9월 5일 이전 또는 추석(9/26, 9/27) 제외
+            # 날짜 범위 검증: 2609 시즌의 경우 9월 5일 ~ 11월 1일 기간 내 모든 출석 인정
             if season_match and target_s in SEASON_DATE_CONFIG and r_date:
                 try:
                     d_clean = r_date[:10].replace('.', '-').replace('/', '-')
                     conf = SEASON_DATE_CONFIG[target_s]
-                    if d_clean < conf["start"] or d_clean > conf["end"] or d_clean in conf.get("excluded_dates", []):
+                    if d_clean < conf["start"] or d_clean > conf["end"]:
                         season_match = False
                 except Exception:
                     pass
