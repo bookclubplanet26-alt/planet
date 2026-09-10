@@ -6,6 +6,7 @@ utils.py - 북클럽 플래닛 통합 유틸리티 Facade 브릿지 모듈
 
 # 1. 설정 및 시간/시즌 유틸리티 (services/config.py)
 from services.config import (
+    SEASON_DATE_CONFIG,
     GOOGLE_SHEET_ID,
     GOOGLE_SHEET_ATTENDANCE_ID,
     ATTENDANCE_WEBHOOK_URL,

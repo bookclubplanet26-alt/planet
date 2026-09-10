@@ -8,7 +8,8 @@ from datetime import datetime, date
 
 from services.config import (
     GOOGLE_SHEET_ID,
-    get_current_kst, get_club_season_code, format_season_display
+    get_current_kst, get_club_season_code, format_season_display,
+    SEASON_DATE_CONFIG
 )
 from services.sheets import (
     get_gspread_client, fetch_google_sheet_members, fetch_google_sheet_attendances
