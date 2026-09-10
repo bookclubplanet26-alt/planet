@@ -389,8 +389,8 @@ def apply_custom_css():
         font-size: 0.78rem;
     }
     .cal-months-container {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
         gap: 12px;
         margin-top: 8px;
     }
@@ -399,10 +399,9 @@ def apply_custom_css():
         border: 1.5px solid #E2DDD5;
         border-radius: 12px;
         padding: 12px 10px;
-        margin-bottom: 10px;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-        flex: 1 1 270px;
-        min-width: 250px;
+        box-sizing: border-box;
+        width: 100%;
     }
     .cal-month-title {
         text-align: center;
