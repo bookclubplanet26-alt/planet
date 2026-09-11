@@ -211,6 +211,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                         btn_label = "⏳ 대기 신청하기"
                     elif is_jijung:
                         selected_part_type = "지정책"
+                        st.caption("💡 **지정책 모임**: 지정된 도서로 발제 및 토론을 진행하며, **출석 1회**로 인정됩니다.")
                         btn_label = "🚀 참가 신청하기"
                     elif is_bung:
                         selected_part_type = "참석"
@@ -218,16 +219,19 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                     else:
                         part_choice = st.radio(
                             "참여 방식을 선택하세요",
-                            ["📖 자유책", "🛋️ 라운징", "📕 지정책"],
+                            ["📖 자유책 (출석 1회)", "🛋️ 라운징 (출석 0.5회)", "📕 지정책 (출석 1회)"],
                             horizontal=True,
                             key=f"{key_prefix}_part_radio_{meeting['id']}"
                         )
                         if "지정책" in part_choice:
                             selected_part_type = "지정책"
+                            st.caption("💡 **지정책 안내**: 선정도서를 읽고 발제 및 토론에 참여하며, **출석 1회**로 인정됩니다.")
                         elif "라운징" in part_choice:
                             selected_part_type = "라운징"
+                            st.caption("💡 **라운징 안내**: 발제 및 토론 없이 편하게 자유 독서 및 휴식을 취하는 방식으로, **출석 0.5회**로 인정됩니다.")
                         else:
                             selected_part_type = "자유책"
+                            st.caption("💡 **자유책 안내**: 각자 읽고 싶은 책을 지참하여 자유롭게 소통하며, **출석 1회**로 인정됩니다.")
                         btn_label = "🚀 참가 신청하기"
 
                     btn_disabled = (is_full and not is_waitlist_mode)
@@ -246,19 +250,19 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         else:
             st.warning("⚠️ 참가 신청을 위해 먼저 상단에서 Google 계정 인증을 완료해 주세요.")
 
-        # 5. 참석자 명단 expander (카드 내부 하단)
-        with st.expander(f"👥 참석 명단 ({current_count}명)"):
+        # 5. 참석자 명단 expander (카드 내부 하단, 기본 펼침)
+        with st.expander(f"👥 참석 명단 ({current_count}명)", expanded=True):
             if rsvps:
                 for r in rsvps:
                     p_type = r['participation_type'] if 'participation_type' in r.keys() and r['participation_type'] else '자유책'
                     if "대기" in str(p_type):
                         st.markdown(f"• **{r['member_name']}** (⏳ 대기)")
                     elif "지정책" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (📕 지정책)")
+                        st.markdown(f"• **{r['member_name']}** (📕 지정책 · 1회)")
                     elif "라운징" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (🛋️ 라운징)")
+                        st.markdown(f"• **{r['member_name']}** (🛋️ 라운징 · 0.5회)")
                     elif "자유책" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (📖 자유책)")
+                        st.markdown(f"• **{r['member_name']}** (📖 자유책 · 1회)")
                     else:
                         st.markdown(f"• **{r['member_name']}**")
             else:

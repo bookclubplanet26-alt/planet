@@ -570,7 +570,7 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
 
     return deleted
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def fetch_google_sheet_rsvps():
     """
     구글 시트에서 신청명단/참가신청 탭을 가져오는 함수 (gspread 보안 인증 1순위 사용)
