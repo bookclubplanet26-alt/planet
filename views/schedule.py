@@ -250,19 +250,19 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         else:
             st.warning("⚠️ 참가 신청을 위해 먼저 상단에서 Google 계정 인증을 완료해 주세요.")
 
-        # 5. 참석자 명단 expander (카드 내부 하단, 기본 펼침)
-        with st.expander(f"👥 참석 명단 ({current_count}명)", expanded=True):
+        # 5. 참석자 명단 expander (카드 내부 하단, 기본 접힘)
+        with st.expander(f"👥 참석 명단 ({current_count}명)", expanded=False):
             if rsvps:
                 for r in rsvps:
                     p_type = r['participation_type'] if 'participation_type' in r.keys() and r['participation_type'] else '자유책'
                     if "대기" in str(p_type):
                         st.markdown(f"• **{r['member_name']}** (⏳ 대기)")
                     elif "지정책" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (📕 지정책 · 1회)")
+                        st.markdown(f"• **{r['member_name']}** (📕 지정책)")
                     elif "라운징" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (🛋️ 라운징 · 0.5회)")
+                        st.markdown(f"• **{r['member_name']}** (🛋️ 라운징)")
                     elif "자유책" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (📖 자유책 · 1회)")
+                        st.markdown(f"• **{r['member_name']}** (📖 자유책)")
                     else:
                         st.markdown(f"• **{r['member_name']}**")
             else:
