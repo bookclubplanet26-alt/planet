@@ -79,8 +79,7 @@
       <span id="btnText">위치 인증</span>
     </button>
     <div class="location-info">
-      모임 장소: <b id="placeName" class="place-name">할리스 종각역점</b>
-      <span class="radius-tag">(현장 반경 <b>350m</b> 이내 인증 필요)</span>
+      모임장소 현장 반경 <b>350m</b> 이내 인증 필요
     </div>
   </div>
 
@@ -96,8 +95,9 @@
     window.addEventListener("message", function(event) {
       if (event.data && event.data.type === "streamlit:render") {
         var args = event.data.args || {};
-        if (args.target_name) {
-          document.getElementById("placeName").innerText = args.target_name;
+        var pEl = document.getElementById("placeName");
+        if (pEl && args.target_name) {
+          pEl.innerText = args.target_name;
         }
         if (args.already_verified) {
           var btn = document.getElementById("gpsBtn");
