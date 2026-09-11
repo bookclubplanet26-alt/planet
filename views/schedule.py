@@ -10,7 +10,7 @@ from utils import (
 )
 
 # 정규모임 진행자 표시 여부 플래그 (True: 표시, False: 기능 유지한 채 임시 숨김)
-SHOW_REGULAR_FACILITATOR = False
+SHOW_REGULAR_FACILITATOR = True
 
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False, rsvps=None, user_eligibility=None):
     if rsvps is None:
