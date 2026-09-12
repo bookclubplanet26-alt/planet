@@ -348,7 +348,9 @@ def render_attendance():
         att_type_name = "라운징" if "라운징" in str(current_att_choice) else "정규모임"
 
         if att_type_name == "라운징":
-            st.caption("💡 **라운징 출석 안내**: 발제 및 토론 없이 자유 독서 또는 휴식에 참여하며, **출석 0.5회**로 인정됩니다.")
+            st.caption("💡 **라운징 안내**: 발제 및 토론 없이 편하게 자유 독서 및 휴식을 취하는 방식으로, **출석 0.5회**로 인정됩니다.")
+        else:
+            st.caption("💡 **자유책 안내**: 각자 읽고 싶은 책을 지참하여 자유롭게 소통하며, **출석 1회**로 인정됩니다.")
 
         book_read_input = st.text_input("📖 지참 책 제목", placeholder="예: 데미안, 사피엔스 등", key="att_book_read_input")
         book_author_input = st.text_input("✍️ 저자 / 작가 (선택)", placeholder="예: 헤르만 헤세 (선택)", key="att_book_author_input")
@@ -375,18 +377,18 @@ def render_attendance():
         user_gps_lat = None
         user_gps_lng = None
         measured_dist_m = None
-        is_within_350m = False
+        is_within_1km = False
 
         if effective_loc and effective_loc.get('latitude') is not None and effective_loc.get('longitude') is not None:
             user_gps_lat = float(effective_loc['latitude'])
             user_gps_lng = float(effective_loc['longitude'])
             measured_dist_m = round(haversine_distance(user_gps_lat, user_gps_lng, target_lat, target_lng), 1)
-            is_within_350m = (measured_dist_m <= 350)
+            is_within_1km = (measured_dist_m <= 1000)
 
-            if is_within_350m:
-                st.success(f"✅ **현장 인증 완료**: {target_name} 인근 (거리: **{measured_dist_m}m** / 허용 350m 이내)")
+            if is_within_1km:
+                st.success(f"✅ **현장 인증 완료**: {target_name} 인근 (거리: **{measured_dist_m}m** / 허용 1km 이내)")
             else:
-                st.error(f"❌ **현장 거리 초과**: 모임 장소({target_name})로부터 **{measured_dist_m}m** 떨어져 있습니다. (350m 이내 현장에서만 출석 가능)")
+                st.error(f"❌ **현장 거리 초과**: 모임 장소({target_name})로부터 **{measured_dist_m}m** 떨어져 있습니다. (1km 이내 현장에서만 출석 가능)")
         else:
             if not bypass_time:
                 st.info("💡 위 **'🧭 위치 인증'** 버튼을 눌러 스마트폰 현재 위치를 인증해 주세요. (브라우저 위치 권한 '허용' 필요)")
@@ -405,8 +407,8 @@ def render_attendance():
                 st.error(f"⚠️ 모임 시간을 확인해 주세요. ({selected_meeting['meeting_date']} 모임 당일 16:00 ~ 17:00만 출석체크 가능)")
             elif not bypass_time and (user_gps_lat is None or user_gps_lng is None):
                 st.error("⚠️ 먼저 위 '🧭 위치 인증' 버튼을 눌러 현장 위치(GPS) 인증을 진행해 주세요.")
-            elif not bypass_time and not is_within_350m:
-                st.error(f"⚠️ 모임 장소({target_name})로부터 {measured_dist_m}m 떨어져 있어 출석체크할 수 없습니다. (350m 이내 현장에서만 가능)")
+            elif not bypass_time and not is_within_1km:
+                st.error(f"⚠️ 모임 장소({target_name})로부터 {measured_dist_m}m 떨어져 있어 출석체크할 수 없습니다. (1km 이내 현장에서만 가능)")
             else:
                 with st.spinner("🔄 출석 처리 중입니다... 잠시만 기다려 주세요."):
                     st.session_state.checked_meetings.add(selected_meeting['id'])
