@@ -12,6 +12,28 @@ from utils import (
 # 정규모임 진행자 표시 여부 플래그 (True: 표시, False: 기능 유지한 채 임시 숨김)
 SHOW_REGULAR_FACILITATOR = True
 
+if hasattr(st, "dialog"):
+    @st.dialog("🗑️ 모임 삭제 확인")
+    def confirm_delete_meeting_dialog(m_title, m_date, m_time):
+        st.markdown(f"#### **[{m_title}]**")
+        st.write(f"🗓️ 일시: **{m_date} {m_time}**")
+        st.warning("⚠️ 해당 모임을 정말 삭제하시겠습니까?\n삭제 시 부원들의 모임 목록에서 완전히 제거됩니다.\n(기존 참가 신청자 명단과 출석 기록은 안전하게 보존됩니다)")
+        
+        c_cancel, c_confirm = st.columns(2)
+        with c_cancel:
+            if st.button("취소", use_container_width=True, key="dlg_del_cancel_btn"):
+                st.rerun()
+        with c_confirm:
+            if st.button("🗑️ 삭제하기", type="primary", use_container_width=True, key="dlg_del_confirm_btn"):
+                from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
+                delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_date)
+                del_msg = f"🗑️ '{m_title}' 모임이 삭제되었습니다."
+                st.session_state["meeting_deleted_toast"] = del_msg
+                st.toast(del_msg, icon="🗑️")
+                st.rerun()
+else:
+    confirm_delete_meeting_dialog = None
+
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False, rsvps=None, user_eligibility=None):
     if rsvps is None:
         rsvps = get_rsvps_for_meeting(meeting['id'], meeting=meeting)
@@ -125,14 +147,22 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                 if leader_html:
                     st.markdown(leader_html, unsafe_allow_html=True)
             with col_t2:
-                if st.button("❌", key=f"{key_prefix}_del_m_{m_id}", help="이 모임을 목록에서 삭제합니다"):
-                    from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
-                    delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_date)
-                    del_msg = f"🗑️ '{m_title}' 모임이 삭제되었습니다."
-                    st.session_state["meeting_deleted_toast"] = del_msg
-                    st.toast(del_msg, icon="🗑️")
-                    st.warning(del_msg)
-                    st.rerun()
+                if confirm_delete_meeting_dialog is not None:
+                    if st.button("❌", key=f"{key_prefix}_del_m_{m_id}", help="이 모임을 목록에서 삭제합니다"):
+                        m_time_str = meeting.get('meeting_time', '') if isinstance(meeting, dict) or hasattr(meeting, '__getitem__') else getattr(meeting, 'meeting_time', '')
+                        confirm_delete_meeting_dialog(m_title, m_date, m_time_str)
+                else:
+                    with st.popover("❌", help="이 모임을 목록에서 삭제합니다"):
+                        st.markdown(f"**[{m_title}]**")
+                        st.caption(f"🗓️ {m_date}")
+                        st.warning("⚠️ 해당 모임을 삭제하시겠습니까?")
+                        if st.button("🗑️ 확인 (삭제)", key=f"{key_prefix}_del_confirm_{m_id}", type="primary", use_container_width=True):
+                            from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
+                            delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_date)
+                            del_msg = f"🗑️ '{m_title}' 모임이 삭제되었습니다."
+                            st.session_state["meeting_deleted_toast"] = del_msg
+                            st.toast(del_msg, icon="🗑️")
+                            st.rerun()
         else:
             st.markdown(
                 f'<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:6px;">'
