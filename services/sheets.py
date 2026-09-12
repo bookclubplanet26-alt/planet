@@ -405,17 +405,7 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
     if not webhook_url:
         return False
     
-    full_book_info = book_read
-    review_parts = []
-    if book_author:
-        review_parts.append(f"✍️ {book_author}")
-    if rating:
-        review_parts.append("⭐" * int(rating))
-    if book_review:
-        review_parts.append(f"💬 {book_review}")
-        
-    if review_parts:
-        full_book_info = f"{book_read} ({' | '.join(review_parts)})"
+    clean_book_title = str(book_read or "").strip()
 
     payload = {
         "checked_at": checked_at,
@@ -424,15 +414,21 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
         "year": year,
         "season": season,
         "meeting_name": meeting_name,
-        "book_read": full_book_info,
+        "book_read": clean_book_title,
+        "book_title": clean_book_title,
+        "도서명": clean_book_title,
         "book_review": book_review,
         "review": book_review,
         "감상평": book_review,
+        "한줄평": book_review,
         "is_lounging": is_lounging,
         "lounging": is_lounging,
         "라운징": is_lounging,
         "book_author": book_author,
-        "rating": rating
+        "author": book_author,
+        "저자명": book_author,
+        "rating": rating,
+        "별점": rating
     }
     
     try:

@@ -455,7 +455,10 @@ def render_attendance():
             for att in gs_attendances:
                 t_str = str(att['checked_at']).split()[1][:5] if ' ' in str(att['checked_at']) else str(att['checked_at'])[:5]
                 raw_b = str(att.get('book_read', ''))
-                pure_b = raw_b.split(" (💬 ")[0].strip() if " (💬 " in raw_b else raw_b
+                pure_b = raw_b
+                for sep in [" (💬 ", " (✍️ ", " (⭐", " ("]:
+                    if sep in pure_b:
+                        pure_b = pure_b.split(sep)[0].strip()
                 b_str = f" (📖 {pure_b})" if pure_b else ""
                 st.write(f"• **{att['member_name']}**{b_str} - {t_str} 출석완료")
         else:

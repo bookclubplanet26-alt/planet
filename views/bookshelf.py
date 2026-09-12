@@ -129,14 +129,17 @@ def render_bookshelf():
                 book_review_col = str(row.get('한줄평', '') or row.get('감상평', '') or row.get('review', '')).strip()
                 season_val = str(row.get('시즌 코드', '')).strip() or str(row.get('시즌', '')).strip()
                 
-                # 도서명과 감상평 분리
+                # 도서명과 감상평 분리 (이전 저장 형식 호환)
                 book_title = book_raw
                 book_review = book_review_col
-                if " (💬 " in book_raw:
-                    parts = book_raw.split(" (💬 ")
-                    book_title = parts[0].strip()
-                    if not book_review:
-                        book_review = parts[1].rstrip(")").strip()
+                for sep in [" (💬 ", " (✍️ ", " (⭐"]:
+                    if sep in book_title:
+                        book_title = book_title.split(sep)[0].strip()
+                if " (💬 " in book_raw and not book_review:
+                    try:
+                        book_review = book_raw.split(" (💬 ")[1].split(" | ")[0].rstrip(")").strip()
+                    except Exception:
+                        pass
 
                 author_val = str(row.get('저자명', '') or row.get('저자', '')).strip()
                 rating_val = str(row.get('별점', '')).strip()
