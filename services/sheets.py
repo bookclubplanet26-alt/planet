@@ -83,7 +83,7 @@ def fetch_google_sheet_members():
         pass
     return False, None, "구글 시트 공유 설정('링크가 있는 모든 사용자에게 공개') 확인이 필요합니다."
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=30, show_spinner=False)
 def fetch_google_sheet_attendances():
     """
     출석전용 구글 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
@@ -117,7 +117,7 @@ def fetch_google_sheet_attendances():
         pass
     return False, None
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=30, show_spinner=False)
 def fetch_google_sheet_meetings():
     """
     모임 목록 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
@@ -566,7 +566,7 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
 
     return deleted
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=30, show_spinner=False)
 def fetch_google_sheet_rsvps():
     """
     구글 시트에서 신청명단/참가신청 탭을 가져오는 함수 (gspread 보안 인증 1순위 사용)

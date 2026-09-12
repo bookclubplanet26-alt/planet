@@ -74,12 +74,21 @@ def filter_attendances_for_meeting(att_df, selected_meeting):
 
 def render_attendance():
     """모임 출석체크 뷰"""
-    st.markdown("""
-    <div style="margin-bottom: 24px;">
-        <h2 style="margin-bottom: 4px; font-weight: 800; color: #1E293B;">📍 모임 출석체크</h2>
-        <p style="color: #64748B; font-size: 0.95rem; margin: 0;">현장 도착 후 시간 및 GPS 위치를 확인하여 출석을 완료하세요.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    col_att_hdr1, col_att_hdr2 = st.columns([4, 1.2])
+    with col_att_hdr1:
+        st.markdown("""
+        <div style="margin-bottom: 24px;">
+            <h2 style="margin-bottom: 4px; font-weight: 800; color: #1E293B;">📍 모임 출석체크</h2>
+            <p style="color: #64748B; font-size: 0.95rem; margin: 0;">현장 도착 후 시간 및 GPS 위치를 확인하여 출석을 완료하세요.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col_att_hdr2:
+        if st.button("🔄 실시간 새로고침", key="att_force_refresh_btn", help="구글 시트의 최신 모임 및 출석 현황을 즉시 다시 불러옵니다"):
+            from utils import fetch_google_sheet_meetings, fetch_google_sheet_attendances
+            fetch_google_sheet_meetings.clear()
+            fetch_google_sheet_attendances.clear()
+            st.cache_data.clear()
+            st.rerun()
 
     # 세션 스테이트 초기화
     if "google_user" not in st.session_state:
