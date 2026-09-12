@@ -11,6 +11,8 @@ from utils import (
 
 # 정규모임 진행자 표시 여부 플래그 (True: 표시, False: 기능 유지한 채 임시 숨김)
 SHOW_REGULAR_FACILITATOR = True
+# 실시간 새로고침 버튼 표시 여부 플래그 (False: 기본 숨김, 사용자 요청 시 활성화)
+SHOW_REALTIME_REFRESH_BUTTON = False
 
 if hasattr(st, "dialog"):
     @st.dialog("🗑️ 모임 삭제 확인")
@@ -295,16 +297,19 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
 
 def render_schedule():
-    col_hdr1, col_hdr2 = st.columns([4, 1.2])
-    with col_hdr1:
+    if SHOW_REALTIME_REFRESH_BUTTON:
+        col_hdr1, col_hdr2 = st.columns([4, 1.2])
+        with col_hdr1:
+            st.subheader("📅 모임 일정 및 신청")
+        with col_hdr2:
+            if st.button("🔄 실시간 새로고침", key="sched_force_refresh_btn", help="구글 시트의 최신 모임 및 신청자 명단을 즉시 다시 불러옵니다"):
+                from utils import fetch_google_sheet_meetings, fetch_google_sheet_rsvps
+                fetch_google_sheet_meetings.clear()
+                fetch_google_sheet_rsvps.clear()
+                st.cache_data.clear()
+                st.rerun()
+    else:
         st.subheader("📅 모임 일정 및 신청")
-    with col_hdr2:
-        if st.button("🔄 실시간 새로고침", key="sched_force_refresh_btn", help="구글 시트의 최신 모임 및 신청자 명단을 즉시 다시 불러옵니다"):
-            from utils import fetch_google_sheet_meetings, fetch_google_sheet_rsvps
-            fetch_google_sheet_meetings.clear()
-            fetch_google_sheet_rsvps.clear()
-            st.cache_data.clear()
-            st.rerun()
 
     # 🗓️ 2609 시즌 캘린더 전체보기 (접기/펼치기)
     with st.expander("🗓️ 2609 시즌 캘린더 전체보기 (9/12 ~ 11/1)", expanded=False):
