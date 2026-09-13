@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, time, date
 from utils import (
     haversine_distance, render_geolocation_button, render_gps_verifier, LOCATION_PRESETS, 
-    fetch_google_sheet_members, fetch_google_sheet_attendances, 
+    fetch_google_sheet_members, fetch_google_sheet_attendances, fetch_google_sheet_meetings,
     get_member_attendance_count, get_meeting_target_gps, 
     format_season_display, ATTENDANCE_WEBHOOK_URL, 
     append_attendance_to_google_sheet_async, get_club_season_code,
@@ -88,7 +88,6 @@ def render_attendance():
             """, unsafe_allow_html=True)
         with col_att_hdr2:
             if st.button("🔄 실시간 새로고침", key="att_force_refresh_btn", help="구글 시트의 최신 모임 및 출석 현황을 즉시 다시 불러옵니다"):
-                from utils import fetch_google_sheet_meetings, fetch_google_sheet_attendances
                 fetch_google_sheet_meetings.clear()
                 fetch_google_sheet_attendances.clear()
                 st.cache_data.clear()

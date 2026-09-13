@@ -255,9 +255,11 @@ def get_all_meeting_rsvps_map(meetings=None):
             r_email = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else ""
             r_type = str(row.get(email_col, '자유책')).strip() if email_col and pd.notna(row.get(email_col)) else "자유책"
         else:
-            r_name = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else "회원"
+            r_name = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else ""
             r_email = str(row.get(email_col, '')).strip() if email_col and pd.notna(row.get(email_col)) else ""
             r_type = str(row.get(type_col, '자유책')).strip() if type_col and pd.notna(row.get(type_col)) else "자유책"
+            if not r_name:
+                r_name = r_email.split('@')[0] if r_email else "회원"
 
         identifier = r_email.strip().lower() if r_email else r_name.strip()
 

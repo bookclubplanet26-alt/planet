@@ -6,7 +6,8 @@ from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
     check_member_season_eligibility, get_all_meetings, get_rsvps_for_meeting,
-    add_rsvp, cancel_rsvp, get_meeting_facilitator, get_all_meeting_rsvps_map
+    add_rsvp, cancel_rsvp, get_meeting_facilitator, get_all_meeting_rsvps_map,
+    fetch_google_sheet_meetings, fetch_google_sheet_rsvps
 )
 
 # 정규모임 진행자 표시 여부 플래그 (True: 표시, False: 기능 유지한 채 임시 숨김)
@@ -280,17 +281,20 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         with st.expander(f"👥 참석 명단 ({current_count}명)", expanded=False):
             if rsvps:
                 for r in rsvps:
+                    m_name = (r.get('member_name') or '').strip()
+                    if not m_name:
+                        m_name = (r.get('member_phone') or '').split('@')[0] if r.get('member_phone') else '회원'
                     p_type = r['participation_type'] if 'participation_type' in r.keys() and r['participation_type'] else '자유책'
                     if "대기" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (⏳ 대기)")
+                        st.markdown(f"• **{m_name}** (⏳ 대기)")
                     elif "지정책" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (📕 지정책)")
+                        st.markdown(f"• **{m_name}** (📕 지정책)")
                     elif "라운징" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (🛋️ 라운징)")
+                        st.markdown(f"• **{m_name}** (🛋️ 라운징)")
                     elif "자유책" in str(p_type):
-                        st.markdown(f"• **{r['member_name']}** (📖 자유책)")
+                        st.markdown(f"• **{m_name}** (📖 자유책)")
                     else:
-                        st.markdown(f"• **{r['member_name']}**")
+                        st.markdown(f"• **{m_name}**")
             else:
                 st.write("아직 참가 신청자가 없습니다.")
 
@@ -303,7 +307,6 @@ def render_schedule():
             st.subheader("📅 모임 일정 및 신청")
         with col_hdr2:
             if st.button("🔄 실시간 새로고침", key="sched_force_refresh_btn", help="구글 시트의 최신 모임 및 신청자 명단을 즉시 다시 불러옵니다"):
-                from utils import fetch_google_sheet_meetings, fetch_google_sheet_rsvps
                 fetch_google_sheet_meetings.clear()
                 fetch_google_sheet_rsvps.clear()
                 st.cache_data.clear()
