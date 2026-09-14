@@ -488,29 +488,7 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
     except Exception:
         pass
 
-    # 2순위: 웹훅 비동기 통지 (fallback 및 로그용)
-    if webhook_url:
-        payload = {
-            "type": "add_meeting",
-            "action": "add_meeting",
-            "title": title,
-            "book_title": book_title,
-            "author": author,
-            "meeting_date": meeting_date,
-            "meeting_time": meeting_time,
-            "location_name": location_name,
-            "max_participants": max_participants,
-            "description": description,
-            "season": season,
-            "시즌": season,
-            "jijung_leader": leader_name,
-            "지정책장": leader_name,
-            "kakao_url": k_url,
-            "오픈카톡방": k_url
-        }
-        t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
-        t.start()
-
+    # gspread 서비스 계정으로 '모임목록' 시트에 직접 저장 완료 후 캐시 갱신
     try:
         fetch_google_sheet_meetings.clear()
         st.cache_data.clear()
@@ -543,29 +521,12 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
     except Exception:
         pass
 
-    if webhook_url:
-        payload = {
-            "type": "delete_meeting",
-            "action": "delete_meeting",
-            "title": title,
-            "meeting_name": title,
-            "모임명": title,
-            "meeting_date": meeting_date,
-            "모임일자": meeting_date
-        }
-        try:
-            t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
-            t.start()
-        except Exception:
-            pass
-
     try:
         fetch_google_sheet_meetings.clear()
         fetch_google_sheet_attendances.clear()
         st.cache_data.clear()
     except Exception:
         pass
-
     return deleted
 
 @st.cache_data(ttl=30, show_spinner=False)

@@ -6,4 +6,5 @@ club.db
 *.json
 .streamlit/secrets.toml
 !.streamlit/secrets.toml.example
+scratch/
 
