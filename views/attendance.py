@@ -73,7 +73,7 @@ def filter_attendances_for_meeting(att_df, selected_meeting):
     return results
 
 # 실시간 새로고침 버튼 표시 여부 플래그 (False: 기본 숨김, 사용자 요청 시 활성화)
-SHOW_REALTIME_REFRESH_BUTTON = True
+SHOW_REALTIME_REFRESH_BUTTON = False
 
 def render_attendance():
     """모임 출석체크 뷰"""
