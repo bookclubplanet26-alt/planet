@@ -134,6 +134,7 @@ def render_attendance():
                     reg_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["등록", "상태", "reg", "status"])), None)
                     admin_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["운영진", "관리자", "admin"])), None)
                     season_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["등록시즌", "등록 시즌", "시즌"])), None)
+                    dedicated_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["열심멤버", "열심", "dedicated"])), None)
 
                     if email_col:
                         matched_row = df_sheet[df_sheet[email_col].astype(str).str.strip().str.lower() == email_str]
@@ -149,6 +150,9 @@ def render_attendance():
                             raw_admin = str(r[admin_col]).strip() if admin_col and pd.notna(r[admin_col]) else "0"
                             admin_val = 1 if raw_admin in ["1", "운영진", "관리자", "True", "true"] else 0
 
+                            raw_dedicated = str(r[dedicated_col]).strip() if dedicated_col and pd.notna(r[dedicated_col]) else "0"
+                            dedicated_val = 1 if raw_dedicated in ["1", "열심", "열심멤버", "True", "true", "Y", "y"] else 0
+
                             found_member = {
                                 "id": hash(email_str) % 100000,
                                 "name": u_name,
@@ -157,7 +161,8 @@ def render_attendance():
                                 "email": email_str,
                                 "season": u_season,
                                 "registered": reg_val,
-                                "is_admin": admin_val
+                                "is_admin": admin_val,
+                                "is_dedicated": dedicated_val
                             }
 
                 if not found_member:

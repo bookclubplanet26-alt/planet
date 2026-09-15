@@ -37,7 +37,7 @@ if hasattr(st, "dialog"):
 else:
     confirm_delete_meeting_dialog = None
 
-def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False, rsvps=None, user_eligibility=None):
+def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False, rsvps=None, user_eligibility=None, is_dedicated=False):
     if rsvps is None:
         rsvps = get_rsvps_for_meeting(meeting['id'], meeting=meeting)
     current_count = len(rsvps)
@@ -73,14 +73,15 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
     )
 
     desc_raw = meeting['description'] or ""
-    leader_name = ""
+    leader_name = meeting.get('leader', '') if isinstance(meeting, dict) else getattr(meeting, 'leader', '')
     kakao_url = ""
     clean_desc = desc_raw
 
     if "[책장:" in clean_desc:
         try:
             l_part = clean_desc.split("[책장:")[1].split("]")[0]
-            leader_name = l_part.strip()
+            if not leader_name:
+                leader_name = l_part.strip()
             clean_desc = clean_desc.replace(f"[책장:{l_part}]", "").strip()
         except Exception:
             pass
@@ -127,17 +128,37 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         m_date = meeting['meeting_date'] if (isinstance(meeting, dict) and 'meeting_date' in meeting) or (hasattr(meeting, 'keys') and 'meeting_date' in meeting.keys()) else ""
         m_id = meeting['id']
 
-        # 1. 헤더 (제목 + 상태 배지 + 관리자 삭제 버튼)
+        # 1. 헤더 (제목 + 상태 배지 + 삭제 권한 체크 및 버튼)
         leader_html = ""
         if leader_name:
-            leader_html = f"<div class='meeting-leader-badge'>👤 <b>지정책장</b>: <span>{leader_name}</span></div>"
+            role_label = "모임장" if is_bung else "지정책장"
+            leader_html = f"<div class='meeting-leader-badge'>👤 <b>{role_label}</b>: <span>{leader_name}</span></div>"
         elif SHOW_REGULAR_FACILITATOR and is_regular and facilitator_name:
             if facilitator_name == "미정":
                 leader_html = "<div class='meeting-leader-badge' style='background:#F7F7F7; border-color:#E0E0E0;'>👤 <b style='color:#757575;'>진행자</b>: <span style='background:#EEEEEE; color:#616161;'>미정</span></div>"
             else:
                 leader_html = f"<div class='meeting-leader-badge'>👤 <b>진행자</b>: <span>{facilitator_name}</span></div>"
 
-        if is_admin:
+        # 삭제 권한 판정: 관리자는 모든 모임 삭제 가능, 열심멤버는 본인이 개설한 모임(정규모임 제외)만 삭제 가능
+        is_my_meeting = False
+        if google_user and leader_name:
+            u_disp = str(google_user.get('display_name', '')).strip()
+            u_name = str(google_user.get('name', '')).strip()
+            u_nick = str(google_user.get('nickname', '')).strip()
+            u_email = str(google_user.get('email', '')).strip().lower()
+            l_str = str(leader_name).strip()
+
+            if l_str == u_disp or l_str == u_name or (u_nick and l_str == u_nick):
+                is_my_meeting = True
+            elif u_name and u_name in l_str:
+                if not u_nick or u_nick in l_str:
+                    is_my_meeting = True
+            elif u_email and u_email in l_str.lower():
+                is_my_meeting = True
+
+        can_delete = is_admin or (is_dedicated and is_my_meeting and not is_regular)
+
+        if can_delete:
             col_t1, col_t2 = st.columns([5, 1])
             with col_t1:
                 st.markdown(
@@ -340,11 +361,13 @@ def render_schedule():
         st.session_state.google_user = None
 
     google_user = st.session_state.google_user
-    is_admin = (google_user and google_user.get("is_admin", 0) == 1)
+    is_admin = bool(google_user and google_user.get("is_admin", 0) == 1)
+    is_dedicated = bool(google_user and google_user.get("is_dedicated", 0) == 1)
+    can_create_meeting = (is_admin or is_dedicated)
 
-    # 탭 구성: 이메일 인증 완료 후 관리자(운영진==1)일 경우에만 관리자 탭 노출
-    if is_admin:
-        tab1, tab2 = st.tabs(["📚 예정된 모임 목록", "➕ [관리자] 새 모임 개설"])
+    # 탭 구성: 관리자 또는 열심멤버일 경우 '➕ 새 모임 개설' 탭 제공
+    if can_create_meeting:
+        tab1, tab2 = st.tabs(["📚 예정된 모임 목록", "➕ 새 모임 개설"])
     else:
         tab1, = st.tabs(["📚 예정된 모임 목록"])
         tab2 = None
@@ -382,6 +405,7 @@ def render_schedule():
                         reg_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["등록", "상태", "reg", "status"])), None)
                         admin_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["운영진", "관리자", "admin"])), None)
                         season_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["등록시즌", "등록 시즌", "시즌"])), None)
+                        dedicated_col = next((c for c in df_sheet.columns if any(k in str(c).lower() for k in ["열심멤버", "열심", "dedicated"])), None)
 
                         if email_col:
                             matched_row = df_sheet[df_sheet[email_col].astype(str).str.strip().str.lower() == email_str]
@@ -397,6 +421,9 @@ def render_schedule():
                                 raw_admin = str(r[admin_col]).strip() if admin_col and pd.notna(r[admin_col]) else "0"
                                 admin_val = 1 if raw_admin in ["1", "운영진", "관리자", "True", "true"] else 0
 
+                                raw_dedicated = str(r[dedicated_col]).strip() if dedicated_col and pd.notna(r[dedicated_col]) else "0"
+                                dedicated_val = 1 if raw_dedicated in ["1", "열심", "열심멤버", "True", "true", "Y", "y"] else 0
+
                                 found_member = {
                                     "id": hash(email_str) % 100000,
                                     "name": u_name,
@@ -405,7 +432,8 @@ def render_schedule():
                                     "email": email_str,
                                     "season": u_season,
                                     "registered": reg_val,
-                                    "is_admin": admin_val
+                                    "is_admin": admin_val,
+                                    "is_dedicated": dedicated_val
                                 }
 
                     if not found_member:
@@ -421,7 +449,7 @@ def render_schedule():
                         st.rerun()
 
         else:
-            admin_badge = " [👑 운영진]" if google_user.get("is_admin", 0) == 1 else ""
+            admin_badge = " [👑 운영진]" if is_admin else (" [🔥 열심멤버]" if is_dedicated else "")
             att_txt = format_member_attendance_and_deposit_text(google_user)
             if not att_txt:
                 from utils import format_season_display
@@ -449,7 +477,9 @@ def render_schedule():
                 """, unsafe_allow_html=True)
 
             if is_admin:
-                st.success("👑 **운영진(관리자) 권한이 확인되었습니다.** 상단 탭에 '[관리자] 새 모임 개설' 메뉴가 추가되었으며, 각 모임 우측 ❌ 삭제 버튼으로 모임을 삭제할 수 있습니다.")
+                st.success("👑 **운영진(관리자) 권한이 확인되었습니다.** 상단 탭에 '➕ 새 모임 개설' 메뉴가 추가되었으며, 각 모임 우측 ❌ 삭제 버튼으로 모임을 삭제할 수 있습니다.")
+            elif is_dedicated:
+                st.success("🔥 **열심멤버 권한이 확인되었습니다.** 상단 탭에 '➕ 새 모임 개설' 메뉴에서 지정책 및 소모임/벙을 개설할 수 있으며, 직접 개설한 모임은 ❌ 삭제할 수 있습니다.")
 
             if st.button("🚪 다른 이메일로 인증 (로그아웃)", key="google_logout_btn"):
                 st.session_state.google_user = None
@@ -524,21 +554,21 @@ def render_schedule():
                 st.info("현재 예정된 정규모임이 없습니다.")
             else:
                 for meeting in regular_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="reg_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility)
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="reg_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated)
 
         with m_tab2:
             if not jijung_meetings:
                 st.info("현재 예정된 지정책 모임이 없습니다.")
             else:
                 for meeting in jijung_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="jijung_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility)
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="jijung_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated)
 
         with m_tab3:
             if not bung_meetings:
                 st.info("현재 예정된 소모임 및 벙 모임이 없습니다.")
             else:
                 for meeting in bung_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="bung_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility)
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="bung_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated)
 
         with m_tab4:
             if not past_meetings:
@@ -546,11 +576,11 @@ def render_schedule():
             else:
                 st.caption("💡 성황리에 마무리된 지난 모임 목록입니다.")
                 for meeting in past_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="past_m", is_ended=True, rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility)
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="past_m", is_ended=True, rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated)
 
     if tab2:
         with tab2:
             from views.admin_meeting_create import render_admin_meeting_create
-            render_admin_meeting_create()
+            render_admin_meeting_create(google_user=google_user, is_admin=is_admin, is_dedicated=is_dedicated)
 
 

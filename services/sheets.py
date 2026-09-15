@@ -169,7 +169,7 @@ def get_google_sheet_meetings_list():
         book_title = str(row.get('도서명', '')).strip()
         author = str(row.get('저자', '')).strip()
         desc = str(row.get('모임설명', row.get('설명', ''))).strip()
-        leader = str(row.get('지정책장', row.get('책장', ''))).strip()
+        leader = str(row.get('모임장', row.get('지정책장', row.get('책장', '')))).strip()
         kakao = str(row.get('오픈카톡방', row.get('카톡방', ''))).strip()
 
         if leader and f"[책장:{leader}]" not in desc:
@@ -200,7 +200,8 @@ def get_google_sheet_meetings_list():
                 "latitude": lat,
                 "longitude": lng,
                 "max_participants": max_p,
-                "description": desc
+                "description": desc,
+                "leader": leader
             })
     return meetings
 
