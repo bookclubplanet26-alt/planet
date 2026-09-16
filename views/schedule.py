@@ -13,7 +13,7 @@ from utils import (
 # 정규모임 진행자 표시 여부 플래그 (True: 표시, False: 기능 유지한 채 임시 숨김)
 SHOW_REGULAR_FACILITATOR = True
 # 실시간 새로고침 버튼 표시 여부 플래그 (False: 기본 숨김, 사용자 요청 시 활성화)
-SHOW_REALTIME_REFRESH_BUTTON = False
+SHOW_REALTIME_REFRESH_BUTTON = True
 
 if hasattr(st, "dialog"):
     @st.dialog("🗑️ 모임 삭제 확인")
