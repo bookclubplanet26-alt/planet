@@ -77,7 +77,15 @@ SHOW_REALTIME_REFRESH_BUTTON = True
 
 def render_attendance():
     """모임 출석체크 뷰"""
-    if SHOW_REALTIME_REFRESH_BUTTON:
+    # 세션 스테이트 초기화
+    if "google_user" not in st.session_state:
+        st.session_state.google_user = None
+
+    google_user = st.session_state.google_user
+    user_email = (google_user.get("email") or "").strip().lower() if google_user else ""
+    is_super_admin = (user_email == "hanjisubusiness22@gmail.com")
+
+    if SHOW_REALTIME_REFRESH_BUTTON and is_super_admin:
         col_att_hdr1, col_att_hdr2 = st.columns([4, 1.2])
         with col_att_hdr1:
             st.markdown("""
@@ -99,12 +107,6 @@ def render_attendance():
             <p style="color: #64748B; font-size: 0.95rem; margin: 0;">현장 도착 후 시간 및 GPS 위치를 확인하여 출석을 완료하세요.</p>
         </div>
         """, unsafe_allow_html=True)
-
-    # 세션 스테이트 초기화
-    if "google_user" not in st.session_state:
-        st.session_state.google_user = None
-
-    google_user = st.session_state.google_user
 
     # 🔐 구글 시트 기반 전용 Google 이메일 본인 인증
     st.markdown("#### 🔐 Google 계정 본인 인증")

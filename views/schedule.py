@@ -322,7 +322,15 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
 
 def render_schedule():
-    if SHOW_REALTIME_REFRESH_BUTTON:
+    # 세션 스테이트 초기화
+    if "google_user" not in st.session_state:
+        st.session_state.google_user = None
+
+    google_user = st.session_state.google_user
+    user_email = (google_user.get("email") or "").strip().lower() if google_user else ""
+    is_super_admin = (user_email == "hanjisubusiness22@gmail.com")
+
+    if SHOW_REALTIME_REFRESH_BUTTON and is_super_admin:
         col_hdr1, col_hdr2 = st.columns([4, 1.2])
         with col_hdr1:
             st.subheader("📅 모임 일정 및 신청")
@@ -356,11 +364,6 @@ def render_schedule():
         st.toast(msg, icon="🗑️")
         st.session_state["meeting_deleted_toast"] = None
 
-    # 세션 스테이트 초기화
-    if "google_user" not in st.session_state:
-        st.session_state.google_user = None
-
-    google_user = st.session_state.google_user
     is_admin = bool(google_user and google_user.get("is_admin", 0) == 1)
     is_dedicated = bool(google_user and google_user.get("is_dedicated", 0) == 1)
     can_create_meeting = (is_admin or is_dedicated)
