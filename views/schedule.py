@@ -323,8 +323,8 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                         m_name = (r.get('member_phone') or '').split('@')[0] if r.get('member_phone') else '회원'
                     p_type = r['participation_type'] if 'participation_type' in r.keys() and r['participation_type'] else '자유책'
 
-                    # 첫출석 뱃지 판정 (운영진에게만 표시)
-                    badge_first = ""
+                    # 첫출석 뱃지 판정 (운영진에게만 표시: 🌱이름 형식)
+                    first_prefix = ""
                     if is_admin and first_attendees_set:
                         r_email = str(r.get('member_phone') or '').strip().lower()
                         r_name_clean = str(r.get('member_name') or '').strip()
@@ -339,18 +339,18 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                                 is_first = True
 
                         if is_first:
-                            badge_first = " [🌱 첫출석]"
+                            first_prefix = "🌱"
 
                     if "대기" in str(p_type):
-                        st.markdown(f"• **{m_name}** (⏳ 대기){badge_first}")
+                        st.markdown(f"• **{first_prefix}{m_name}** (⏳ 대기)")
                     elif "지정책" in str(p_type):
-                        st.markdown(f"• **{m_name}** (📕 지정책){badge_first}")
+                        st.markdown(f"• **{first_prefix}{m_name}** (📕 지정책)")
                     elif "라운징" in str(p_type):
-                        st.markdown(f"• **{m_name}** (🛋️ 라운징){badge_first}")
+                        st.markdown(f"• **{first_prefix}{m_name}** (🛋️ 라운징)")
                     elif "자유책" in str(p_type):
-                        st.markdown(f"• **{m_name}** (📖 자유책){badge_first}")
+                        st.markdown(f"• **{first_prefix}{m_name}** (📖 자유책)")
                     else:
-                        st.markdown(f"• **{m_name}**{badge_first}")
+                        st.markdown(f"• **{first_prefix}{m_name}**")
             else:
                 st.write("아직 참가 신청자가 없습니다.")
 
