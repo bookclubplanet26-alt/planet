@@ -122,6 +122,19 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             status_chip_html = f'<span class="status-chip chip-available">🟢 신청가능 ({confirmed_count}/{max_count}명)</span>'
             is_waitlist_mode = False
 
+    # 첫출석 신청자 수 사전 집계 (운영진 요약 표시용)
+    first_count = 0
+    if is_admin and first_attendees_set and rsvps:
+        for r in rsvps:
+            r_email = str(r.get('member_phone') or '').strip().lower()
+            r_name_clean = str(r.get('member_name') or '').strip()
+            base_name = r_name_clean.split(' - ')[0].strip() if ' - ' in r_name_clean else r_name_clean
+            if (r_email and r_email in first_attendees_set) or (r_name_clean and r_name_clean in first_attendees_set) or (base_name and base_name in first_attendees_set):
+                first_count += 1
+
+    if is_admin and first_count > 0:
+        status_chip_html += f' <span class="status-chip" style="background:#E8F5E9; color:#2E7D32; border:1px solid #A5D6A7; font-weight:600;">🌱 첫출석 {first_count}명</span>'
+
     # 독립된 모임 카드 컨테이너
     with st.container(border=True):
         m_title = meeting['title'] if isinstance(meeting, dict) or hasattr(meeting, '__getitem__') else getattr(meeting, 'title', '')
@@ -299,7 +312,10 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             st.warning("⚠️ 참가 신청을 위해 먼저 상단에서 Google 계정 인증을 완료해 주세요.")
 
         # 5. 참석자 명단 expander (카드 내부 하단, 기본 접힘)
-        with st.expander(f"👥 참석 명단 ({current_count}명)", expanded=False):
+        expander_title = f"👥 참석 명단 ({current_count}명)"
+        if is_admin and first_count > 0:
+            expander_title = f"👥 참석 명단 ({current_count}명 / 🌱 첫출석 {first_count}명)"
+        with st.expander(expander_title, expanded=False):
             if rsvps:
                 for r in rsvps:
                     m_name = (r.get('member_name') or '').strip()
