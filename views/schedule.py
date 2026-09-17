@@ -283,7 +283,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                     else:
                         part_choice = st.radio(
                             "참여 방식을 선택하세요",
-                            ["📖 자유책 (출석 1회)", "🛋️ 라운징 (출석 0.5회)", "📕 지정책 (출석 1회)"],
+                            ["📖 자유책 (출석 1회)", "📕 지정책 (출석 1회)", "🛋️ 라운징 (출석 0.5회)"],
                             horizontal=True,
                             key=f"{key_prefix}_part_radio_{meeting['id']}"
                         )
