@@ -298,10 +298,16 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                             st.caption("💡 **자유책 안내**: 각자 읽고 싶은 책을 지참하여 자유롭게 소통하며, **출석 1회**로 인정됩니다.")
                         btn_label = "🚀 참가 신청하기"
 
+                    user_comment = st.text_input(
+                        "💬 한마디 (선택)",
+                        placeholder="모임에 전하고 싶은 한마디를 남겨주세요 (선택)",
+                        key=f"{key_prefix}_comment_{meeting['id']}"
+                    )
+
                     btn_disabled = (is_full and not is_waitlist_mode)
                     if st.button(btn_label, key=f"{key_prefix}_rsvp_{meeting['id']}", disabled=btn_disabled, type="primary", use_container_width=True):
                         with st.spinner("참가 신청 중..."): 
-                            success, msg = add_rsvp(meeting['id'], google_user['id'], google_user['display_name'], google_user['email'], selected_part_type)
+                            success, msg = add_rsvp(meeting['id'], google_user['id'], google_user['display_name'], google_user['email'], selected_part_type, comment=user_comment)
                             if success:
                                 toast_msg = "대기 신청이 완료되었습니다!" if selected_part_type == "대기" else "참가 신청이 완료되었습니다!"
                                 st.toast(f"✅ [{google_user['display_name']}] 님, {toast_msg}", icon="🎉")
@@ -374,18 +380,21 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                         if is_first:
                             first_prefix = "🌱"
 
+                    r_comment = str(r.get('comment') or '').strip().replace("\n", " ")
+                    comment_suffix = f" : {r_comment}" if r_comment else ""
+
                     if "대기" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (⏳)")
+                        st.markdown(f"• **{first_prefix}{m_name}** (⏳){comment_suffix}")
                     elif "지정책" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (📕)")
+                        st.markdown(f"• **{first_prefix}{m_name}** (📕){comment_suffix}")
                     elif "라운징" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (🛋️)")
+                        st.markdown(f"• **{first_prefix}{m_name}** (🛋️){comment_suffix}")
                     elif "자유책" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (📖)")
+                        st.markdown(f"• **{first_prefix}{m_name}** (📖){comment_suffix}")
                     elif "참석" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (☕)")
+                        st.markdown(f"• **{first_prefix}{m_name}** (☕){comment_suffix}")
                     else:
-                        st.markdown(f"• **{first_prefix}{m_name}**")
+                        st.markdown(f"• **{first_prefix}{m_name}**{comment_suffix}")
             else:
                 st.write("아직 참가 신청자가 없습니다.")
 

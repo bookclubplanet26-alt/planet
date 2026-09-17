@@ -242,6 +242,7 @@ def get_all_meeting_rsvps_map(meetings=None):
     name_col = next((c for c in df.columns if any(k in str(c) for k in ["회원명", "이름", "성함", "name"])), None)
     email_col = next((c for c in df.columns if any(k in str(c) for k in ["이메일", "email", "mail"])), None)
     type_col = next((c for c in df.columns if any(k in str(c) for k in ["참여방식", "방식", "type"])), None)
+    comment_col = next((c for c in df.columns if any(k in str(c) for k in ["한마디", "코멘트", "메모", "소감", "comment"])), None)
 
     seen_map = {m['id']: set() for m in meetings}
     m_info_list = [(m['id'], str(m.get('title', '')).strip(), str(m.get('meeting_date', '')).strip()) for m in meetings]
@@ -255,10 +256,12 @@ def get_all_meeting_rsvps_map(meetings=None):
             r_name = row_d
             r_email = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else ""
             r_type = str(row.get(email_col, '자유책')).strip() if email_col and pd.notna(row.get(email_col)) else "자유책"
+            r_comment = str(row.get(type_col, '')).strip() if type_col and pd.notna(row.get(type_col)) else ""
         else:
             r_name = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else ""
             r_email = str(row.get(email_col, '')).strip() if email_col and pd.notna(row.get(email_col)) else ""
             r_type = str(row.get(type_col, '자유책')).strip() if type_col and pd.notna(row.get(type_col)) else "자유책"
+            r_comment = str(row.get(comment_col, '')).strip() if comment_col and pd.notna(row.get(comment_col)) else ""
             if not r_name:
                 r_name = r_email.split('@')[0] if r_email else "회원"
 
@@ -288,7 +291,8 @@ def get_all_meeting_rsvps_map(meetings=None):
                     "member_id": hash(r_email) % 100000 if r_email else idx + 100,
                     "member_name": r_name,
                     "member_phone": r_email,
-                    "participation_type": r_type
+                    "participation_type": r_type,
+                    "comment": r_comment
                 })
 
     return rsvps_map
@@ -318,6 +322,7 @@ def get_rsvps_for_meeting(meeting_id, meeting=None, rsvps_map=None):
         name_col = next((c for c in df.columns if any(k in str(c) for k in ["회원명", "이름", "성함", "name"])), None)
         email_col = next((c for c in df.columns if any(k in str(c) for k in ["이메일", "email", "mail"])), None)
         type_col = next((c for c in df.columns if any(k in str(c) for k in ["참여방식", "방식", "type"])), None)
+        comment_col = next((c for c in df.columns if any(k in str(c) for k in ["한마디", "코멘트", "메모", "소감", "comment"])), None)
 
         for idx, row in df.iterrows():
             row_m = str(row.get(m_col, '')).strip()
@@ -330,6 +335,7 @@ def get_rsvps_for_meeting(meeting_id, meeting=None, rsvps_map=None):
                 r_name = row_d
                 r_email = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else ""
                 r_type = str(row.get(email_col, '자유책')).strip() if email_col and pd.notna(row.get(email_col)) else "자유책"
+                r_comment = str(row.get(type_col, '')).strip() if type_col and pd.notna(row.get(type_col)) else ""
                 date_match = True
             else:
                 date_match = True
@@ -338,6 +344,7 @@ def get_rsvps_for_meeting(meeting_id, meeting=None, rsvps_map=None):
                 r_name = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else "회원"
                 r_email = str(row.get(email_col, '')).strip() if email_col and pd.notna(row.get(email_col)) else ""
                 r_type = str(row.get(type_col, '자유책')).strip() if type_col and pd.notna(row.get(type_col)) else "자유책"
+                r_comment = str(row.get(comment_col, '')).strip() if comment_col and pd.notna(row.get(comment_col)) else ""
 
             if title_match and date_match:
                 identifier = r_email.strip().lower() if r_email else r_name.strip()
@@ -352,11 +359,12 @@ def get_rsvps_for_meeting(meeting_id, meeting=None, rsvps_map=None):
                     "member_id": hash(r_email) % 100000 if r_email else idx + 100,
                     "member_name": r_name,
                     "member_phone": r_email,
-                    "participation_type": r_type
+                    "participation_type": r_type,
+                    "comment": r_comment
                 })
     return rsvps
 
-def add_rsvp(meeting_id, member_id, member_name, member_phone, participation_type="자유책"):
+def add_rsvp(meeting_id, member_id, member_name, member_phone, participation_type="자유책", comment=""):
     """
     모임 참가 신청 (순수 구글 시트 연동)
     """
@@ -378,7 +386,8 @@ def add_rsvp(meeting_id, member_id, member_name, member_phone, participation_typ
         member_name=member_name,
         email=member_phone,
         participation_type=participation_type,
-        meeting_date=meeting.get('meeting_date', '')
+        meeting_date=meeting.get('meeting_date', ''),
+        comment=comment
     )
     msg_type = "대기 신청" if participation_type == "대기" else "참가 신청"
     return True, f"{msg_type}이 성공적으로 완료되었습니다!"
@@ -588,7 +597,7 @@ def _async_append_rsvp(webhook_url, payload, row_data):
     except Exception:
         pass
 
-def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email, participation_type="자유책", meeting_date=""):
+def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email, participation_type="자유책", meeting_date="", comment=""):
     """
     백그라운드 비동기 스레드로 구글 시트 신청명단에 참가 신청 정보 전송 (대기시간 0초)
     """
@@ -612,7 +621,9 @@ def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email
         "이메일": email,
         "participation_type": participation_type,
         "참여방식": participation_type,
-        "방식": participation_type
+        "방식": participation_type,
+        "comment": comment,
+        "한마디": comment
     }
 
     row_data = [
@@ -621,7 +632,8 @@ def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email
         meeting_date if meeting_date else "",
         member_name,
         email,
-        participation_type
+        participation_type,
+        comment
     ]
 
     try:
