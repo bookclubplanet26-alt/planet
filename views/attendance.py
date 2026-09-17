@@ -72,8 +72,8 @@ def filter_attendances_for_meeting(att_df, selected_meeting):
 
     return results
 
-# 실시간 새로고침 버튼 표시 여부 플래그 (False: 기본 숨김, 사용자 요청 시 활성화)
-SHOW_REALTIME_REFRESH_BUTTON = True
+# 슈퍼 관리자 이메일 목록 (실시간 새로고침 등 특수 관리 기능 권한)
+SUPER_ADMIN_EMAILS = ["hanjisubusiness22@gmail.com"]
 
 def render_attendance():
     """모임 출석체크 뷰"""
@@ -83,9 +83,9 @@ def render_attendance():
 
     google_user = st.session_state.google_user
     user_email = (google_user.get("email") or "").strip().lower() if google_user else ""
-    is_super_admin = (user_email == "hanjisubusiness22@gmail.com")
+    is_super_admin = bool(user_email and user_email in SUPER_ADMIN_EMAILS)
 
-    if SHOW_REALTIME_REFRESH_BUTTON and is_super_admin:
+    if is_super_admin:
         col_att_hdr1, col_att_hdr2 = st.columns([4, 1.2])
         with col_att_hdr1:
             st.markdown("""
