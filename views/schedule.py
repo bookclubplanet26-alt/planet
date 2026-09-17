@@ -37,7 +37,7 @@ if hasattr(st, "dialog"):
 else:
     confirm_delete_meeting_dialog = None
 
-def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False, rsvps=None, user_eligibility=None, is_dedicated=False):
+def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False, rsvps=None, user_eligibility=None, is_dedicated=False, first_attendees_set=None):
     if rsvps is None:
         rsvps = get_rsvps_for_meeting(meeting['id'], meeting=meeting)
     current_count = len(rsvps)
@@ -306,16 +306,35 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                     if not m_name:
                         m_name = (r.get('member_phone') or '').split('@')[0] if r.get('member_phone') else '회원'
                     p_type = r['participation_type'] if 'participation_type' in r.keys() and r['participation_type'] else '자유책'
+
+                    # 첫출석 뱃지 판정 (운영진에게만 표시)
+                    badge_first = ""
+                    if is_admin and first_attendees_set:
+                        r_email = str(r.get('member_phone') or '').strip().lower()
+                        r_name_clean = str(r.get('member_name') or '').strip()
+                        is_first = False
+                        if r_email and r_email in first_attendees_set:
+                            is_first = True
+                        elif r_name_clean and r_name_clean in first_attendees_set:
+                            is_first = True
+                        elif r_name_clean:
+                            base_name = r_name_clean.split(' - ')[0].strip() if ' - ' in r_name_clean else r_name_clean
+                            if base_name in first_attendees_set:
+                                is_first = True
+
+                        if is_first:
+                            badge_first = " [🌱 첫출석]"
+
                     if "대기" in str(p_type):
-                        st.markdown(f"• **{m_name}** (⏳ 대기)")
+                        st.markdown(f"• **{m_name}** (⏳ 대기){badge_first}")
                     elif "지정책" in str(p_type):
-                        st.markdown(f"• **{m_name}** (📕 지정책)")
+                        st.markdown(f"• **{m_name}** (📕 지정책){badge_first}")
                     elif "라운징" in str(p_type):
-                        st.markdown(f"• **{m_name}** (🛋️ 라운징)")
+                        st.markdown(f"• **{m_name}** (🛋️ 라운징){badge_first}")
                     elif "자유책" in str(p_type):
-                        st.markdown(f"• **{m_name}** (📖 자유책)")
+                        st.markdown(f"• **{m_name}** (📖 자유책){badge_first}")
                     else:
-                        st.markdown(f"• **{m_name}**")
+                        st.markdown(f"• **{m_name}**{badge_first}")
             else:
                 st.write("아직 참가 신청자가 없습니다.")
 
@@ -379,6 +398,36 @@ def render_schedule():
         meetings = get_all_meetings()
         rsvps_map = get_all_meeting_rsvps_map(meetings)
         user_eligibility = check_member_season_eligibility(google_user) if google_user else (False, "NOT_LOGGED_IN", "로그인 필요")
+
+        # 운영진 전용 첫출석 대상자 집합 생성 (초고속 O(1) 매핑)
+        first_attendees_set = set()
+        if is_admin:
+            try:
+                success_m, df_members, _ = fetch_google_sheet_members()
+                if success_m and df_members is not None:
+                    first_col = next((c for c in df_members.columns if any(k in str(c).lower() for k in ["첫출석", "첫 출석", "first_attend"])), None)
+                    email_col = next((c for c in df_members.columns if any(k in str(c).lower() for k in ["이메일", "email", "mail"])), None)
+                    name_col = next((c for c in df_members.columns if any(k in str(c).lower() for k in ["이름", "성함", "name"])), None)
+                    nick_col = next((c for c in df_members.columns if any(k in str(c).lower() for k in ["닉네임", "별명", "nick"])), None)
+
+                    if first_col:
+                        for _, r in df_members.iterrows():
+                            val = str(r.get(first_col, '')).strip()
+                            if val in ['1', 'Y', 'y', 'TRUE', 'true']:
+                                if email_col and pd.notna(r.get(email_col)):
+                                    em = str(r[email_col]).strip().lower()
+                                    if em:
+                                        first_attendees_set.add(em)
+                                if name_col and pd.notna(r.get(name_col)):
+                                    u_n = str(r[name_col]).strip()
+                                    if u_n:
+                                        first_attendees_set.add(u_n)
+                                        if nick_col and pd.notna(r.get(nick_col)):
+                                            u_nk = str(r[nick_col]).strip()
+                                            if u_nk:
+                                                first_attendees_set.add(f"{u_n} - {u_nk}")
+            except Exception:
+                pass
 
         # 🔐 구글 시트 기반 전용 Google 이메일 본인 인증
         st.markdown("#### 🔐 Google 계정 본인 인증")
@@ -557,21 +606,21 @@ def render_schedule():
                 st.info("현재 예정된 정규모임이 없습니다.")
             else:
                 for meeting in regular_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="reg_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated)
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="reg_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated, first_attendees_set=first_attendees_set)
 
         with m_tab2:
             if not jijung_meetings:
                 st.info("현재 예정된 지정책 모임이 없습니다.")
             else:
                 for meeting in jijung_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="jijung_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated)
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="jijung_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated, first_attendees_set=first_attendees_set)
 
         with m_tab3:
             if not bung_meetings:
                 st.info("현재 예정된 소모임 및 벙 모임이 없습니다.")
             else:
                 for meeting in bung_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="bung_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated)
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="bung_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated, first_attendees_set=first_attendees_set)
 
         with m_tab4:
             if not past_meetings:
@@ -579,7 +628,7 @@ def render_schedule():
             else:
                 st.caption("💡 성황리에 마무리된 지난 모임 목록입니다.")
                 for meeting in past_meetings:
-                    render_meeting_card(meeting, google_user, is_admin, key_prefix="past_m", is_ended=True, rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated)
+                    render_meeting_card(meeting, google_user, is_admin, key_prefix="past_m", is_ended=True, rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated, first_attendees_set=first_attendees_set)
 
     if tab2:
         with tab2:
