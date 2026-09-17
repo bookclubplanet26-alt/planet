@@ -300,7 +300,8 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
                     user_comment = st.text_input(
                         "💬 한마디 (선택)",
-                        placeholder="모임에 전하고 싶은 한마디를 남겨주세요 (선택)",
+                        placeholder="모임에 전하고 싶은 한마디를 남겨주세요 (최대 25자)",
+                        max_chars=30,
                         key=f"{key_prefix}_comment_{meeting['id']}"
                     )
 
@@ -381,6 +382,8 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                             first_prefix = "🌱"
 
                     r_comment = str(r.get('comment') or '').strip().replace("\n", " ")
+                    if len(r_comment) > 22:
+                        r_comment = r_comment[:20] + "…"
                     comment_suffix = f" : {r_comment}" if r_comment else ""
 
                     if "대기" in str(p_type):
