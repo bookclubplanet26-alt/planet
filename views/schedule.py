@@ -396,23 +396,25 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                         if is_first:
                             first_prefix = "🌱"
 
+                    import html
                     r_comment = str(r.get('comment') or '').strip().replace("\n", " ")
                     if len(r_comment) > 22:
                         r_comment = r_comment[:20] + "…"
-                    comment_suffix = f" : {r_comment}" if r_comment else ""
+                    safe_comment = html.escape(r_comment)
+                    comment_suffix = f' <span style="background:#F4F1EA; color:#5D4037; padding:2px 8px; border-radius:6px; font-size:0.83rem; border:1px solid #E5E0D6; margin-left:4px; display:inline-block; vertical-align:middle; line-height:1.3;">💬 {safe_comment}</span>' if r_comment else ""
 
                     if "대기" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (⏳){comment_suffix}")
+                        st.markdown(f"• **{first_prefix}{m_name}** (⏳){comment_suffix}", unsafe_allow_html=True)
                     elif "지정책" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (📕){comment_suffix}")
+                        st.markdown(f"• **{first_prefix}{m_name}** (📕){comment_suffix}", unsafe_allow_html=True)
                     elif "라운징" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (🛋️){comment_suffix}")
+                        st.markdown(f"• **{first_prefix}{m_name}** (🛋️){comment_suffix}", unsafe_allow_html=True)
                     elif "자유책" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (📖){comment_suffix}")
+                        st.markdown(f"• **{first_prefix}{m_name}** (📖){comment_suffix}", unsafe_allow_html=True)
                     elif "참석" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (☕){comment_suffix}")
+                        st.markdown(f"• **{first_prefix}{m_name}** (☕){comment_suffix}", unsafe_allow_html=True)
                     else:
-                        st.markdown(f"• **{first_prefix}{m_name}**{comment_suffix}")
+                        st.markdown(f"• **{first_prefix}{m_name}**{comment_suffix}", unsafe_allow_html=True)
             else:
                 st.write("아직 참가 신청자가 없습니다.")
 
