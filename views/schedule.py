@@ -312,9 +312,42 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             st.warning("⚠️ 참가 신청을 위해 먼저 상단에서 Google 계정 인증을 완료해 주세요.")
 
         # 5. 참석자 명단 expander (카드 내부 하단, 기본 접힘)
-        expander_title = f"👥 참석 명단 ({current_count}명)"
-        if is_admin and first_count > 0:
-            expander_title = f"👥 참석 명단 ({current_count}명 / 🌱 첫출석 {first_count}명)"
+        # 유형별 신청 인원 집계 (신청자가 있는 항목만 동적으로 표시)
+        c_free = 0
+        c_jijung = 0
+        c_lounge = 0
+        c_attend = 0
+        c_wait = 0
+        if rsvps:
+            for r in rsvps:
+                pt = str(r.get('participation_type') or '자유책')
+                if "대기" in pt:
+                    c_wait += 1
+                elif "지정책" in pt:
+                    c_jijung += 1
+                elif "라운징" in pt:
+                    c_lounge += 1
+                elif "참석" in pt:
+                    c_attend += 1
+                else:
+                    c_free += 1
+
+        type_parts = []
+        if c_free > 0:
+            type_parts.append(f"📖 자유책 {c_free}명")
+        if c_jijung > 0:
+            type_parts.append(f"📕 지정책 {c_jijung}명")
+        if c_lounge > 0:
+            type_parts.append(f"🛋️ 라운징 {c_lounge}명")
+        if c_attend > 0:
+            type_parts.append(f"☕ 참석 {c_attend}명")
+        if c_wait > 0:
+            type_parts.append(f"⏳ 대기 {c_wait}명")
+
+        summary_str = f" : {' · '.join(type_parts)}" if type_parts else ""
+        first_str = f" / 🌱 첫출석 {first_count}명" if (is_admin and first_count > 0) else ""
+        expander_title = f"👥 참석 명단 ({current_count}명{summary_str}{first_str})"
+
         with st.expander(expander_title, expanded=False):
             if rsvps:
                 for r in rsvps:
@@ -342,13 +375,15 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                             first_prefix = "🌱"
 
                     if "대기" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (⏳ 대기)")
+                        st.markdown(f"• **{first_prefix}{m_name}** (⏳)")
                     elif "지정책" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (📕 지정책)")
+                        st.markdown(f"• **{first_prefix}{m_name}** (📕)")
                     elif "라운징" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (🛋️ 라운징)")
+                        st.markdown(f"• **{first_prefix}{m_name}** (🛋️)")
                     elif "자유책" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (📖 자유책)")
+                        st.markdown(f"• **{first_prefix}{m_name}** (📖)")
+                    elif "참석" in str(p_type):
+                        st.markdown(f"• **{first_prefix}{m_name}** (☕)")
                     else:
                         st.markdown(f"• **{first_prefix}{m_name}**")
             else:
