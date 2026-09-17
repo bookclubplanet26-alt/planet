@@ -357,7 +357,22 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
         with st.expander(expander_title, expanded=False):
             if rsvps:
-                for r in rsvps:
+                def _part_order(r):
+                    pt = str(r.get('participation_type') or '자유책')
+                    if "자유책" in pt:
+                        return 1
+                    if "지정책" in pt:
+                        return 2
+                    if "라운징" in pt:
+                        return 3
+                    if "참석" in pt:
+                        return 4
+                    if "대기" in pt:
+                        return 5
+                    return 6
+
+                sorted_rsvps = sorted(rsvps, key=_part_order)
+                for r in sorted_rsvps:
                     m_name = (r.get('member_name') or '').strip()
                     if not m_name:
                         m_name = (r.get('member_phone') or '').split('@')[0] if r.get('member_phone') else '회원'
