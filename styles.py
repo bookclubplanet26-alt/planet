@@ -6,9 +6,14 @@ def apply_custom_css():
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
 
-    html, body, [class*="css"] {
-        font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+    html, body, [class*="css"], button, input, select, textarea {
+        font-family: 'Pretendard', 'Noto Sans KR', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', -apple-system, BlinkMacSystemFont, sans-serif;
         -webkit-font-smoothing: antialiased;
+    }
+
+    /* 탭 이모지 컬러 렌더링 보장 */
+    button[data-baseweb="tab"], [data-testid="stTabs"] button {
+        font-family: 'Pretendard', 'Noto Sans KR', 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif !important;
     }
 
     /* 1. 모바일 반응형 여백 (컴팩트 최적화) */
