@@ -11,8 +11,10 @@ def apply_custom_css():
         -webkit-font-smoothing: antialiased;
     }
 
-    /* 탭 이모지 컬러 렌더링 보장 */
-    button[data-baseweb="tab"], [data-testid="stTabs"] button {
+    /* 탭 및 참석자 명단/익스팬더 이모지 컬러 렌더링 보장 */
+    button[data-baseweb="tab"], [data-testid="stTabs"] button,
+    [data-testid="stExpander"] details summary,
+    div[data-testid="stMarkdownContainer"], .stMarkdown {
         font-family: 'Pretendard', 'Noto Sans KR', 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif !important;
     }
 
