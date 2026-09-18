@@ -347,7 +347,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         if c_lounge > 0:
             type_parts.append(f"🛋️ 라운징 {c_lounge}명")
         if c_attend > 0:
-            type_parts.append(f"\u2615\ufe0f 참석 {c_attend}명")
+            type_parts.append(f"🍵 참석 {c_attend}명")
         if c_wait > 0:
             type_parts.append(f"⏳ 대기 {c_wait}명")
 
@@ -412,7 +412,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                     elif "자유책" in str(p_type):
                         st.markdown(f"• **{first_prefix}{m_name}** (📖){comment_suffix}", unsafe_allow_html=True)
                     elif "참석" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (\u2615\ufe0f){comment_suffix}", unsafe_allow_html=True)
+                        st.markdown(f"• **{first_prefix}{m_name}** (🍵){comment_suffix}", unsafe_allow_html=True)
                     else:
                         st.markdown(f"• **{first_prefix}{m_name}**{comment_suffix}", unsafe_allow_html=True)
             else:
