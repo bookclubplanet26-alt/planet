@@ -308,10 +308,10 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                             st.caption("💡 **지정책 안내**: 선정도서를 읽고 발제 및 토론에 참여하며, **출석 1회**로 인정됩니다.")
                         elif "라운징" in part_choice:
                             selected_part_type = "라운징"
-                            st.caption("💡 **라운징 안내**: 발제 및 토론 없이 편하게 자유 독서 및 휴식을 취하는 방식으로, **출석 0.5회**로 인정됩니다.")
+                            st.caption("💡 **라운징 안내**: 발제 및 토론 없이 편하게 자유 독서를 하는 방식으로, **출석 0.5회**로 인정됩니다.")
                         else:
                             selected_part_type = "자유책"
-                            st.caption("💡 **자유책 안내**: 각자 읽고 싶은 책을 지참하여 자유롭게 소통하며, **출석 1회**로 인정됩니다.")
+                            st.caption("💡 **자유책 안내**: 각자 읽은 책을 지참하여 자유롭게 소통하며, **출석 1회**로 인정됩니다.")
                         btn_label = "🚀 참가 신청하기"
 
                     user_comment = st.text_input(

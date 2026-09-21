@@ -374,9 +374,9 @@ def render_attendance():
         att_type_name = "라운징" if "라운징" in str(current_att_choice) else "정규모임"
 
         if att_type_name == "라운징":
-            st.caption("💡 **라운징 안내**: 발제 및 토론 없이 편하게 자유 독서 및 휴식을 취하는 방식으로, **출석 0.5회**로 인정됩니다.")
+            st.caption("💡 **라운징 안내**: 발제 및 토론 없이 편하게 자유 독서를 하는 방식으로, **출석 0.5회**로 인정됩니다.")
         else:
-            st.caption("💡 **자유책 안내**: 각자 읽고 싶은 책을 지참하여 자유롭게 소통하며, **출석 1회**로 인정됩니다.")
+            st.caption("💡 **자유책 안내**: 각자 읽은 책을 지참하여 자유롭게 소통하며, **출석 1회**로 인정됩니다.")
 
         book_read_input = st.text_input("📖 지참 책 제목", placeholder="예: 데미안, 사피엔스 등", key="att_book_read_input")
         book_author_input = st.text_input("✍️ 저자 / 작가 (선택)", placeholder="예: 헤르만 헤세 (선택)", key="att_book_author_input")
