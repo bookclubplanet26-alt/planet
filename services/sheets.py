@@ -171,11 +171,14 @@ def get_google_sheet_meetings_list():
         desc = str(row.get('모임설명', row.get('설명', ''))).strip()
         leader = str(row.get('모임장', row.get('지정책장', row.get('책장', '')))).strip()
         kakao = str(row.get('오픈카톡방', row.get('카톡방', ''))).strip()
+        account = str(row.get('입금계좌', row.get('계좌', row.get('계좌번호', '')))).strip()
 
         if leader and f"[책장:{leader}]" not in desc:
             desc = f"[책장:{leader}]\n" + desc
         if kakao and f"[카톡:{kakao}]" not in desc:
             desc = desc + f"\n[카톡:{kakao}]"
+        if account and f"[계좌:{account}]" not in desc:
+            desc = desc + f"\n[계좌:{account}]"
 
         try:
             max_p = int(row.get('정원', 8))
@@ -201,7 +204,8 @@ def get_google_sheet_meetings_list():
                 "longitude": lng,
                 "max_participants": max_p,
                 "description": desc,
-                "leader": leader
+                "leader": leader,
+                "account": account
             })
     return meetings
 
@@ -453,12 +457,13 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
     t.start()
     return True
 
-def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author, meeting_date, meeting_time, location_name, max_participants=8, description="", season="", jijung_leader="", kakao_url=""):
+def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author, meeting_date, meeting_time, location_name, max_participants=8, description="", season="", jijung_leader="", kakao_url="", account_info=""):
     """
     새로 개설된 모임 정보를 구글 시트 '모임목록' 탭에 직접 저장하고 캐시를 즉시 갱신
     """
     leader_name = jijung_leader.strip()
     k_url = kakao_url.strip()
+    acc_info = account_info.strip()
     clean_desc = description or ""
     if not leader_name and "[책장:" in clean_desc:
         try:
@@ -468,6 +473,11 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
     if not k_url and "[카톡:" in clean_desc:
         try:
             k_url = clean_desc.split("[카톡:")[1].split("]")[0].strip()
+        except Exception:
+            pass
+    if not acc_info and "[계좌:" in clean_desc:
+        try:
+            acc_info = clean_desc.split("[계좌:")[1].split("]")[0].strip()
         except Exception:
             pass
 
@@ -482,7 +492,8 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
         max_participants,
         clean_desc,
         leader_name,
-        k_url
+        k_url,
+        acc_info
     ]
 
     # 1순위: gspread 서비스 계정으로 '모임목록' 시트에 즉시 행 추가

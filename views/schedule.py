@@ -74,6 +74,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
     desc_raw = meeting['description'] or ""
     leader_name = meeting.get('leader', '') if isinstance(meeting, dict) else getattr(meeting, 'leader', '')
+    account_info = meeting.get('account', '') if isinstance(meeting, dict) else getattr(meeting, 'account', '')
     kakao_url = ""
     clean_desc = desc_raw
 
@@ -91,6 +92,15 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             k_part = clean_desc.split("[카톡:")[1].split("]")[0]
             kakao_url = k_part.strip()
             clean_desc = clean_desc.replace(f"[카톡:{k_part}]", "").strip()
+        except Exception:
+            pass
+
+    if "[계좌:" in clean_desc:
+        try:
+            a_part = clean_desc.split("[계좌:")[1].split("]")[0]
+            if not account_info:
+                account_info = a_part.strip()
+            clean_desc = clean_desc.replace(f"[계좌:{a_part}]", "").strip()
         except Exception:
             pass
 
@@ -224,6 +234,12 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                 meta_items.append(f'<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">선정도서:</span> <span class="meta-strong">{meeting["book_title"]}</span></div>')
                 if meeting['author'] and str(meeting['author']).strip() and str(meeting['author']).strip() != "자율":
                     meta_items.append(f'<div class="meeting-meta-item">✍️ <span style="color:#6D4C41; font-weight:600;">저자:</span> <span class="meta-strong">{meeting["author"]}</span></div>')
+
+        if account_info:
+            if is_eligible or is_admin:
+                meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong">{account_info}</span></div>')
+            else:
+                meta_items.append('<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span style="color:#888; font-size:0.9rem;">(시즌 등록 회원에게 공개)</span></div>')
 
         if clean_desc and clean_desc.strip():
             formatted_desc = clean_desc.strip().replace("\n", "<br/>")

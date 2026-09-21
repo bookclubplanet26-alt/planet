@@ -114,7 +114,11 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                 m_lat, m_lng = 37.5709, 126.9778
 
             m_max = st.number_input("정원 (명)", min_value=2, max_value=30, value=6, key="jijung_max")
-            kakao_link = st.text_input("오픈 카카오톡방 주소 (URL)", placeholder="예: https://open.kakao.com/o/...", key="jijung_kakao_link")
+            c_link1, c_link2 = st.columns(2)
+            with c_link1:
+                kakao_link = st.text_input("오픈 카카오톡방 주소 (URL)", placeholder="예: https://open.kakao.com/o/...", key="jijung_kakao_link")
+            with c_link2:
+                account_info = st.text_input("입금 계좌번호 (선택)", placeholder="예: 카카오뱅크 3333-01-xxxx (예금주)", key="jijung_account")
             m_desc = st.text_area("책 설명", placeholder="책에 대한 설명을 입력하세요.", key="jijung_desc")
 
             submit_jijung = st.form_submit_button("🚀 지정책 모임 개설 완료", type="primary", use_container_width=True)
@@ -127,12 +131,14 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                 else:
                     with st.spinner("지정책 모임 개설 중..."): 
                         pure_desc = m_desc.strip() if m_desc else ""
+                        acc_val = account_info.strip() if account_info else ""
                         m_season = get_club_season_code()
-                        # 구글 시트에는 순수 모임설명만 전송 (책장/카톡 태그 분리)
+                        # 구글 시트에는 순수 모임설명만 전송 (책장/카톡/계좌 태그 분리)
                         ok = append_meeting_to_google_sheet_async(
                             ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, 
                             str(m_date), m_time_str, m_loc_name, m_max, pure_desc, 
-                            m_season, jijung_leader=leader_val, kakao_url=kakao_link.strip()
+                            m_season, jijung_leader=leader_val, kakao_url=kakao_link.strip(),
+                            account_info=acc_val
                         )
                     if ok:
                         created_msg = f"🎉 '{m_title}' 지정책 모임이 성공적으로 개설되었습니다!"
@@ -172,7 +178,11 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
             m_loc_name = st.text_input("장소", placeholder="예: 강남역 인근 보드게임 카페", key="bung_loc")
             m_lat, m_lng = 37.4979, 127.0276
             m_max = st.number_input("정원 (명)", min_value=2, max_value=30, value=6, key="bung_max")
-            kakao_link = st.text_input("오픈 카카오톡방 주소 (URL)", placeholder="예: https://open.kakao.com/o/...", key="bung_kakao_link")
+            c_bung1, c_bung2 = st.columns(2)
+            with c_bung1:
+                kakao_link = st.text_input("오픈 카카오톡방 주소 (URL)", placeholder="예: https://open.kakao.com/o/...", key="bung_kakao_link")
+            with c_bung2:
+                account_info = st.text_input("입금 계좌번호 (선택)", placeholder="예: 카카오뱅크 3333-01-xxxx (예금주)", key="bung_account")
             m_desc = st.text_area("모임 내용 및 안내", placeholder="모임의 자세한 내용을 적어주세요.", key="bung_desc")
 
             submit_bung = st.form_submit_button("🚀 소모임/벙 개설 완료", type="primary", use_container_width=True)
@@ -186,10 +196,12 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                     with st.spinner("소모임 개설 중..."): 
                         m_season = get_club_season_code()
                         pure_desc = m_desc.strip() if m_desc else ""
+                        acc_val = account_info.strip() if account_info else ""
                         ok = append_meeting_to_google_sheet_async(
                             ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, 
                             str(m_date), m_time_str, m_loc_name, m_max, pure_desc, 
-                            m_season, jijung_leader=host_val, kakao_url=kakao_link.strip()
+                            m_season, jijung_leader=host_val, kakao_url=kakao_link.strip(),
+                            account_info=acc_val
                         )
                     if ok:
                         created_msg = f"🎉 '{m_title}' 소모임/벙 모임이 성공적으로 개설되었습니다!"
