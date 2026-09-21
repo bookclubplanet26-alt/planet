@@ -28,7 +28,7 @@ def render_register():
             box-shadow: 0 4px 10px rgba(0,0,0,0.08);
             border: 1px solid #F0D800;
         ">
-            💬 <b>카카오톡 ID:</b> <span style="font-family: monospace, sans-serif; font-weight: 800; font-size: 1.25rem; letter-spacing: 0.5px; user-select: all;">ginbrandy</span>
+            💬 <b>카카오톡 ID:</b> <span style="font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 1.25rem; color: #111; letter-spacing: 0.2px; user-select: all;">ginbrandy</span>
         </div>
         {img_html}
     </div>
