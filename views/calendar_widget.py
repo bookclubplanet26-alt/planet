@@ -224,11 +224,16 @@ def render_submeeting_calendar(meetings=None):
             events_by_date[d_val].append({
                 "type": "bung",
                 "type_name": "소모임/벙",
-                "emoji": "☕",
+                "emoji": '<span class="cal-coffee-emoji">☕️</span>',
                 "title": m_title
             })
 
-    st.caption("💡 **범례:** 📕 지정책 모임 | ☕ 소모임 및 벙 (날짜를 마우스로 올리거나 터치하면 모임명이 표시됩니다)")
+    st.markdown(
+        '<div class="cal-legend-caption">'
+        '💡 <b>범례:</b> 📕 지정책 모임 &nbsp;|&nbsp; <span class="cal-coffee-emoji">☕️</span> 소모임 및 벙'
+        '</div>',
+        unsafe_allow_html=True
+    )
 
     cal_9 = generate_submeeting_calendar_html(2026, 9, events_by_date)
     cal_10 = generate_submeeting_calendar_html(2026, 10, events_by_date)

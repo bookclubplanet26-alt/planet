@@ -509,10 +509,27 @@ def apply_custom_css():
         margin-top: 1px;
         letter-spacing: -1px;
     }
+    .cal-legend-caption {
+        font-size: 0.83rem;
+        margin-bottom: 8px;
+        color: #6D4C41;
+        font-weight: 500;
+    }
+    .cal-coffee-emoji {
+        color: #B85D19 !important;
+        font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+        display: inline-block;
+    }
 
     /* 캘린더 다크모드 대응 */
 
     @media (prefers-color-scheme: dark) {
+        .cal-legend-caption {
+            color: #D7CCC8 !important;
+        }
+        .cal-coffee-emoji {
+            color: #FFA726 !important;
+        }
         .cal-legend-card {
             background-color: #1E1C1A !important;
             border-color: #383430 !important;
