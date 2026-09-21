@@ -574,7 +574,12 @@ def render_schedule():
     with tab1:
         meetings = get_all_meetings()
         rsvps_map = get_all_meeting_rsvps_map(meetings)
-        user_eligibility = check_member_season_eligibility(google_user) if google_user else (False, "NOT_LOGGED_IN", "로그인 필요")
+        dep_info = get_member_deposit_info(
+            user_email=google_user.get('email', ''),
+            user_name=google_user.get('display_name', google_user.get('name', '')),
+            user_season=google_user.get('season')
+        ) if google_user else None
+        user_eligibility = check_member_season_eligibility(google_user, dep=dep_info) if google_user else (False, "NOT_LOGGED_IN", "로그인 필요")
 
         # 운영진 전용 첫출석 대상자 집합 생성 (초고속 O(1) 매핑)
         first_attendees_set = set()
@@ -679,12 +684,12 @@ def render_schedule():
 
         else:
             admin_badge = " [👑 운영진]" if is_admin else (" [🔥 열심멤버]" if is_dedicated else "")
-            att_txt = format_member_attendance_and_deposit_text(google_user)
+            att_txt = format_member_attendance_and_deposit_text(google_user, dep=dep_info, user_eligibility=user_eligibility)
             if not att_txt:
                 from utils import format_season_display
                 m_season = google_user.get('season')
                 season_label = format_season_display(m_season)
-                att_cnt = get_member_attendance_count(google_user['email'], google_user['display_name'], target_season=m_season)
+                att_cnt = dep_info['current_count'] if dep_info else get_member_attendance_count(google_user['email'], google_user['display_name'], target_season=m_season)
                 att_txt = f"🏆 {season_label} 출석 횟수: <b>{att_cnt}회</b>"
             
             st.markdown(f"""
@@ -695,7 +700,7 @@ def render_schedule():
             </div>
             """, unsafe_allow_html=True)
             
-            is_elig, _, reason_msg = check_member_season_eligibility(google_user)
+            is_elig, _, reason_msg = user_eligibility
             if not is_elig and not is_admin:
                 st.markdown(f"""
                 <div style="margin: 10px 0 16px 0; padding: 14px 18px; background-color: #FFF3E0; border: 1px solid #FFE082; border-left: 5px solid #FF9800; border-radius: 10px; color: #7F5100; font-size: 0.95rem; line-height: 1.55;">

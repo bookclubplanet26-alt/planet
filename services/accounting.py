@@ -223,7 +223,7 @@ def get_member_deposit_info(user_email="", user_name="", user_season=None):
         "deposit_amount": 0 if is_admin else 20000
     }
 
-def check_member_season_eligibility(google_user):
+def check_member_season_eligibility(google_user, dep=None):
     """
     회원의 현재 시즌 활동 가능 여부 종합 판정
     """
@@ -234,11 +234,12 @@ def check_member_season_eligibility(google_user):
     if is_admin:
         return True, "ADMIN", "운영진 계정 (예치금 면제)"
 
-    dep = get_member_deposit_info(
-        user_email=google_user.get('email', ''),
-        user_name=google_user.get('display_name', google_user.get('name', '')),
-        user_season=google_user.get('season')
-    )
+    if dep is None:
+        dep = get_member_deposit_info(
+            user_email=google_user.get('email', ''),
+            user_name=google_user.get('display_name', google_user.get('name', '')),
+            user_season=google_user.get('season')
+        )
 
     current_club_season = get_club_season_code()
     user_reg_season = str(dep.get('current_season', '')).strip()
@@ -255,24 +256,29 @@ def check_member_season_eligibility(google_user):
 
     return True, "ACTIVE", "정상 등록 회원"
 
-def format_member_attendance_and_deposit_text(google_user):
+def format_member_attendance_and_deposit_text(google_user, dep=None, user_eligibility=None):
     """
     Google 인증 배너에 들어갈 출석 횟수 및 예치금 환급 요건 문구 생성
     """
     if not google_user:
         return ""
         
-    dep = get_member_deposit_info(
-        user_email=google_user.get('email', ''),
-        user_name=google_user.get('display_name', google_user.get('name', '')),
-        user_season=google_user.get('season')
-    )
+    if dep is None:
+        dep = get_member_deposit_info(
+            user_email=google_user.get('email', ''),
+            user_name=google_user.get('display_name', google_user.get('name', '')),
+            user_season=google_user.get('season')
+        )
     s_label = format_season_display(dep['current_season'])
     cnt = dep['current_count']
     if dep['is_admin']:
         return f"🏆 {s_label} 출석 횟수: <b>{cnt}회</b> <span style='font-size: 0.88rem; color: #856404; margin-left: 6px;'>(👑 예치금 면제)</span>"
     
-    is_eligible, reason_type, _ = check_member_season_eligibility(google_user)
+    if user_eligibility is None:
+        is_eligible, reason_type, _ = check_member_season_eligibility(google_user, dep=dep)
+    else:
+        is_eligible, reason_type, _ = user_eligibility
+
     if not is_eligible:
         return f"🏆 {s_label} 출석 횟수: <b>{cnt}회</b> <span style='color: #D32F2F; font-size: 0.88rem; margin-left: 6px;'>(⚠️ 이번 시즌 예치금 미등록 - 활동을 위해 시즌 등록을 진행해 주세요)</span>"
 
