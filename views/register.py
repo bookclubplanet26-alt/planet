@@ -16,21 +16,20 @@ def render_register():
     <div class="club-card" style="border-left: 4px solid #FEE500; background-color: #FFFDF0; padding: 28px 24px; text-align: center; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
         <h3 style="margin-top: 0; color: #3C1E1E; font-size: 1.4rem;">💬 회원가입 및 문의</h3>
         <p style="font-size: 1.05rem; color: #3C1E1E; margin-bottom: 20px; line-height: 1.6;">
-            북클럽 플래닛 회원가입 및 문의사항은 아래 카카오톡 오픈채팅 링크 또는 QR 코드를 통해 편하게 연락 주세요! (현생이슈로 좀 늦을 수 있어요ㅠ)
+            북클럽 플래닛 회원가입 및 문의사항은 아래 <b>카카오톡 아이디</b> 또는 QR 코드를 통해 편하게 연락 주세요! (현생이슈로 좀 늦을 수 있어요ㅠ)
         </p>
-        <a href="https://open.kakao.com/o/sWLBJTue" target="_blank" style="
+        <div style="
             display: inline-block;
             background-color: #FEE500;
             color: #191919;
-            font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             padding: 14px 28px;
-            border-radius: 12px;
-            text-decoration: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border-radius: 14px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            border: 1px solid #F0D800;
         ">
-            👉 카카오톡 오픈채팅 문의하기 (클릭)
-        </a>
+            💬 <b>카카오톡 ID:</b> <span style="font-family: monospace, sans-serif; font-weight: 800; font-size: 1.25rem; letter-spacing: 0.5px; user-select: all;">ginbrandy</span>
+        </div>
         {img_html}
     </div>
     """, unsafe_allow_html=True)
