@@ -4,8 +4,34 @@ from utils import (
     get_current_kst, 
     ATTENDANCE_WEBHOOK_URL, 
     append_meeting_to_google_sheet_async, 
-    get_club_season_code
+    get_club_season_code,
+    get_all_meetings
 )
+
+def _format_kakao_link(url_str):
+    """
+    오픈카톡 링크 입력값에 프로토콜(https://)이 누락된 경우 자동 보정
+    """
+    s = str(url_str or "").strip()
+    if not s or s.lower() in ["nan", "none", "null"]:
+        return ""
+    if not s.startswith(("http://", "https://")):
+        return f"https://{s}"
+    return s
+
+def _is_duplicate_meeting(title, meeting_date):
+    """
+    동일 날짜 및 동일 제목의 모임이 이미 존재하는지 검사하여 중복 등록 방어
+    """
+    existing = get_all_meetings()
+    clean_t = str(title).strip()
+    clean_d = str(meeting_date).strip()
+    for m in existing:
+        m_t = str(m.get('title', '')).strip()
+        m_d = str(m.get('meeting_date', '')).strip()
+        if m_t == clean_t and m_d == clean_d:
+            return True
+    return False
 
 def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=None):
     """
@@ -68,19 +94,42 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
 
             submit_reg = st.form_submit_button("🚀 정규 모임 개설 완료", type="primary", use_container_width=True)
             if submit_reg:
-                with st.spinner("정규 모임 개설 중..."): 
-                    m_season = get_club_season_code()
-                    ok = append_meeting_to_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, str(m_date), m_time_str, m_loc_name, m_max, m_desc, m_season)
-                if ok:
-                    created_msg = f"🎉 '{m_title}' 정규 모임이 성공적으로 개설되었습니다!"
-                    st.session_state["meeting_created_toast"] = created_msg
-                    st.session_state["reset_admin_category"] = True
-                    st.toast(created_msg, icon="🎉")
-                    st.success(created_msg)
-                    st.balloons()
-                    st.rerun()
+                weekday = m_date.weekday()
+                weekday_names = ["월", "화", "수", "목", "금", "토", "일"]
+                if "토요일" in reg_choice and weekday != 5:
+                    st.error(f"🚨 선택하신 날짜({m_date})는 **{weekday_names[weekday]}요일**입니다. '토요일 강남 (어텀)' 모임은 반드시 토요일 날짜여야 합니다.")
+                elif "일요일" in reg_choice and weekday != 6:
+                    st.error(f"🚨 선택하신 날짜({m_date})는 **{weekday_names[weekday]}요일**입니다. '일요일 종각 (윈터블)' 모임은 반드시 일요일 날짜여야 합니다.")
+                elif _is_duplicate_meeting(m_title, str(m_date)):
+                    st.error(f"🚨 해당 날짜({m_date})에 동일한 모임('{m_title}')이 이미 개설되어 있습니다.")
                 else:
-                    st.error("🚨 구글 시트에 모임을 저장하지 못했습니다. 서비스 계정 권한 또는 네트워크 상태를 확인해 주세요.")
+                    with st.spinner("정규 모임 개설 중..."): 
+                        m_season = get_club_season_code()
+                        ok = append_meeting_to_google_sheet_async(
+                            webhook_url=ATTENDANCE_WEBHOOK_URL,
+                            title=m_title,
+                            book_title=m_book,
+                            author=m_author,
+                            meeting_date=str(m_date),
+                            meeting_time=m_time_str,
+                            location_name=m_loc_name,
+                            max_participants=m_max,
+                            description=m_desc,
+                            season=m_season,
+                            jijung_leader="",
+                            kakao_url="",
+                            account_info=""
+                        )
+                    if ok:
+                        created_msg = f"🎉 '{m_title}' 정규 모임이 성공적으로 개설되었습니다!"
+                        st.session_state["meeting_created_toast"] = created_msg
+                        st.session_state["reset_admin_category"] = True
+                        st.toast(created_msg, icon="🎉")
+                        st.success(created_msg)
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error("🚨 구글 시트에 모임을 저장하지 못했습니다. 서비스 계정 권한 또는 네트워크 상태를 확인해 주세요.")
 
     elif category_choice == "지정책":
         with st.form("form_jijung_meeting"):
@@ -124,20 +173,31 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
             submit_jijung = st.form_submit_button("🚀 지정책 모임 개설 완료", type="primary", use_container_width=True)
             if submit_jijung:
                 leader_val = jijung_leader.strip() if jijung_leader else default_leader
+                clean_kakao = _format_kakao_link(kakao_link)
                 if not m_title or not m_book:
                     st.error("모임 제목과 지정 도서명은 필수 입력 사항입니다.")
                 elif not leader_val:
                     st.error("지정책장 이름이 입력되지 않았습니다.")
+                elif _is_duplicate_meeting(m_title, str(m_date)):
+                    st.error(f"🚨 해당 날짜({m_date})에 동일한 모임('{m_title}')이 이미 개설되어 있습니다.")
                 else:
                     with st.spinner("지정책 모임 개설 중..."): 
                         pure_desc = m_desc.strip() if m_desc else ""
                         acc_val = account_info.strip() if account_info else ""
                         m_season = get_club_season_code()
-                        # 구글 시트에는 순수 모임설명만 전송 (책장/카톡/계좌 태그 분리)
                         ok = append_meeting_to_google_sheet_async(
-                            ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, 
-                            str(m_date), m_time_str, m_loc_name, m_max, pure_desc, 
-                            m_season, jijung_leader=leader_val, kakao_url=kakao_link.strip(),
+                            webhook_url=ATTENDANCE_WEBHOOK_URL,
+                            title=m_title,
+                            book_title=m_book,
+                            author=m_author,
+                            meeting_date=str(m_date),
+                            meeting_time=m_time_str,
+                            location_name=m_loc_name,
+                            max_participants=m_max,
+                            description=pure_desc,
+                            season=m_season,
+                            jijung_leader=leader_val,
+                            kakao_url=clean_kakao,
                             account_info=acc_val
                         )
                     if ok:
@@ -184,18 +244,30 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
             submit_bung = st.form_submit_button("🚀 소모임/벙 개설 완료", type="primary", use_container_width=True)
             if submit_bung:
                 host_val = bung_host.strip() if bung_host else default_host
+                clean_kakao = _format_kakao_link(kakao_link)
                 if not m_title or not m_loc_name:
                     st.error("모임 제목과 장소는 필수 입력 사항입니다.")
                 elif not host_val:
                     st.error("모임장(호스트) 이름이 입력되지 않았습니다.")
+                elif _is_duplicate_meeting(m_title, str(m_date)):
+                    st.error(f"🚨 해당 날짜({m_date})에 동일한 모임('{m_title}')이 이미 개설되어 있습니다.")
                 else:
                     with st.spinner("소모임 개설 중..."): 
                         m_season = get_club_season_code()
                         pure_desc = m_desc.strip() if m_desc else ""
                         ok = append_meeting_to_google_sheet_async(
-                            ATTENDANCE_WEBHOOK_URL, m_title, m_book, m_author, 
-                            str(m_date), m_time_str, m_loc_name, m_max, pure_desc, 
-                            m_season, jijung_leader=host_val, kakao_url=kakao_link.strip(),
+                            webhook_url=ATTENDANCE_WEBHOOK_URL,
+                            title=m_title,
+                            book_title=m_book,
+                            author=m_author,
+                            meeting_date=str(m_date),
+                            meeting_time=m_time_str,
+                            location_name=m_loc_name,
+                            max_participants=m_max,
+                            description=pure_desc,
+                            season=m_season,
+                            jijung_leader=host_val,
+                            kakao_url=clean_kakao,
                             account_info=""
                         )
                     if ok:
