@@ -161,6 +161,15 @@ def fetch_google_sheet_meetings():
         pass
     return False, None
 
+def _clean_str(val, default=""):
+    """
+    NaN, None, 결측치 문자열을 감지하여 안전하게 기본값으로 정제
+    """
+    if val is None or pd.isna(val):
+        return default
+    s = str(val).strip()
+    return default if s.lower() in ["nan", "none", "null", "undefined"] else s
+
 def get_google_sheet_meetings_list():
     """
     구글 시트 '모임목록' 탭에서 모임 레코드 리스트 추출
@@ -171,16 +180,16 @@ def get_google_sheet_meetings_list():
 
     meetings = []
     for idx, row in df.iterrows():
-        title = str(row.get('모임명', '')).strip()
-        date_str = str(row.get('모임일자', '')).strip()
-        time_str = str(row.get('모임시간', '')).strip()
-        loc_name = str(row.get('장소명', '')).strip()
-        book_title = str(row.get('도서명', '')).strip()
-        author = str(row.get('저자', '')).strip()
-        desc = str(row.get('모임설명', row.get('설명', ''))).strip()
-        leader = str(row.get('모임장', row.get('지정책장', row.get('책장', '')))).strip()
-        kakao = str(row.get('오픈카톡방', row.get('카톡방', ''))).strip()
-        account = str(row.get('입금계좌', row.get('계좌', row.get('계좌번호', '')))).strip()
+        title = _clean_str(row.get('모임명'))
+        date_str = _clean_str(row.get('모임일자'))
+        time_str = _clean_str(row.get('모임시간'), "15:00")
+        loc_name = _clean_str(row.get('장소명'), "종각 할리스")
+        book_title = _clean_str(row.get('도서명'), "자유 도서")
+        author = _clean_str(row.get('저자'))
+        desc = _clean_str(row.get('모임설명', row.get('설명', '')))
+        leader = _clean_str(row.get('모임장', row.get('지정책장', row.get('책장', ''))))
+        kakao = _clean_str(row.get('오픈카톡방', row.get('카톡방', '')))
+        account = _clean_str(row.get('입금계좌', row.get('계좌', row.get('계좌번호', ''))))
 
         if leader and f"[책장:{leader}]" not in desc:
             desc = f"[책장:{leader}]\n" + desc
@@ -300,20 +309,20 @@ def get_all_meeting_rsvps_map(meetings=None):
     m_info_list = [(m['id'], str(m.get('title', '')).strip(), str(m.get('meeting_date', '')).strip()) for m in meetings]
 
     for idx, row in df.iterrows():
-        row_m = str(row.get(m_col, '')).strip()
-        row_d = str(row.get(date_col, '')).strip() if date_col and pd.notna(row.get(date_col)) else ""
+        row_m = _clean_str(row.get(m_col))
+        row_d = _clean_str(row.get(date_col)) if date_col else ""
 
         is_shifted = bool(row_d and ("@" in row_d or ("-" in row_d and not row_d[:4].isdigit())))
         if is_shifted:
             r_name = row_d
-            r_email = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else ""
-            r_type = str(row.get(email_col, '자유책')).strip() if email_col and pd.notna(row.get(email_col)) else "자유책"
-            r_comment = str(row.get(type_col, '')).strip() if type_col and pd.notna(row.get(type_col)) else ""
+            r_email = _clean_str(row.get(name_col)) if name_col else ""
+            r_type = _clean_str(row.get(email_col), "자유책") if email_col else "자유책"
+            r_comment = _clean_str(row.get(type_col)) if type_col else ""
         else:
-            r_name = str(row.get(name_col, '')).strip() if name_col and pd.notna(row.get(name_col)) else ""
-            r_email = str(row.get(email_col, '')).strip() if email_col and pd.notna(row.get(email_col)) else ""
-            r_type = str(row.get(type_col, '자유책')).strip() if type_col and pd.notna(row.get(type_col)) else "자유책"
-            r_comment = str(row.get(comment_col, '')).strip() if comment_col and pd.notna(row.get(comment_col)) else ""
+            r_name = _clean_str(row.get(name_col)) if name_col else ""
+            r_email = _clean_str(row.get(email_col)) if email_col else ""
+            r_type = _clean_str(row.get(type_col), "자유책") if type_col else "자유책"
+            r_comment = _clean_str(row.get(comment_col)) if comment_col else ""
             if not r_name:
                 r_name = r_email.split('@')[0] if r_email else "회원"
 

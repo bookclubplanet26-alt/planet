@@ -226,39 +226,47 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                 st.markdown(leader_html, unsafe_allow_html=True)
 
         # 2. 본문 정보 영역 (마크다운 인덴트 오류 방지 - 공백 없는 한 덩어리 HTML)
+        safe_date = html.escape(str(meeting.get("meeting_date", "")).strip())
+        safe_time = html.escape(str(meeting.get("meeting_time", "")).strip())
+        safe_loc = html.escape(str(meeting.get("location_name", "")).strip())
         meta_items = [
-            f'<div class="meeting-meta-item">🗓️ <span style="color:#6D4C41; font-weight:600;">일시:</span> <span class="meta-strong" style="font-size:1.02rem;">{meeting["meeting_date"]} {meeting["meeting_time"]}</span></div>',
-            f'<div class="meeting-meta-item">📍 <span style="color:#6D4C41; font-weight:600;">장소:</span> <span class="meta-strong">{meeting["location_name"]}</span></div>'
+            f'<div class="meeting-meta-item">🗓️ <span style="color:#6D4C41; font-weight:600;">일시:</span> <span class="meta-strong" style="font-size:1.02rem;">{safe_date} {safe_time}</span></div>',
+            f'<div class="meeting-meta-item">📍 <span style="color:#6D4C41; font-weight:600;">장소:</span> <span class="meta-strong">{safe_loc}</span></div>'
         ]
 
         if not is_bung:
             if is_unlimited:
                 meta_items.append('<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">모임형태:</span> <span class="meta-strong">자유책 (각자 읽은 책 지참)</span></div>')
             else:
-                meta_items.append(f'<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">선정도서:</span> <span class="meta-strong">{meeting["book_title"]}</span></div>')
-                if meeting['author'] and str(meeting['author']).strip() and str(meeting['author']).strip() != "자율":
-                    meta_items.append(f'<div class="meeting-meta-item">✍️ <span style="color:#6D4C41; font-weight:600;">저자:</span> <span class="meta-strong">{meeting["author"]}</span></div>')
+                safe_book = html.escape(str(meeting.get("book_title", "자유 도서")).strip())
+                meta_items.append(f'<div class="meeting-meta-item">📘 <span style="color:#6D4C41; font-weight:600;">선정도서:</span> <span class="meta-strong">{safe_book}</span></div>')
+                m_author = str(meeting.get('author', '')).strip() if meeting.get('author') else ""
+                if m_author and m_author.lower() not in ["자율", "nan", "none", "null"]:
+                    safe_author = html.escape(m_author)
+                    meta_items.append(f'<div class="meeting-meta-item">✍️ <span style="color:#6D4C41; font-weight:600;">저자:</span> <span class="meta-strong">{safe_author}</span></div>')
 
         if is_jijung and account_info:
-            if google_user:
-                safe_account = html.escape(str(account_info).strip(), quote=True)
-                copy_btn_html = (
-                    f'<span role="button" class="copy-account-btn" data-account="{safe_account}" '
-                    f'style="display:inline-block; margin-left:8px; padding:2px 8px; font-size:0.78rem; font-weight:600; '
-                    f'color:#5D4037; background-color:#F5F0EB; border:1px solid #D7CCC8; border-radius:6px; '
-                    f'cursor:pointer; vertical-align:middle; user-select:none; -webkit-user-select:none;" '
-                    f'title="계좌번호 복사">📋 복사</span>'
-                )
-                meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong">{account_info}</span>{copy_btn_html}</div>')
-            else:
-                meta_items.append('<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span style="color:#888; font-size:0.9rem;">(🔒 이메일 로그인 후 공개)</span></div>')
+            clean_acc = str(account_info).strip()
+            if clean_acc and clean_acc.lower() not in ["nan", "none", "null"]:
+                if google_user:
+                    safe_account = html.escape(clean_acc, quote=True)
+                    copy_btn_html = (
+                        f'<span role="button" class="copy-account-btn" data-account="{safe_account}" '
+                        f'style="display:inline-block; margin-left:8px; padding:2px 8px; font-size:0.78rem; font-weight:600; '
+                        f'color:#5D4037; background-color:#F5F0EB; border:1px solid #D7CCC8; border-radius:6px; '
+                        f'cursor:pointer; vertical-align:middle; user-select:none; -webkit-user-select:none;" '
+                        f'title="계좌번호 복사">📋 복사</span>'
+                    )
+                    meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong">{safe_account}</span>{copy_btn_html}</div>')
+                else:
+                    meta_items.append('<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span style="color:#888; font-size:0.9rem;">(🔒 이메일 로그인 후 공개)</span></div>')
 
         if clean_desc and clean_desc.strip():
-            formatted_desc = clean_desc.strip().replace("\n", "<br/>")
+            safe_desc = html.escape(clean_desc.strip()).replace("\n", "<br/>")
             desc_html = (
                 f'<div class="meeting-meta-item" style="margin-top:8px; padding-top:8px; border-top:1px dashed #EAE5D9;">'
                 f'📝 <span style="color:#6D4C41; font-weight:600;">모임안내:</span>'
-                f'<div class="meeting-desc-text">{formatted_desc}</div>'
+                f'<div class="meeting-desc-text">{safe_desc}</div>'
                 f'</div>'
             )
             meta_items.append(desc_html)
@@ -266,13 +274,16 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         meta_box_html = f'<div class="meeting-meta-box">{"".join(meta_items)}</div>'
         st.markdown(meta_box_html, unsafe_allow_html=True)
 
-        # 3. 오픈 카카오톡방 주소 (시즌 회원에게 전용 링크 버튼 제공 - 인덴트 제거)
-        if kakao_url:
-            if is_eligible or is_admin:
-                kakao_btn_html = f'<div style="margin:6px 0 10px 0;"><a href="{kakao_url}" target="_blank" class="kakao-link-btn">💬 <b>오픈 카톡방 입장하기</b> ↗</a></div>'
-                st.markdown(kakao_btn_html, unsafe_allow_html=True)
-            else:
-                st.warning("🔒 오픈 카톡방 주소는 **이번 시즌 등록 회원**에게만 공개됩니다. 먼저 시즌 등록을 해주세요.")
+        # 3. 오픈 카카오톡방 주소 (시즌 회원에게 전용 링크 버튼 제공 - 프로토콜 검증 및 XSS 방어)
+        clean_k_url = str(kakao_url).strip() if kakao_url else ""
+        if clean_k_url and clean_k_url.lower() not in ["nan", "none", "null"]:
+            if clean_k_url.startswith(("https://", "http://")):
+                safe_k_url = html.escape(clean_k_url, quote=True)
+                if is_eligible or is_admin:
+                    kakao_btn_html = f'<div style="margin:6px 0 10px 0;"><a href="{safe_k_url}" target="_blank" rel="noopener noreferrer" class="kakao-link-btn">💬 <b>오픈 카톡방 입장하기</b> ↗</a></div>'
+                    st.markdown(kakao_btn_html, unsafe_allow_html=True)
+                else:
+                    st.warning("🔒 오픈 카톡방 주소는 **이번 시즌 등록 회원**에게만 공개됩니다. 먼저 시즌 등록을 해주세요.")
 
         # 4. 신청 및 취소 액션
         already_rsvp = False
@@ -431,18 +442,19 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                     safe_comment = html.escape(r_comment)
                     comment_suffix = f' <span style="background:#F4F1EA; color:#5D4037; padding:2px 8px; border-radius:6px; font-size:0.83rem; border:1px solid #E5E0D6; margin-left:4px; display:inline-block; vertical-align:middle; line-height:1.3;">💬 {safe_comment}</span>' if r_comment else ""
 
+                    safe_m_name = html.escape(m_name)
                     if "대기" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (⏳){comment_suffix}", unsafe_allow_html=True)
+                        st.markdown(f"• **{first_prefix}{safe_m_name}** (⏳){comment_suffix}", unsafe_allow_html=True)
                     elif "지정책" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (📕){comment_suffix}", unsafe_allow_html=True)
+                        st.markdown(f"• **{first_prefix}{safe_m_name}** (📕){comment_suffix}", unsafe_allow_html=True)
                     elif "라운징" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (🛋️){comment_suffix}", unsafe_allow_html=True)
+                        st.markdown(f"• **{first_prefix}{safe_m_name}** (🛋️){comment_suffix}", unsafe_allow_html=True)
                     elif "자유책" in str(p_type):
-                        st.markdown(f"• **{first_prefix}{m_name}** (📖){comment_suffix}", unsafe_allow_html=True)
+                        st.markdown(f"• **{first_prefix}{safe_m_name}** (📖){comment_suffix}", unsafe_allow_html=True)
                     elif "참석" in str(p_type):
-                        st.markdown(f'• **{first_prefix}{m_name}** (<span style="font-family:\'Segoe UI Emoji\',\'Apple Color Emoji\',sans-serif;">\u2615\ufe0f</span>){comment_suffix}', unsafe_allow_html=True)
+                        st.markdown(f'• **{first_prefix}{safe_m_name}** (<span style="font-family:\'Segoe UI Emoji\',\'Apple Color Emoji\',sans-serif;">\u2615\ufe0f</span>){comment_suffix}', unsafe_allow_html=True)
                     else:
-                        st.markdown(f"• **{first_prefix}{m_name}**{comment_suffix}", unsafe_allow_html=True)
+                        st.markdown(f"• **{first_prefix}{safe_m_name}**{comment_suffix}", unsafe_allow_html=True)
             else:
                 st.write("아직 참가 신청자가 없습니다.")
 
