@@ -11,6 +11,7 @@ from services.config import (
     SERVICE_ACCOUNT_FILE, get_current_kst
 )
 
+@st.cache_resource(show_spinner=False)
 def get_gspread_client():
     """
     100% 비공개 구글 시트를 가져오기 위한 서비스 계정 클라이언트 생성
@@ -55,7 +56,10 @@ def fetch_google_sheet_members():
         gc = get_gspread_client()
         if gc:
             sh = gc.open_by_key(GOOGLE_SHEET_ID)
-            ws = sh.worksheet("회원목록") if "회원목록" in [w.title for w in sh.worksheets()] else sh.sheet1
+            try:
+                ws = sh.worksheet("회원목록")
+            except Exception:
+                ws = sh.sheet1
             records = ws.get_all_records()
             if records:
                 df = pd.DataFrame(records)
@@ -92,7 +96,10 @@ def fetch_google_sheet_attendances():
     if gc:
         try:
             sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
-            ws = sh.worksheet("출석목록") if "출석목록" in [w.title for w in sh.worksheets()] else sh.sheet1
+            try:
+                ws = sh.worksheet("출석목록")
+            except Exception:
+                ws = sh.sheet1
             records = ws.get_all_records()
             df = pd.DataFrame(records)
             if not df.empty:
@@ -577,7 +584,10 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
         gc = get_gspread_client()
         if gc:
             sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
-            ws = sh.worksheet("모임목록") if "모임목록" in [w.title for w in sh.worksheets()] else None
+            try:
+                ws = sh.worksheet("모임목록")
+            except Exception:
+                ws = None
             if ws:
                 ws.append_row(row_data)
                 appended = True
@@ -602,7 +612,10 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
         gc = get_gspread_client()
         if gc:
             sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
-            ws = sh.worksheet("모임목록") if "모임목록" in [w.title for w in sh.worksheets()] else None
+            try:
+                ws = sh.worksheet("모임목록")
+            except Exception:
+                ws = None
             if ws:
                 records = ws.get_all_records()
                 for idx, r in enumerate(records, start=2):

@@ -1,10 +1,7 @@
 import streamlit as st
 from styles import apply_custom_css
 
-# 뷰 모듈 임포트 (최신 코드 강제 동기화)
-import importlib
-import views.schedule
-importlib.reload(views.schedule)
+# 뷰 모듈 임포트
 
 from views.intro import render_intro
 from views.register import render_register
