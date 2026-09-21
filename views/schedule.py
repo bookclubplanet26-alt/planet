@@ -148,6 +148,8 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
     # 독립된 모임 카드 컨테이너
     with st.container(border=True):
         m_title = meeting['title'] if isinstance(meeting, dict) or hasattr(meeting, '__getitem__') else getattr(meeting, 'title', '')
+        import html
+        m_title_safe = html.escape(str(m_title))
         m_date = meeting['meeting_date'] if (isinstance(meeting, dict) and 'meeting_date' in meeting) or (hasattr(meeting, 'keys') and 'meeting_date' in meeting.keys()) else ""
         m_id = meeting['id']
 
@@ -186,7 +188,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             with col_t1:
                 st.markdown(
                     f'<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:6px;">'
-                    f'<div class="meeting-card-title">📖 {m_title}</div>'
+                    f'<div class="meeting-card-title">📖 {m_title_safe}</div>'
                     f'<div>{status_chip_html}</div>'
                     f'</div>', 
                     unsafe_allow_html=True
@@ -213,7 +215,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         else:
             st.markdown(
                 f'<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:6px;">'
-                f'<div class="meeting-card-title">📖 {m_title}</div>'
+                f'<div class="meeting-card-title">📖 {m_title_safe}</div>'
                 f'<div>{status_chip_html}</div>'
                 f'</div>', 
                 unsafe_allow_html=True
@@ -237,21 +239,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
         if account_info:
             if google_user:
-                clean_acc = str(account_info).strip()
-                escaped_acc_js = clean_acc.replace('\\', '\\\\').replace("'", "\\'").replace('"', '&quot;')
-                copy_script = (
-                    f"if(navigator.clipboard){{navigator.clipboard.writeText('{escaped_acc_js}').then(()=>{{this.innerText='✅ 복사완료';setTimeout(()=>{{this.innerText='📋 복사';}},1500);}}).catch(()=>{{fallbackCopy();}});}}"
-                    f"else{{fallbackCopy();}}"
-                    f"function fallbackCopy(){{const t=document.createElement('textarea');t.value='{escaped_acc_js}';t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);this.innerText='✅ 복사완료';setTimeout(()=>{{this.innerText='📋 복사';}},1500);}}"
-                )
-                copy_btn_html = (
-                    f'<button onclick="{copy_script}" style="margin-left:8px; padding:2px 8px; font-size:0.78rem; font-weight:600; '
-                    f'border-radius:6px; border:1px solid #D7CCC8; background:#FFF; color:#5D4037; cursor:pointer; '
-                    f'vertical-align:middle; line-height:1.4; transition:all 0.2s;" '
-                    f'onmouseover="this.style.background=\'#F5EFEB\'" onmouseout="this.style.background=\'#FFF\'">'
-                    f'📋 복사</button>'
-                )
-                meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong">{clean_acc}</span>{copy_btn_html}</div>')
+                meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong">{account_info}</span></div>')
             else:
                 meta_items.append('<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span style="color:#888; font-size:0.9rem;">(🔒 이메일 로그인 후 공개)</span></div>')
 
@@ -267,6 +255,11 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
         meta_box_html = f'<div class="meeting-meta-box">{"".join(meta_items)}</div>'
         st.markdown(meta_box_html, unsafe_allow_html=True)
+
+        # 2-1. 입금 계좌번호 원터치 복사 박스 (Streamlit 공식 복사 기능 - 모바일/PC 100% 호환)
+        if account_info and google_user:
+            st.caption("🏦 **입금 계좌번호 (우측 📋 아이콘 클릭 시 즉시 복사):**")
+            st.code(account_info, language="")
 
         # 3. 오픈 카카오톡방 주소 (시즌 회원에게 전용 링크 버튼 제공 - 인덴트 제거)
         if kakao_url:
