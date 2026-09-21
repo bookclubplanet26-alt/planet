@@ -236,10 +236,10 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                     meta_items.append(f'<div class="meeting-meta-item">✍️ <span style="color:#6D4C41; font-weight:600;">저자:</span> <span class="meta-strong">{meeting["author"]}</span></div>')
 
         if account_info:
-            if is_eligible or is_admin:
+            if google_user:
                 meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong">{account_info}</span></div>')
             else:
-                meta_items.append('<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span style="color:#888; font-size:0.9rem;">(시즌 등록 회원에게 공개)</span></div>')
+                meta_items.append('<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span style="color:#888; font-size:0.9rem;">(🔒 이메일 로그인 후 공개)</span></div>')
 
         if clean_desc and clean_desc.strip():
             formatted_desc = clean_desc.strip().replace("\n", "<br/>")
