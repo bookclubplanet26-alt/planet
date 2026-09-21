@@ -237,7 +237,21 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
         if account_info:
             if google_user:
-                meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong">{account_info}</span></div>')
+                clean_acc = str(account_info).strip()
+                escaped_acc_js = clean_acc.replace('\\', '\\\\').replace("'", "\\'").replace('"', '&quot;')
+                copy_script = (
+                    f"if(navigator.clipboard){{navigator.clipboard.writeText('{escaped_acc_js}').then(()=>{{this.innerText='✅ 복사완료';setTimeout(()=>{{this.innerText='📋 복사';}},1500);}}).catch(()=>{{fallbackCopy();}});}}"
+                    f"else{{fallbackCopy();}}"
+                    f"function fallbackCopy(){{const t=document.createElement('textarea');t.value='{escaped_acc_js}';t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);this.innerText='✅ 복사완료';setTimeout(()=>{{this.innerText='📋 복사';}},1500);}}"
+                )
+                copy_btn_html = (
+                    f'<button onclick="{copy_script}" style="margin-left:8px; padding:2px 8px; font-size:0.78rem; font-weight:600; '
+                    f'border-radius:6px; border:1px solid #D7CCC8; background:#FFF; color:#5D4037; cursor:pointer; '
+                    f'vertical-align:middle; line-height:1.4; transition:all 0.2s;" '
+                    f'onmouseover="this.style.background=\'#F5EFEB\'" onmouseout="this.style.background=\'#FFF\'">'
+                    f'📋 복사</button>'
+                )
+                meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong">{clean_acc}</span>{copy_btn_html}</div>')
             else:
                 meta_items.append('<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span style="color:#888; font-size:0.9rem;">(🔒 이메일 로그인 후 공개)</span></div>')
 
