@@ -237,7 +237,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                 if meeting['author'] and str(meeting['author']).strip() and str(meeting['author']).strip() != "자율":
                     meta_items.append(f'<div class="meeting-meta-item">✍️ <span style="color:#6D4C41; font-weight:600;">저자:</span> <span class="meta-strong">{meeting["author"]}</span></div>')
 
-        if account_info:
+        if is_jijung and account_info:
             if google_user:
                 meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong">{account_info}</span></div>')
             else:
@@ -256,8 +256,8 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         meta_box_html = f'<div class="meeting-meta-box">{"".join(meta_items)}</div>'
         st.markdown(meta_box_html, unsafe_allow_html=True)
 
-        # 2-1. 입금 계좌번호 원터치 복사 박스 (Streamlit 공식 복사 기능 - 모바일/PC 100% 호환)
-        if account_info and google_user:
+        # 2-1. 입금 계좌번호 원터치 복사 박스 (지정책 전용, Streamlit 공식 복사 기능 - 모바일/PC 100% 호환)
+        if is_jijung and account_info and google_user:
             st.caption("🏦 **입금 계좌번호 (우측 📋 아이콘 클릭 시 즉시 복사):**")
             st.code(account_info, language="")
 
