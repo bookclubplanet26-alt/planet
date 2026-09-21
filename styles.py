@@ -490,6 +490,26 @@ def apply_custom_css():
         line-height: 1.1;
     }
 
+    .cal-cell-submeeting {
+        background-color: #FFF9E6 !important;
+        border: 1.5px solid #FFE082 !important;
+        padding: 2px 1px;
+        box-shadow: 0 1px 3px rgba(255, 179, 0, 0.12);
+    }
+    .cal-cell-submeeting .cal-day-num {
+        font-weight: 700;
+        font-size: 0.84rem;
+    }
+    .cal-emoji-row {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        line-height: 1;
+        margin-top: 1px;
+        letter-spacing: -1px;
+    }
+
     /* 캘린더 다크모드 대응 */
 
     @media (prefers-color-scheme: dark) {
@@ -510,6 +530,10 @@ def apply_custom_css():
         }
         .cal-cell-meeting .cal-day-num {
             color: #90CAF9 !important;
+        }
+        .cal-cell-submeeting {
+            background-color: #332A15 !important;
+            border-color: #FFA000 !important;
         }
         .cal-cell-chuseok {
             background-color: #3B1616 !important;

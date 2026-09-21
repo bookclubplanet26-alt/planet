@@ -101,3 +101,150 @@ def render_season_calendar_2609():
 
     with tab_11:
         st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_11}</div>', unsafe_allow_html=True)
+
+import html
+
+def _parse_meeting_date(date_val):
+    if not date_val:
+        return None
+    s = str(date_val).strip()[:10].replace('.', '-').replace('/', '-')
+    try:
+        parts = s.split('-')
+        if len(parts) == 3 and len(parts[0]) == 4:
+            return date(int(parts[0]), int(parts[1]), int(parts[2]))
+    except Exception:
+        pass
+    return None
+
+def generate_submeeting_calendar_html(year, month, events_by_date):
+    cal = calendar.Calendar(firstweekday=calendar.MONDAY)
+    month_days = cal.monthdatescalendar(year, month)
+    
+    html_out = []
+    html_out.append('<div class="cal-month-card">')
+    html_out.append(f'<div class="cal-month-title">{year}년 {month}월</div>')
+    
+    # 요일 헤더 (월~일 순서)
+    html_out.append('<div class="cal-weekdays-row">')
+    weekdays = [
+        ("월", "#5D4037"), 
+        ("화", "#5D4037"), 
+        ("수", "#5D4037"), 
+        ("목", "#5D4037"), 
+        ("금", "#5D4037"), 
+        ("토", "#1E88E5"), 
+        ("일", "#E53935")
+    ]
+    for w, color in weekdays:
+        html_out.append(f'<span style="color:{color};">{w}</span>')
+    html_out.append('</div>')
+    
+    # 날짜 그리드
+    html_out.append('<div class="cal-days-grid">')
+    
+    for week in month_days:
+        for d in week:
+            is_current_month = (d.month == month)
+            day_str = str(d.day)
+            
+            if not is_current_month:
+                html_out.append(f'<div class="cal-cell cal-cell-dimmed">{day_str}</div>')
+                continue
+
+            events = events_by_date.get(d, [])
+            d_color = "#E53935" if d.weekday() == 6 else ("#1E88E5" if d.weekday() == 5 else "#2D2D2D")
+
+            if events:
+                emojis = "".join([e['emoji'] for e in events[:3]])
+                tooltip_items = [f"[{e['type_name']}] {e['title']}" for e in events]
+                safe_tooltip = html.escape(f"{d.month}월 {d.day}일: " + ", ".join(tooltip_items), quote=True)
+                html_out.append(
+                    f'<div class="cal-cell cal-cell-submeeting" title="{safe_tooltip}">'
+                    f'<span class="cal-day-num" style="color:{d_color}; font-weight:700;">{day_str}</span>'
+                    f'<span class="cal-emoji-row">{emojis}</span>'
+                    f'</div>'
+                )
+            else:
+                html_out.append(
+                    f'<div class="cal-cell cal-cell-plain">'
+                    f'<span style="color:{d_color};">{day_str}</span>'
+                    f'</div>'
+                )
+    
+    html_out.append('</div></div>')
+    return "".join(html_out)
+
+def render_submeeting_calendar(meetings=None):
+    """
+    지정책(📕) 및 소모임/벙(☕) 일정 캘린더
+    - 날짜 아래에 해당 일자에 개설된 모임 이모지(📕, ☕)를 표시
+    """
+    if meetings is None:
+        meetings = []
+
+    events_by_date = {}
+    for m in meetings:
+        m_dict = dict(m) if isinstance(m, dict) else getattr(m, '__dict__', {})
+        m_title = str(m_dict.get('title', '')).strip()
+        book_t = str(m_dict.get('book_title', '')).strip()
+        m_desc = str(m_dict.get('description', '')).strip()
+        max_p = m_dict.get('max_participants', 8)
+        try:
+            max_p = int(max_p)
+        except Exception:
+            max_p = 8
+
+        is_bung = ("소모임" in m_title or "벙" in m_title or book_t == "자율 / 소모임")
+        is_jijung = (
+            not is_bung and (
+                "지정책" in m_title or "지정" in m_title or "지정책" in book_t or
+                "[책장:" in m_desc or "[카톡:" in m_desc or
+                (0 < max_p < 50 and max_p != 999)
+            )
+        )
+
+        if not (is_bung or is_jijung):
+            continue
+
+        d_val = _parse_meeting_date(m_dict.get('meeting_date'))
+        if not d_val:
+            continue
+
+        if d_val not in events_by_date:
+            events_by_date[d_val] = []
+
+        if is_jijung:
+            events_by_date[d_val].append({
+                "type": "jijung",
+                "type_name": "지정책",
+                "emoji": "📕",
+                "title": m_title
+            })
+        elif is_bung:
+            events_by_date[d_val].append({
+                "type": "bung",
+                "type_name": "소모임/벙",
+                "emoji": "☕",
+                "title": m_title
+            })
+
+    st.caption("💡 **범례:** 📕 지정책 모임 | ☕ 소모임 및 벙 (날짜를 마우스로 올리거나 터치하면 모임명이 표시됩니다)")
+
+    cal_9 = generate_submeeting_calendar_html(2026, 9, events_by_date)
+    cal_10 = generate_submeeting_calendar_html(2026, 10, events_by_date)
+    cal_11 = generate_submeeting_calendar_html(2026, 11, events_by_date)
+
+    tab_all, tab_9, tab_10, tab_11 = st.tabs(["🗓️ 3달 전체보기", "9월", "10월", "11월"])
+
+    with tab_all:
+        all_html = f'<div class="cal-months-container">{cal_9}{cal_10}{cal_11}</div>'
+        st.markdown(all_html, unsafe_allow_html=True)
+
+    with tab_9:
+        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_9}</div>', unsafe_allow_html=True)
+
+    with tab_10:
+        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_10}</div>', unsafe_allow_html=True)
+
+    with tab_11:
+        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_11}</div>', unsafe_allow_html=True)

@@ -1,4 +1,4 @@
-from views.calendar_widget import render_season_calendar_2609
+from views.calendar_widget import render_season_calendar_2609, render_submeeting_calendar
 import streamlit as st
 import datetime
 import html
@@ -555,6 +555,12 @@ def render_schedule():
     with st.expander("🗓️ 2609 시즌 캘린더 전체보기 (9/12 ~ 11/1)", expanded=False):
         render_season_calendar_2609()
 
+    meetings = get_all_meetings()
+
+    # 📚 지정책 & 소모임 캘린더 (접기/펼치기)
+    with st.expander("📚 지정책 & 소모임 캘린더 (이모지 모아보기)", expanded=False):
+        render_submeeting_calendar(meetings)
+
     # 리셋 플래그 처리 (widget 생성 전 세션 스테이트 설정)
     if "reset_admin_category" in st.session_state and st.session_state["reset_admin_category"]:
         st.session_state["admin_category_select"] = "선택해주세요"
@@ -584,7 +590,6 @@ def render_schedule():
         tab2 = None
 
     with tab1:
-        meetings = get_all_meetings()
         rsvps_map = get_all_meeting_rsvps_map(meetings)
         dep_info = get_member_deposit_info(
             user_email=google_user.get('email', ''),
