@@ -126,12 +126,14 @@ def fetch_google_sheet_meetings():
     if gc:
         try:
             sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
-            ws = sh.worksheet("모임목록") if "모임목록" in [w.title for w in sh.worksheets()] else None
-            if ws:
+            try:
+                ws = sh.worksheet("모임목록")
                 records = ws.get_all_records()
                 df = pd.DataFrame(records)
                 if not df.empty:
                     return True, df
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -225,6 +227,42 @@ def get_meeting_by_id(meeting_id):
             return m
     return None
 
+def _merge_session_rsvps(meeting_id, current_rsvps):
+    """
+    세션에 임시 보관된 로컬 신청/취소 상태를 구글 시트 데이터와 즉시 병합 (낙관적 UI 업데이트)
+    """
+    try:
+        if "local_added_rsvps" not in st.session_state and "local_cancelled_rsvps" not in st.session_state:
+            return current_rsvps
+
+        cancelled_set = st.session_state.get("local_cancelled_rsvps", set())
+        added_list = st.session_state.get("local_added_rsvps", [])
+
+        filtered = []
+        seen = set()
+        for r in current_rsvps:
+            r_email = str(r.get('member_phone') or '').strip().lower()
+            r_name = str(r.get('member_name') or '').strip()
+            ident = r_email if r_email else r_name
+            if (meeting_id, ident) in cancelled_set:
+                continue
+            filtered.append(r)
+            if ident:
+                seen.add(ident)
+
+        for r in added_list:
+            if r.get('meeting_id') == meeting_id:
+                r_email = str(r.get('member_phone') or '').strip().lower()
+                r_name = str(r.get('member_name') or '').strip()
+                ident = r_email if r_email else r_name
+                if ident and ident not in seen:
+                    filtered.append(r)
+                    seen.add(ident)
+
+        return filtered
+    except Exception:
+        return current_rsvps
+
 def get_all_meeting_rsvps_map(meetings=None):
     """
     모든 모임의 신청자 목록을 단 한 번의 시트 순회로 사전 집계하여 {meeting_id: [rsvps...]} 딕셔너리로 반환
@@ -239,6 +277,9 @@ def get_all_meeting_rsvps_map(meetings=None):
 
     ok, df = fetch_google_sheet_rsvps()
     if not ok or df is None or df.empty:
+        for m in meetings:
+            m_id = m['id']
+            rsvps_map[m_id] = _merge_session_rsvps(m_id, rsvps_map.get(m_id, []))
         return rsvps_map
 
     m_col = next((c for c in df.columns if any(k in str(c) for k in ["모임명", "모임", "title"])), df.columns[0])
@@ -299,6 +340,9 @@ def get_all_meeting_rsvps_map(meetings=None):
                     "comment": r_comment
                 })
 
+    for m in meetings:
+        m_id = m['id']
+        rsvps_map[m_id] = _merge_session_rsvps(m_id, rsvps_map.get(m_id, []))
     return rsvps_map
 
 def get_rsvps_for_meeting(meeting_id, meeting=None, rsvps_map=None):
@@ -306,12 +350,12 @@ def get_rsvps_for_meeting(meeting_id, meeting=None, rsvps_map=None):
     구글 시트 '신청명단' 탭에서 특정 모임의 신청자 목록 반환 (rsvps_map이 있으면 즉시 반환)
     """
     if rsvps_map is not None and meeting_id in rsvps_map:
-        return rsvps_map[meeting_id]
+        return _merge_session_rsvps(meeting_id, rsvps_map[meeting_id])
 
     if meeting is None:
         meeting = get_meeting_by_id(meeting_id)
     if not meeting:
-        return []
+        return _merge_session_rsvps(meeting_id, [])
 
     m_title = meeting.get('title', '')
     m_date = str(meeting.get('meeting_date', '')).strip()
@@ -366,7 +410,7 @@ def get_rsvps_for_meeting(meeting_id, meeting=None, rsvps_map=None):
                     "participation_type": r_type,
                     "comment": r_comment
                 })
-    return rsvps
+    return _merge_session_rsvps(meeting_id, rsvps)
 
 def add_rsvp(meeting_id, member_id, member_name, member_phone, participation_type="자유책", comment=""):
     """
@@ -378,10 +422,28 @@ def add_rsvp(meeting_id, member_id, member_name, member_phone, participation_typ
 
     max_p = meeting.get('max_participants', 8)
     if participation_type != "대기":
-        current_rsvps = get_rsvps_for_meeting(meeting_id)
+        current_rsvps = get_rsvps_for_meeting(meeting_id, meeting=meeting)
         confirmed_count = len([r for r in current_rsvps if str(r.get('participation_type', '') or '') != '대기'])
         if confirmed_count >= max_p and max_p < 900:
             return False, "모임 정원이 마감되어 대기 신청만 가능합니다."
+
+    # 세션 상태에 즉시 낙관적(Optimistic) 반영
+    if "local_added_rsvps" not in st.session_state:
+        st.session_state.local_added_rsvps = []
+    if "local_cancelled_rsvps" not in st.session_state:
+        st.session_state.local_cancelled_rsvps = set()
+
+    ident = (member_phone or member_name).strip().lower()
+    st.session_state.local_cancelled_rsvps.discard((meeting_id, ident))
+    st.session_state.local_added_rsvps.append({
+        "id": hash(member_phone or member_name) % 100000,
+        "meeting_id": meeting_id,
+        "member_id": member_id,
+        "member_name": member_name,
+        "member_phone": member_phone,
+        "participation_type": participation_type,
+        "comment": comment
+    })
 
     from services.config import ATTENDANCE_WEBHOOK_URL
     add_rsvp_to_google_sheet_async(
@@ -403,6 +465,19 @@ def cancel_rsvp(meeting_id, member_id, member_name="", member_phone=""):
     meeting = get_meeting_by_id(meeting_id)
     if not meeting:
         return False
+
+    # 세션 상태에 즉시 낙관적(Optimistic) 취소 반영
+    if "local_added_rsvps" not in st.session_state:
+        st.session_state.local_added_rsvps = []
+    if "local_cancelled_rsvps" not in st.session_state:
+        st.session_state.local_cancelled_rsvps = set()
+
+    ident = (member_phone or member_name).strip().lower()
+    st.session_state.local_cancelled_rsvps.add((meeting_id, ident))
+    st.session_state.local_added_rsvps = [
+        r for r in st.session_state.local_added_rsvps
+        if not (r.get('meeting_id') == meeting_id and (r.get('member_phone') or r.get('member_name', '')).strip().lower() == ident)
+    ]
 
     from services.config import ATTENDANCE_WEBHOOK_URL
     cancel_rsvp_from_google_sheet_async(
@@ -557,16 +632,34 @@ def fetch_google_sheet_rsvps():
     """
     gc = get_gspread_client()
     if gc:
+        # 1순위: 출석 시트의 '신청명단' 탭 다이렉트 오픈
+        try:
+            sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+            try:
+                ws = sh.worksheet("신청명단")
+                records = ws.get_all_records()
+                if records:
+                    df = pd.DataFrame(records)
+                    if not df.empty and any(k in str(col) for col in df.columns for k in ["회원", "이름", "모임", "신청"]):
+                        return True, df
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+        # 2순위 fallback: 전체 탭 순회
         for s_id in [GOOGLE_SHEET_ATTENDANCE_ID, GOOGLE_SHEET_ID]:
             try:
                 sh = gc.open_by_key(s_id)
                 for w_title in ["신청명단", "참가신청"]:
-                    if w_title in [w.title for w in sh.worksheets()]:
+                    try:
                         ws = sh.worksheet(w_title)
                         records = ws.get_all_records()
                         df = pd.DataFrame(records)
                         if not df.empty and any(k in str(col) for col in df.columns for k in ["회원", "이름", "모임", "신청"]):
                             return True, df
+                    except Exception:
+                        continue
             except Exception:
                 continue
 
@@ -595,7 +688,10 @@ def _async_append_rsvp(webhook_url, payload, row_data):
         gc = get_gspread_client()
         if gc and row_data:
             sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
-            ws = sh.worksheet("신청명단") if "신청명단" in [w.title for w in sh.worksheets()] else None
+            try:
+                ws = sh.worksheet("신청명단")
+            except Exception:
+                ws = None
             if ws:
                 ws.append_row(row_data)
                 return
@@ -649,7 +745,6 @@ def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email
 
     try:
         fetch_google_sheet_rsvps.clear()
-        st.cache_data.clear()
     except Exception:
         pass
 
@@ -665,7 +760,10 @@ def _async_cancel_rsvp(webhook_url, payload, meeting_name, email, member_name=""
         gc = get_gspread_client()
         if gc:
             sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
-            ws = sh.worksheet("신청명단") if "신청명단" in [w.title for w in sh.worksheets()] else None
+            try:
+                ws = sh.worksheet("신청명단")
+            except Exception:
+                ws = None
             if ws:
                 records = ws.get_all_records()
                 for idx, r in enumerate(records, start=2):
@@ -713,7 +811,6 @@ def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member
 
     try:
         fetch_google_sheet_rsvps.clear()
-        st.cache_data.clear()
     except Exception:
         pass
 
