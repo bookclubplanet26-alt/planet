@@ -1,7 +1,9 @@
 from views.calendar_widget import render_season_calendar_2609
 import streamlit as st
 import datetime
+import html
 import pandas as pd
+import streamlit.components.v1 as components
 from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
@@ -239,7 +241,15 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
         if is_jijung and account_info:
             if google_user:
-                meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong" style="background:#FFF9C4; padding:2px 8px; border-radius:6px; user-select:all; -webkit-user-select:all;" title="터치 시 전체 선택">{account_info}</span></div>')
+                safe_account = html.escape(str(account_info).strip(), quote=True)
+                copy_btn_html = (
+                    f'<span role="button" class="copy-account-btn" data-account="{safe_account}" '
+                    f'style="display:inline-block; margin-left:8px; padding:2px 8px; font-size:0.78rem; font-weight:600; '
+                    f'color:#5D4037; background-color:#F5F0EB; border:1px solid #D7CCC8; border-radius:6px; '
+                    f'cursor:pointer; vertical-align:middle; user-select:none; -webkit-user-select:none;" '
+                    f'title="계좌번호 복사">📋 복사</span>'
+                )
+                meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong">{account_info}</span>{copy_btn_html}</div>')
             else:
                 meta_items.append('<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span style="color:#888; font-size:0.9rem;">(🔒 이메일 로그인 후 공개)</span></div>')
 
@@ -459,6 +469,75 @@ def render_schedule():
                 st.rerun()
     else:
         st.subheader("📅 모임 일정 및 신청")
+
+    # 계좌번호 원클릭 클립보드 복사 이벤트 리스너 주입 (window.parent.document 위임)
+    copy_script = """
+    <script>
+    (function() {
+        try {
+            var doc = window.parent.document;
+            if (doc._accountCopyAttached) return;
+            doc._accountCopyAttached = true;
+
+            doc.addEventListener('click', function(e) {
+                var btn = e.target.closest('.copy-account-btn');
+                if (!btn) return;
+                var text = btn.getAttribute('data-account') || '';
+                if (!text) return;
+
+                function showSuccess() {
+                    var origHtml = btn.getAttribute('data-orig-html') || btn.innerHTML;
+                    btn.setAttribute('data-orig-html', origHtml);
+                    btn.innerHTML = '✅ 복사완료';
+                    btn.style.borderColor = '#4CAF50';
+                    btn.style.color = '#2E7D32';
+                    btn.style.backgroundColor = '#E8F5E9';
+                    setTimeout(function() {
+                        btn.innerHTML = origHtml;
+                        btn.style.borderColor = '#D7CCC8';
+                        btn.style.color = '#5D4037';
+                        btn.style.backgroundColor = '#F5F0EB';
+                    }, 1500);
+                }
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(showSuccess).catch(function() {
+                        fallbackCopy(text);
+                    });
+                } else {
+                    fallbackCopy(text);
+                }
+
+                function fallbackCopy(textVal) {
+                    try {
+                        var ta = doc.createElement('textarea');
+                        ta.value = textVal;
+                        ta.style.position = 'fixed';
+                        ta.style.left = '-9999px';
+                        ta.style.top = '-9999px';
+                        ta.style.opacity = '0';
+                        doc.body.appendChild(ta);
+                        ta.focus();
+                        ta.select();
+                        var ok = doc.execCommand('copy');
+                        doc.body.removeChild(ta);
+                        if (ok) {
+                            showSuccess();
+                        } else {
+                            prompt('계좌번호를 복사하세요:', textVal);
+                        }
+                    } catch (err) {
+                        prompt('계좌번호를 복사하세요:', textVal);
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('Account copy setup failed:', err);
+        }
+    })();
+    </script>
+    """
+    components.html(copy_script, height=0, width=0)
 
     # 🗓️ 2609 시즌 캘린더 전체보기 (접기/펼치기)
     with st.expander("🗓️ 2609 시즌 캘린더 전체보기 (9/12 ~ 11/1)", expanded=False):
