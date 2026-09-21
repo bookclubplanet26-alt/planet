@@ -243,25 +243,18 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             else:
                 meta_items.append('<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span style="color:#888; font-size:0.9rem;">(🔒 이메일 로그인 후 공개)</span></div>')
 
-        meta_box_html = f'<div class="meeting-meta-box">{"".join(meta_items)}</div>'
-        st.markdown(meta_box_html, unsafe_allow_html=True)
-
-        # 2-1. 입금 계좌번호 원터치 복사 박스 (지정책 전용 - 모임안내 위에 배치하여 즉각 확인 가능)
-        if is_jijung and account_info and google_user:
-            st.caption("📋 **계좌번호 복사하기 (아래 박스 우측의 📋 아이콘을 누르면 복사됩니다):**")
-            st.code(account_info, language="")
-
-        # 2-2. 모임안내 영역 (계좌 복사 박스 아래에 깔끔하게 배치)
         if clean_desc and clean_desc.strip():
             formatted_desc = clean_desc.strip().replace("\n", "<br/>")
             desc_html = (
-                f'<div class="meeting-meta-box" style="margin-top:6px;">'
-                f'<div class="meeting-meta-item">'
+                f'<div class="meeting-meta-item" style="margin-top:8px; padding-top:8px; border-top:1px dashed #EAE5D9;">'
                 f'📝 <span style="color:#6D4C41; font-weight:600;">모임안내:</span>'
                 f'<div class="meeting-desc-text">{formatted_desc}</div>'
-                f'</div></div>'
+                f'</div>'
             )
-            st.markdown(desc_html, unsafe_allow_html=True)
+            meta_items.append(desc_html)
+
+        meta_box_html = f'<div class="meeting-meta-box">{"".join(meta_items)}</div>'
+        st.markdown(meta_box_html, unsafe_allow_html=True)
 
         # 3. 오픈 카카오톡방 주소 (시즌 회원에게 전용 링크 버튼 제공 - 인덴트 제거)
         if kakao_url:
