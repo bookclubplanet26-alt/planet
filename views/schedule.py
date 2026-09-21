@@ -558,7 +558,7 @@ def render_schedule():
     meetings = get_all_meetings()
 
     # 📚 지정책 & 소모임 캘린더 (접기/펼치기)
-    with st.expander("📚 지정책 & 소모임 캘린더 (이모지 모아보기)", expanded=False):
+    with st.expander("📚 지정책 & 소모임 캘린더", expanded=False):
         render_submeeting_calendar(meetings)
 
     # 리셋 플래그 처리 (widget 생성 전 세션 스테이트 설정)
