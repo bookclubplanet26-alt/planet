@@ -239,27 +239,29 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
         if is_jijung and account_info:
             if google_user:
-                meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong">{account_info}</span></div>')
+                meta_items.append(f'<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span class="meta-strong" style="background:#FFF9C4; padding:2px 8px; border-radius:6px; user-select:all; -webkit-user-select:all;" title="터치 시 전체 선택">{account_info}</span></div>')
             else:
                 meta_items.append('<div class="meeting-meta-item">🏦 <span style="color:#6D4C41; font-weight:600;">입금계좌:</span> <span style="color:#888; font-size:0.9rem;">(🔒 이메일 로그인 후 공개)</span></div>')
-
-        if clean_desc and clean_desc.strip():
-            formatted_desc = clean_desc.strip().replace("\n", "<br/>")
-            desc_html = (
-                f'<div class="meeting-meta-item" style="margin-top:8px; padding-top:8px; border-top:1px dashed #EAE5D9;">'
-                f'📝 <span style="color:#6D4C41; font-weight:600;">모임안내:</span>'
-                f'<div class="meeting-desc-text">{formatted_desc}</div>'
-                f'</div>'
-            )
-            meta_items.append(desc_html)
 
         meta_box_html = f'<div class="meeting-meta-box">{"".join(meta_items)}</div>'
         st.markdown(meta_box_html, unsafe_allow_html=True)
 
-        # 2-1. 입금 계좌번호 원터치 복사 박스 (지정책 전용, Streamlit 공식 복사 기능 - 모바일/PC 100% 호환)
+        # 2-1. 입금 계좌번호 원터치 복사 박스 (지정책 전용 - 모임안내 위에 배치하여 즉각 확인 가능)
         if is_jijung and account_info and google_user:
-            st.caption("🏦 **입금 계좌번호 (우측 📋 아이콘 클릭 시 즉시 복사):**")
+            st.caption("📋 **계좌번호 복사하기 (아래 박스 우측의 📋 아이콘을 누르면 복사됩니다):**")
             st.code(account_info, language="")
+
+        # 2-2. 모임안내 영역 (계좌 복사 박스 아래에 깔끔하게 배치)
+        if clean_desc and clean_desc.strip():
+            formatted_desc = clean_desc.strip().replace("\n", "<br/>")
+            desc_html = (
+                f'<div class="meeting-meta-box" style="margin-top:6px;">'
+                f'<div class="meeting-meta-item">'
+                f'📝 <span style="color:#6D4C41; font-weight:600;">모임안내:</span>'
+                f'<div class="meeting-desc-text">{formatted_desc}</div>'
+                f'</div></div>'
+            )
+            st.markdown(desc_html, unsafe_allow_html=True)
 
         # 3. 오픈 카카오톡방 주소 (시즌 회원에게 전용 링크 버튼 제공 - 인덴트 제거)
         if kakao_url:
