@@ -1,8 +1,14 @@
 import streamlit as st
+# 뷰 모듈 임포트 (최신 코드 강제 동기화)
+import importlib
+import styles
+import views.calendar_widget
+import views.schedule
+importlib.reload(styles)
+importlib.reload(views.calendar_widget)
+importlib.reload(views.schedule)
+
 from styles import apply_custom_css
-
-# 뷰 모듈 임포트
-
 from views.intro import render_intro
 from views.register import render_register
 from views.schedule import render_schedule
