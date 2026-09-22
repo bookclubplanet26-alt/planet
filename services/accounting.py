@@ -254,10 +254,28 @@ def check_member_season_eligibility(google_user, *args, dep=None, **kwargs):
         return False, "FAILED_OR_UNPAID", "이전 시즌 출석 미달 또는 예치금 미납으로 모임 신청이 제한되었습니다."
 
     if dep.get('registered', 0) != 1 or google_user.get('registered', 0) != 1:
-        return False, "UNREGISTERED", "이번 시즌 예치금 미등록 상태입니다 (입금 확인 필요)."
+        return False, "UNREGISTERED", f"{format_season_display(current_club_season)} 예치금 미등록 상태입니다 (입금 확인 필요)."
+
+    # 시즌 유효성 검증
+    now_kst = get_current_kst()
+    today_str = now_kst.strftime("%Y-%m-%d")
+
+    if user_reg_season in SEASON_DATE_CONFIG:
+        s_conf = SEASON_DATE_CONFIG[user_reg_season]
+        s_start = s_conf.get("start", "")
+        s_end = s_conf.get("end", "")
+        if today_str < s_start:
+            start_label = f"{int(s_start[5:7])}월 {int(s_start[8:10])}일" if len(s_start) >= 10 else s_start
+            return False, "PRE_REGISTERED", f"차기 {format_season_display(user_reg_season)} 사전 등록 완료 상태입니다 ({start_label}부터 모임 신청 가능)."
+        elif today_str > s_end:
+            return False, "PAST_SEASON", f"{format_season_display(current_club_season)} 미등록 상태입니다 (이전 등록: {format_season_display(user_reg_season)})."
+        else:
+            return True, "ACTIVE", "정상 등록 회원"
 
     if user_reg_season != current_club_season:
-        return False, "PAST_SEASON", f"현재 {format_season_display(current_club_season)} 미등록 상태입니다 (이전 등록: {format_season_display(user_reg_season)})."
+        if user_reg_season > current_club_season:
+            return False, "PRE_REGISTERED", f"차기 {format_season_display(user_reg_season)} 사전 등록 완료 상태입니다 (시즌 개막 후 모임 신청 가능)."
+        return False, "PAST_SEASON", f"{format_season_display(current_club_season)} 미등록 상태입니다 (이전 등록: {format_season_display(user_reg_season)})."
 
     return True, "ACTIVE", "정상 등록 회원"
 
@@ -297,6 +315,8 @@ def format_member_attendance_and_deposit_text(google_user, *args, dep=None, user
         is_eligible, reason_type, _ = user_eligibility
 
     if not is_eligible:
+        if reason_type == "PRE_REGISTERED":
+            return f"🏆 {s_label} 등록 완료: <b>예치금 입금 확인</b> <span style='color: #2E7D32; font-size: 0.88rem; margin-left: 6px;'>(🌱 시즌 개막 대기 중)</span>"
         return f"🏆 {s_label} 출석 횟수: <b>{cnt}회</b> <span style='color: #D32F2F; font-size: 0.88rem; margin-left: 6px;'>(⚠️ 이번 시즌 예치금 미등록 - 활동을 위해 시즌 등록을 진행해 주세요)</span>"
 
     target = dep['target_count']

@@ -206,15 +206,24 @@ def render_attendance():
                 st.session_state.google_user = None
                 st.rerun()
 
-        is_elig, _, reason_msg = check_member_season_eligibility(google_user)
+        is_elig, reason_type, reason_msg = check_member_season_eligibility(google_user)
         if not is_elig and not (google_user and google_user.get("is_admin", 0) == 1):
-            st.markdown(f"""
-            <div style="margin: 10px 0 16px 0; padding: 14px 18px; background-color: #FFF3E0; border: 1px solid #FFE082; border-left: 5px solid #FF9800; border-radius: 10px; color: #7F5100; font-size: 0.95rem; line-height: 1.55;">
-                <div style="font-weight: bold; font-size: 1.02rem; margin-bottom: 4px; color: #E65100;">📢 시즌 등록 및 예치금 입금 안내</div>
-                현재 <b>{reason_msg}</b><br/>
-                모임 신청 및 출석 체크 참여를 위해 먼저 <b>이번 시즌 등록(예치금 입금)</b>을 완료해 주세요!
-            </div>
-            """, unsafe_allow_html=True)
+            if reason_type == "PRE_REGISTERED":
+                st.markdown(f"""
+                <div style="margin: 10px 0 16px 0; padding: 14px 18px; background-color: #E8F5E9; border: 1px solid #A5D6A7; border-left: 5px solid #4CAF50; border-radius: 10px; color: #1B5E20; font-size: 0.95rem; line-height: 1.55;">
+                    <div style="font-weight: bold; font-size: 1.02rem; margin-bottom: 4px; color: #2E7D32;">🌱 차기 시즌 사전 등록 완료</div>
+                    <b>{reason_msg}</b><br/>
+                    시즌 개막일(10월 3일) 이후 진행되는 모임부터 출석체크 참여가 가능합니다.
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style="margin: 10px 0 16px 0; padding: 14px 18px; background-color: #FFF3E0; border: 1px solid #FFE082; border-left: 5px solid #FF9800; border-radius: 10px; color: #7F5100; font-size: 0.95rem; line-height: 1.55;">
+                    <div style="font-weight: bold; font-size: 1.02rem; margin-bottom: 4px; color: #E65100;">📢 시즌 등록 및 예치금 입금 안내</div>
+                    <b>{reason_msg}</b><br/>
+                    모임 신청 및 출석 체크 참여를 위해 먼저 <b>이번 시즌 등록(예치금 입금)</b>을 완료해 주세요!
+                </div>
+                """, unsafe_allow_html=True)
 
     st.markdown("---")
 

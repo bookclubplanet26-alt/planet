@@ -48,6 +48,12 @@ SEASON_DATE_CONFIG = {
         "end": "2026-11-01",
         "excluded_dates": [],
         "display_name": "2609시즌(9~10월)"
+    },
+    "2610": {
+        "start": "2026-10-03",
+        "end": "2026-11-29",
+        "excluded_dates": [],
+        "display_name": "2610시즌(10~11월)"
     }
 }
 
