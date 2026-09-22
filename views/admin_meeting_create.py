@@ -134,7 +134,7 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
     elif category_choice == "지정책":
         with st.form("form_jijung_meeting"):
             st.markdown("##### 📕 지정책 모임 설정")
-            m_title = st.text_input("모임 제목", value="[지정책] 독서 토론 모임", key="jijung_title")
+            m_title = st.text_input("모임 제목", value="<지정책> 독서 토론 모임", key="jijung_title")
             
             default_leader = google_user.get('display_name', '') if google_user else ""
             jijung_leader = st.text_input(
