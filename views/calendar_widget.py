@@ -1,6 +1,7 @@
 import calendar
 from datetime import date
 import streamlit as st
+from services.config import get_current_kst
 
 def generate_month_calendar_html(year, month, season_start, season_end, chuseok_dates=None):
     if chuseok_dates is None:
@@ -85,24 +86,25 @@ def render_season_calendar_2609():
     # 깔끔한 1줄 시즌 안내
     st.caption("🪐 **2609 시즌:** 2026.09.05(토) ~ 2026.11.01(일)")
 
-    cal_9 = generate_month_calendar_html(2026, 9, season_start, season_end, chuseok_dates)
-    cal_10 = generate_month_calendar_html(2026, 10, season_start, season_end, chuseok_dates)
-    cal_11 = generate_month_calendar_html(2026, 11, season_start, season_end, chuseok_dates)
+    now_kst = get_current_kst()
+    cur_ym = (now_kst.year, now_kst.month)
 
-    tab_all, tab_9, tab_10, tab_11 = st.tabs(["🗓️ 전체보기", "9월", "10월", "11월"])
+    candidate_months = [(2026, 9), (2026, 10), (2026, 11)]
+    active_months = [(y, m) for (y, m) in candidate_months if (y, m) >= cur_ym]
+    if not active_months:
+        active_months = [candidate_months[-1]]
 
-    with tab_all:
-        all_html = f'<div class="cal-months-container">{cal_9}{cal_10}{cal_11}</div>'
+    month_cals = [(m, generate_month_calendar_html(y, m, season_start, season_end, chuseok_dates)) for y, m in active_months]
+    tab_titles = ["🗓️ 전체보기"] + [f"{m}월" for m, _ in month_cals]
+    tabs = st.tabs(tab_titles)
+
+    with tabs[0]:
+        all_html = f'<div class="cal-months-container">{"".join([c for _, c in month_cals])}</div>'
         st.markdown(all_html, unsafe_allow_html=True)
 
-    with tab_9:
-        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_9}</div>', unsafe_allow_html=True)
-
-    with tab_10:
-        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_10}</div>', unsafe_allow_html=True)
-
-    with tab_11:
-        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_11}</div>', unsafe_allow_html=True)
+    for idx, (m, c_html) in enumerate(month_cals, start=1):
+        with tabs[idx]:
+            st.markdown(f'<div style="max-width:380px; margin:0 auto;">{c_html}</div>', unsafe_allow_html=True)
 
 def render_season_calendar_2610():
     """
@@ -117,20 +119,25 @@ def render_season_calendar_2610():
     # 깔끔한 1줄 시즌 안내
     st.caption("🪐 **2610 시즌:** 2026.10.03(토) ~ 2026.11.29(일)")
 
-    cal_10 = generate_month_calendar_html(2026, 10, season_start, season_end)
-    cal_11 = generate_month_calendar_html(2026, 11, season_start, season_end)
+    now_kst = get_current_kst()
+    cur_ym = (now_kst.year, now_kst.month)
 
-    tab_all, tab_10, tab_11 = st.tabs(["🗓️ 전체보기", "10월", "11월"])
+    candidate_months = [(2026, 10), (2026, 11)]
+    active_months = [(y, m) for (y, m) in candidate_months if (y, m) >= cur_ym]
+    if not active_months:
+        active_months = candidate_months
 
-    with tab_all:
-        all_html = f'<div class="cal-months-container">{cal_10}{cal_11}</div>'
+    month_cals = [(m, generate_month_calendar_html(y, m, season_start, season_end)) for y, m in active_months]
+    tab_titles = ["🗓️ 전체보기"] + [f"{m}월" for m, _ in month_cals]
+    tabs = st.tabs(tab_titles)
+
+    with tabs[0]:
+        all_html = f'<div class="cal-months-container">{"".join([c for _, c in month_cals])}</div>'
         st.markdown(all_html, unsafe_allow_html=True)
 
-    with tab_10:
-        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_10}</div>', unsafe_allow_html=True)
-
-    with tab_11:
-        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_11}</div>', unsafe_allow_html=True)
+    for idx, (m, c_html) in enumerate(month_cals, start=1):
+        with tabs[idx]:
+            st.markdown(f'<div style="max-width:380px; margin:0 auto;">{c_html}</div>', unsafe_allow_html=True)
 
 import html
 
@@ -265,21 +272,22 @@ def render_submeeting_calendar(meetings=None):
         unsafe_allow_html=True
     )
 
-    cal_9 = generate_submeeting_calendar_html(2026, 9, events_by_date)
-    cal_10 = generate_submeeting_calendar_html(2026, 10, events_by_date)
-    cal_11 = generate_submeeting_calendar_html(2026, 11, events_by_date)
+    now_kst = get_current_kst()
+    cur_ym = (now_kst.year, now_kst.month)
 
-    tab_all, tab_9, tab_10, tab_11 = st.tabs(["🗓️ 전체보기", "9월", "10월", "11월"])
+    candidate_months = [(2026, 9), (2026, 10), (2026, 11)]
+    active_months = [(y, m) for (y, m) in candidate_months if (y, m) >= cur_ym]
+    if not active_months:
+        active_months = [candidate_months[-1]]
 
-    with tab_all:
-        all_html = f'<div class="cal-months-container">{cal_9}{cal_10}{cal_11}</div>'
+    month_cals = [(m, generate_submeeting_calendar_html(y, m, events_by_date)) for y, m in active_months]
+    tab_titles = ["🗓️ 전체보기"] + [f"{m}월" for m, _ in month_cals]
+    tabs = st.tabs(tab_titles)
+
+    with tabs[0]:
+        all_html = f'<div class="cal-months-container">{"".join([c for _, c in month_cals])}</div>'
         st.markdown(all_html, unsafe_allow_html=True)
 
-    with tab_9:
-        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_9}</div>', unsafe_allow_html=True)
-
-    with tab_10:
-        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_10}</div>', unsafe_allow_html=True)
-
-    with tab_11:
-        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_11}</div>', unsafe_allow_html=True)
+    for idx, (m, c_html) in enumerate(month_cals, start=1):
+        with tabs[idx]:
+            st.markdown(f'<div style="max-width:380px; margin:0 auto;">{c_html}</div>', unsafe_allow_html=True)
