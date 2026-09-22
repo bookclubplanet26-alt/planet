@@ -1,4 +1,4 @@
-from views.calendar_widget import render_season_calendar_2609, render_submeeting_calendar
+from views.calendar_widget import render_season_calendar_2609, render_season_calendar_2610, render_submeeting_calendar
 import streamlit as st
 import datetime
 import html
@@ -554,6 +554,10 @@ def render_schedule():
     # 🗓️ 2609 시즌 캘린더 전체보기 (접기/펼치기)
     with st.expander("🗓️ 2609 시즌 캘린더 전체보기 (9/12 ~ 11/1)", expanded=False):
         render_season_calendar_2609()
+
+    # 🗓️ 2610 시즌 캘린더 전체보기 (접기/펼치기)
+    with st.expander("🗓️ 2610 시즌 캘린더 전체보기 (10/3 ~ 11/29)", expanded=False):
+        render_season_calendar_2610()
 
     meetings = get_all_meetings()
 

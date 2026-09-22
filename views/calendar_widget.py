@@ -2,7 +2,9 @@ import calendar
 from datetime import date
 import streamlit as st
 
-def generate_month_calendar_html(year, month, season_start, season_end, chuseok_dates):
+def generate_month_calendar_html(year, month, season_start, season_end, chuseok_dates=None):
+    if chuseok_dates is None:
+        chuseok_dates = []
     # 달력의 시작을 월요일(calendar.MONDAY)로 설정
     cal = calendar.Calendar(firstweekday=calendar.MONDAY)
     month_days = cal.monthdatescalendar(year, month)
@@ -95,6 +97,34 @@ def render_season_calendar_2609():
 
     with tab_9:
         st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_9}</div>', unsafe_allow_html=True)
+
+    with tab_10:
+        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_10}</div>', unsafe_allow_html=True)
+
+    with tab_11:
+        st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_11}</div>', unsafe_allow_html=True)
+
+def render_season_calendar_2610():
+    """
+    2610 시즌(2026.10.03 ~ 2026.11.29) 달력 위젯
+    - 월요일 시작 (월~일)
+    - 10/3 ~ 11/29 사이 토/일 정규 모임일: 파란색 (토=강남, 일=종각)
+    - 평일: 무색
+    """
+    season_start = date(2026, 10, 3)
+    season_end = date(2026, 11, 29)
+
+    # 깔끔한 1줄 시즌 안내
+    st.caption("🪐 **2610 시즌:** 2026.10.03(토) ~ 2026.11.29(일)")
+
+    cal_10 = generate_month_calendar_html(2026, 10, season_start, season_end)
+    cal_11 = generate_month_calendar_html(2026, 11, season_start, season_end)
+
+    tab_all, tab_10, tab_11 = st.tabs(["🗓️ 2달 전체보기", "10월", "11월"])
+
+    with tab_all:
+        all_html = f'<div class="cal-months-container">{cal_10}{cal_11}</div>'
+        st.markdown(all_html, unsafe_allow_html=True)
 
     with tab_10:
         st.markdown(f'<div style="max-width:380px; margin:0 auto;">{cal_10}</div>', unsafe_allow_html=True)
