@@ -369,14 +369,21 @@ def apply_custom_css():
         }
     }
     
-    /* 인스타그램 링크 버튼 (방문 후 색상 변경 및 다크모드 반전 방지 - 순백색 고정) */
+    /* 인스타그램 & 네이버 카페 링크 버튼 (방문 후 색상 변경 및 다크모드 반전 방지 - 순백색 고정) */
     a[href*="instagram.com"],
     a[href*="instagram.com"]:visited,
     a[href*="instagram.com"]:hover,
     a[href*="instagram.com"]:active,
     a[href*="instagram.com"] div,
     a[href*="instagram.com"] b,
-    a[href*="instagram.com"] span {
+    a[href*="instagram.com"] span,
+    a[href*="cafe.naver.com"],
+    a[href*="cafe.naver.com"]:visited,
+    a[href*="cafe.naver.com"]:hover,
+    a[href*="cafe.naver.com"]:active,
+    a[href*="cafe.naver.com"] div,
+    a[href*="cafe.naver.com"] b,
+    a[href*="cafe.naver.com"] span {
         color: #FFFFFF !important;
         text-decoration: none !important;
     }

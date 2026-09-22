@@ -9,6 +9,7 @@ import views.calendar_widget
 import views.schedule
 import views.attendance
 import views.bookshelf
+import views.intro
 importlib.reload(styles)
 importlib.reload(services.config)
 importlib.reload(services.accounting)
@@ -17,6 +18,7 @@ importlib.reload(views.calendar_widget)
 importlib.reload(views.schedule)
 importlib.reload(views.attendance)
 importlib.reload(views.bookshelf)
+importlib.reload(views.intro)
 
 from styles import apply_custom_css
 from views.intro import render_intro
