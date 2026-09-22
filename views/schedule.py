@@ -730,7 +730,7 @@ def render_schedule():
                     <div style="margin: 10px 0 16px 0; padding: 14px 18px; background-color: #E8F5E9; border: 1px solid #A5D6A7; border-left: 5px solid #4CAF50; border-radius: 10px; color: #1B5E20; font-size: 0.95rem; line-height: 1.55;">
                         <div style="font-weight: bold; font-size: 1.02rem; margin-bottom: 4px; color: #2E7D32;">🌱 차기 시즌 사전 등록 완료</div>
                         <b>{reason_msg}</b><br/>
-                        시즌 개막일(10월 3일) 이후 열리는 모임부터 참가 신청 및 활동이 활성화됩니다.
+                        시즌 시작일(10월 3일) 이후 열리는 모임부터 참가 신청 및 활동이 활성화됩니다.
                     </div>
                     """, unsafe_allow_html=True)
                 else:

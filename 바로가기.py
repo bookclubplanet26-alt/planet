@@ -2,6 +2,7 @@ import streamlit as st
 # 뷰 모듈 임포트 (최신 코드 강제 동기화)
 import importlib
 import styles
+import services.config
 import services.accounting
 import utils
 import views.calendar_widget
@@ -9,6 +10,7 @@ import views.schedule
 import views.attendance
 import views.bookshelf
 importlib.reload(styles)
+importlib.reload(services.config)
 importlib.reload(services.accounting)
 importlib.reload(utils)
 importlib.reload(views.calendar_widget)
