@@ -596,7 +596,10 @@ def render_schedule():
             user_name=google_user.get('display_name', google_user.get('name', '')),
             user_season=google_user.get('season')
         ) if google_user else None
-        user_eligibility = check_member_season_eligibility(google_user, dep=dep_info) if google_user else (False, "NOT_LOGGED_IN", "로그인 필요")
+        try:
+            user_eligibility = check_member_season_eligibility(google_user, dep=dep_info) if google_user else (False, "NOT_LOGGED_IN", "로그인 필요")
+        except TypeError:
+            user_eligibility = check_member_season_eligibility(google_user) if google_user else (False, "NOT_LOGGED_IN", "로그인 필요")
 
         # 운영진 전용 첫출석 대상자 집합 생성 (초고속 O(1) 매핑)
         first_attendees_set = set()
@@ -701,7 +704,10 @@ def render_schedule():
 
         else:
             admin_badge = " [👑 운영진]" if is_admin else (" [🔥 열심멤버]" if is_dedicated else "")
-            att_txt = format_member_attendance_and_deposit_text(google_user, dep=dep_info, user_eligibility=user_eligibility)
+            try:
+                att_txt = format_member_attendance_and_deposit_text(google_user, dep=dep_info, user_eligibility=user_eligibility)
+            except TypeError:
+                att_txt = format_member_attendance_and_deposit_text(google_user)
             if not att_txt:
                 from utils import format_season_display
                 m_season = google_user.get('season')
