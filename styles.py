@@ -268,6 +268,23 @@ def apply_custom_css():
         word-break: break-word;
         color: #2D2D2D;
     }
+    .meeting-desc-details summary {
+        cursor: pointer;
+        user-select: none;
+        outline: none;
+    }
+    .meeting-desc-details summary::-webkit-details-marker {
+        color: #6D4C41;
+    }
+    .meeting-desc-details .desc-close-badge {
+        display: none;
+    }
+    .meeting-desc-details[open] .desc-toggle-badge {
+        display: none !important;
+    }
+    .meeting-desc-details[open] .desc-close-badge {
+        display: inline !important;
+    }
     .cal-legend-title {
         font-weight: 700;
         font-size: 0.96rem;
@@ -299,6 +316,19 @@ def apply_custom_css():
         }
         .meeting-desc-text {
             color: #EDEDED !important;
+        }
+        .meeting-desc-details summary {
+            color: #D7CCC8 !important;
+        }
+        .meeting-desc-details summary span {
+            color: #D7CCC8 !important;
+        }
+        .meeting-desc-details summary::-webkit-details-marker {
+            color: #D7CCC8 !important;
+        }
+        .meeting-desc-details .desc-toggle-badge,
+        .meeting-desc-details .desc-close-badge {
+            color: #BCAAA4 !important;
         }
         .cal-legend-title {
             color: #FFFFFF !important;

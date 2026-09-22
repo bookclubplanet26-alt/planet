@@ -263,12 +263,26 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
         if clean_desc and clean_desc.strip():
             safe_desc = html.escape(clean_desc.strip()).replace("\n", "<br/>")
-            desc_html = (
-                f'<div class="meeting-meta-item" style="margin-top:8px; padding-top:8px; border-top:1px dashed #EAE5D9;">'
-                f'📝 <span style="color:#6D4C41; font-weight:600;">모임안내:</span>'
-                f'<div class="meeting-desc-text">{safe_desc}</div>'
-                f'</div>'
-            )
+            if is_jijung:
+                desc_html = (
+                    f'<div class="meeting-meta-item" style="margin-top:8px; padding-top:8px; border-top:1px dashed #EAE5D9;">'
+                    f'<details class="meeting-desc-details">'
+                    f'<summary style="cursor:pointer; font-weight:600; color:#6D4C41; user-select:none; outline:none;">'
+                    f'📝 <span style="color:#6D4C41; font-weight:600;">모임안내</span>'
+                    f'<span class="desc-toggle-badge" style="font-size:0.82rem; color:#8D6E63; font-weight:normal; margin-left:4px;">(펼치기)</span>'
+                    f'<span class="desc-close-badge" style="display:none; font-size:0.82rem; color:#8D6E63; font-weight:normal; margin-left:4px;">(접기)</span>'
+                    f'</summary>'
+                    f'<div class="meeting-desc-text" style="margin-top:8px;">{safe_desc}</div>'
+                    f'</details>'
+                    f'</div>'
+                )
+            else:
+                desc_html = (
+                    f'<div class="meeting-meta-item" style="margin-top:8px; padding-top:8px; border-top:1px dashed #EAE5D9;">'
+                    f'📝 <span style="color:#6D4C41; font-weight:600;">모임안내:</span>'
+                    f'<div class="meeting-desc-text">{safe_desc}</div>'
+                    f'</div>'
+                )
             meta_items.append(desc_html)
 
         meta_box_html = f'<div class="meeting-meta-box">{"".join(meta_items)}</div>'
