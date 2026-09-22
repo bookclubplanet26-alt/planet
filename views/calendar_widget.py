@@ -89,7 +89,7 @@ def render_season_calendar_2609():
     cal_10 = generate_month_calendar_html(2026, 10, season_start, season_end, chuseok_dates)
     cal_11 = generate_month_calendar_html(2026, 11, season_start, season_end, chuseok_dates)
 
-    tab_all, tab_9, tab_10, tab_11 = st.tabs(["🗓️ 3달 전체보기", "9월", "10월", "11월"])
+    tab_all, tab_9, tab_10, tab_11 = st.tabs(["🗓️ 전체보기", "9월", "10월", "11월"])
 
     with tab_all:
         all_html = f'<div class="cal-months-container">{cal_9}{cal_10}{cal_11}</div>'
@@ -120,7 +120,7 @@ def render_season_calendar_2610():
     cal_10 = generate_month_calendar_html(2026, 10, season_start, season_end)
     cal_11 = generate_month_calendar_html(2026, 11, season_start, season_end)
 
-    tab_all, tab_10, tab_11 = st.tabs(["🗓️ 2달 전체보기", "10월", "11월"])
+    tab_all, tab_10, tab_11 = st.tabs(["🗓️ 전체보기", "10월", "11월"])
 
     with tab_all:
         all_html = f'<div class="cal-months-container">{cal_10}{cal_11}</div>'
@@ -269,7 +269,7 @@ def render_submeeting_calendar(meetings=None):
     cal_10 = generate_submeeting_calendar_html(2026, 10, events_by_date)
     cal_11 = generate_submeeting_calendar_html(2026, 11, events_by_date)
 
-    tab_all, tab_9, tab_10, tab_11 = st.tabs(["🗓️ 3달 전체보기", "9월", "10월", "11월"])
+    tab_all, tab_9, tab_10, tab_11 = st.tabs(["🗓️ 전체보기", "9월", "10월", "11월"])
 
     with tab_all:
         all_html = f'<div class="cal-months-container">{cal_9}{cal_10}{cal_11}</div>'
