@@ -263,7 +263,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
 
         if clean_desc and clean_desc.strip():
             safe_desc = html.escape(clean_desc.strip()).replace("\n", "<br/>")
-            if is_jijung:
+            if is_jijung or is_bung:
                 desc_html = (
                     f'<div class="meeting-meta-item" style="margin-top:8px; padding-top:8px; border-top:1px dashed #EAE5D9;">'
                     f'<details class="meeting-desc-details">'
