@@ -4,6 +4,7 @@ import datetime
 import html
 import pandas as pd
 import streamlit.components.v1 as components
+from services.config import SEASON_DATE_CONFIG
 from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
@@ -55,6 +56,23 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         is_eligible, reason_type, reason_msg = user_eligibility
     else:
         is_eligible, reason_type, reason_msg = check_member_season_eligibility(google_user) if google_user else (False, "NOT_LOGGED_IN", "Google 인증 필요")
+
+    # 차기 시즌 사전 등록자(예: 2610)의 경우, 해당 등록 시즌 기간(10~11월) 모임은 사전 신청 허용
+    if not is_eligible and reason_type == "PRE_REGISTERED" and google_user:
+        u_season = str(google_user.get("season", "")).strip()
+        m_date_val = str(meeting.get("meeting_date", "") if isinstance(meeting, dict) else getattr(meeting, "meeting_date", "")).strip()
+        m_season = str(meeting.get("season", "") if isinstance(meeting, dict) else getattr(meeting, "season", "")).strip()
+
+        is_season_match = False
+        if m_season and m_season == u_season:
+            is_season_match = True
+        elif u_season in SEASON_DATE_CONFIG:
+            s_conf = SEASON_DATE_CONFIG[u_season]
+            if s_conf.get("start", "") <= m_date_val <= s_conf.get("end", ""):
+                is_season_match = True
+
+        if is_season_match:
+            is_eligible = True
 
     is_bung = ("소모임" in meeting['title'] or "벙" in meeting['title'] or meeting['book_title'] == "자율 / 소모임")
     is_jijung = (
