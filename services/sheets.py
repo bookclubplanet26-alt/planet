@@ -87,7 +87,7 @@ def fetch_google_sheet_members():
         pass
     return False, None, "구글 시트 공유 설정('링크가 있는 모든 사용자에게 공개') 확인이 필요합니다."
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def fetch_google_sheet_attendances():
     """
     출석전용 구글 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
@@ -124,7 +124,7 @@ def fetch_google_sheet_attendances():
         pass
     return False, None
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def fetch_google_sheet_meetings():
     """
     모임 목록 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
@@ -471,6 +471,10 @@ def add_rsvp(meeting_id, member_id, member_name, member_phone, participation_typ
         meeting_date=meeting.get('meeting_date', ''),
         comment=comment
     )
+    try:
+        fetch_google_sheet_rsvps.clear()
+    except Exception:
+        pass
     msg_type = "대기 신청" if participation_type == "대기" else "참가 신청"
     return True, f"{msg_type}이 성공적으로 완료되었습니다!"
 
@@ -503,6 +507,10 @@ def cancel_rsvp(meeting_id, member_id, member_name="", member_phone=""):
         member_name=member_name,
         meeting_date=meeting.get('meeting_date', '')
     )
+    try:
+        fetch_google_sheet_rsvps.clear()
+    except Exception:
+        pass
     return True
 
 def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name, year, season, meeting_name, book_read, book_review="", is_lounging=0, book_author="", rating=5):
@@ -647,7 +655,7 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
         pass
     return deleted
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def fetch_google_sheet_rsvps():
     """
     구글 시트에서 신청명단/참가신청 탭을 가져오는 함수 (gspread 보안 인증 1순위 사용)

@@ -8,7 +8,7 @@ from utils import (
     format_season_display, ATTENDANCE_WEBHOOK_URL, 
     append_attendance_to_google_sheet_async, get_club_season_code,
     get_current_kst, format_member_attendance_and_deposit_text, check_member_season_eligibility,
-    get_all_meetings, get_rsvps_for_meeting
+    get_all_meetings, get_rsvps_for_meeting, get_all_meeting_rsvps_map
 )
 try:
     from streamlit_geolocation import streamlit_geolocation
@@ -232,6 +232,8 @@ def render_attendance():
         st.warning("개설된 모임이 없습니다.")
         return
 
+    rsvps_map = get_all_meeting_rsvps_map(meetings)
+
     today_date = get_current_kst().date()
 
     my_meetings = []
@@ -262,7 +264,7 @@ def render_attendance():
             if is_admin:
                 my_meetings.append(m)
             else:
-                rsvps = get_rsvps_for_meeting(m['id'])
+                rsvps = get_rsvps_for_meeting(m['id'], meeting=m, rsvps_map=rsvps_map)
                 user_email = str(google_user.get('email', '')).strip().lower()
                 user_display = str(google_user.get('display_name', '')).strip()
                 user_name = str(google_user.get('name', '')).strip()
@@ -303,7 +305,7 @@ def render_attendance():
         """, unsafe_allow_html=True)
         bypass_time = st.checkbox("🔓 [운영진] 출석체크 조건(시간/위치 제한) 해제하기", value=True, key="att_admin_bypass_time_top")
 
-    rsvps = get_rsvps_for_meeting(selected_meeting['id'])
+    rsvps = get_rsvps_for_meeting(selected_meeting['id'], meeting=selected_meeting, rsvps_map=rsvps_map)
     user_email = str(google_user.get('email', '')).strip().lower()
     user_display = str(google_user.get('display_name', '')).strip()
     user_name = str(google_user.get('name', '')).strip()
@@ -479,6 +481,10 @@ def render_attendance():
                         book_author=book_author_val,
                         rating=rating_val
                     )
+                    try:
+                        fetch_google_sheet_attendances.clear()
+                    except Exception:
+                        pass
                     st.balloons()
                     st.success("✅ 출석체크가 정상적으로 완료되었습니다!")
                     st.rerun()
