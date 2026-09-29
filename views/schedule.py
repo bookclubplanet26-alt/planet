@@ -845,12 +845,16 @@ def render_schedule():
         ]
 
         # 📌 한 줄 4개 탭 구성 (정규모임 | 지정책 | 소모임/벙 | 지난 모임)
-        m_tab1, m_tab2, m_tab3, m_tab4 = st.tabs([
+        tab_labels = [
             f"📅 정규모임 ({len(regular_meetings)})", 
             f"📖 지정책 ({len(jijung_meetings)})", 
             f"☕️ 소모임 / 벙 ({len(bung_meetings)})",
             f"📜 지난 모임 ({len(past_meetings)})"
-        ], on_change="rerun", key="schedule_active_subtab")
+        ]
+        try:
+            m_tab1, m_tab2, m_tab3, m_tab4 = st.tabs(tab_labels, on_change="rerun", key="schedule_active_subtab")
+        except TypeError:
+            m_tab1, m_tab2, m_tab3, m_tab4 = st.tabs(tab_labels)
 
         with m_tab1:
             if not regular_meetings:
@@ -876,7 +880,7 @@ def render_schedule():
         with m_tab4:
             if not past_meetings:
                 st.info("진행된 지난 모임 기록이 없습니다.")
-            elif m_tab4.open:
+            elif getattr(m_tab4, "open", True):
                 st.caption("💡 성황리에 마무리된 지난 모임 목록입니다.")
                 for meeting in past_meetings:
                     render_meeting_card(meeting, google_user, is_admin, key_prefix="past_m", is_ended=True, rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated, first_attendees_set=first_attendees_set)
