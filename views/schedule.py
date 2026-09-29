@@ -10,7 +10,7 @@ from utils import (
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
     check_member_season_eligibility, get_all_meetings, get_rsvps_for_meeting,
     add_rsvp, cancel_rsvp, get_meeting_facilitator, get_all_meeting_rsvps_map,
-    fetch_google_sheet_meetings, fetch_google_sheet_rsvps
+    fetch_google_sheet_meetings, fetch_google_sheet_rsvps, prefetch_schedule_data
 )
 
 # 정규모임 진행자 표시 여부 플래그 (True: 표시, False: 기능 유지한 채 임시 숨김)
@@ -581,7 +581,8 @@ def render_schedule():
     })();
     </script>
     """
-    components.html(copy_script, height=0, width=0)
+    # 🚀 3대 데이터셋(번들 3탭, 진행자 목록, 회원 목록) 백그라운드 병렬 사전 로딩 (체감 로딩 속도 극대화)
+    prefetch_schedule_data()
 
     # 🗓️ 2609 시즌 캘린더 전체보기 (접기/펼치기)
     with st.expander("🗓️ 2609 시즌 캘린더 전체보기 (9/12 ~ 11/1)", expanded=False):
@@ -847,9 +848,9 @@ def render_schedule():
         m_tab1, m_tab2, m_tab3, m_tab4 = st.tabs([
             f"📅 정규모임 ({len(regular_meetings)})", 
             f"📖 지정책 ({len(jijung_meetings)})", 
-            f"\u2615\ufe0f 소모임 / 벙 ({len(bung_meetings)})",
+            f"☕️ 소모임 / 벙 ({len(bung_meetings)})",
             f"📜 지난 모임 ({len(past_meetings)})"
-        ])
+        ], on_change="rerun", key="schedule_active_subtab")
 
         with m_tab1:
             if not regular_meetings:
@@ -875,7 +876,7 @@ def render_schedule():
         with m_tab4:
             if not past_meetings:
                 st.info("진행된 지난 모임 기록이 없습니다.")
-            else:
+            elif m_tab4.open:
                 st.caption("💡 성황리에 마무리된 지난 모임 목록입니다.")
                 for meeting in past_meetings:
                     render_meeting_card(meeting, google_user, is_admin, key_prefix="past_m", is_ended=True, rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated, first_attendees_set=first_attendees_set)

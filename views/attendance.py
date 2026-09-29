@@ -8,7 +8,7 @@ from utils import (
     format_season_display, ATTENDANCE_WEBHOOK_URL, 
     append_attendance_to_google_sheet_async, get_club_season_code,
     get_current_kst, format_member_attendance_and_deposit_text, check_member_season_eligibility,
-    get_all_meetings, get_rsvps_for_meeting, get_all_meeting_rsvps_map
+    get_all_meetings, get_rsvps_for_meeting, get_all_meeting_rsvps_map, prefetch_schedule_data
 )
 try:
     from streamlit_geolocation import streamlit_geolocation
@@ -227,6 +227,7 @@ def render_attendance():
 
     st.markdown("---")
 
+    prefetch_schedule_data()
     meetings = get_all_meetings()
     if not meetings:
         st.warning("개설된 모임이 없습니다.")

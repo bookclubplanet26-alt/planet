@@ -46,6 +46,9 @@ from services.sheets import (
     fetch_google_sheet_facilitators,
     get_meeting_facilitator,
     get_all_meeting_rsvps_map,
+    fetch_attendance_workbook_bundle,
+    clear_attendance_cache,
+    prefetch_schedule_data,
 )
 
 # 4. 예치금 및 출석 통계 모듈 (services/accounting.py)

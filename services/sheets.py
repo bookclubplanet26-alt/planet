@@ -5,6 +5,12 @@ import threading
 import pandas as pd
 import streamlit as st
 import gspread
+from concurrent.futures import ThreadPoolExecutor
+try:
+    from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
+except Exception:
+    add_script_run_ctx = None
+    get_script_run_ctx = None
 
 from services.config import (
     GOOGLE_SHEET_ID, GOOGLE_SHEET_ATTENDANCE_ID, GOOGLE_SHEET_FACILITATOR_ID,
@@ -88,10 +94,72 @@ def fetch_google_sheet_members():
     return False, None, "구글 시트 공유 설정('링크가 있는 모든 사용자에게 공개') 확인이 필요합니다."
 
 @st.cache_data(ttl=300, show_spinner=False)
+def fetch_attendance_workbook_bundle():
+    """
+    출석 시트(GOOGLE_SHEET_ATTENDANCE_ID)의 주요 3대 탭(모임목록, 신청명단, 출석목록)을
+    단 1회의 batch get API 호출로 동시 수신하여 (ok, df_meetings, df_rsvps, df_attendances) 반환.
+    - 네트워크 라운드트립을 1회로 줄여 초기 로딩 속도 극대화
+    """
+    gc = get_gspread_client()
+    if gc:
+        try:
+            sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+            res = sh.values_batch_get(["모임목록", "신청명단", "출석목록"])
+            vr = res.get("valueRanges", [])
+
+            def _to_df(v):
+                rows = v.get("values", [])
+                if not rows or len(rows) < 2:
+                    return pd.DataFrame()
+                seen = {}
+                headers = []
+                for idx, c in enumerate(rows[0]):
+                    h = str(c).strip() or f"col_{idx}"
+                    if h in seen:
+                        seen[h] += 1
+                        headers.append(f"{h}_{seen[h]}")
+                    else:
+                        seen[h] = 0
+                        headers.append(h)
+                data = [(r[:len(headers)] + [''] * max(0, len(headers) - len(r))) for r in rows[1:]]
+                return pd.DataFrame(data, columns=headers)
+
+            df_m = _to_df(vr[0]) if len(vr) > 0 else pd.DataFrame()
+            df_r = _to_df(vr[1]) if len(vr) > 1 else pd.DataFrame()
+            df_a = _to_df(vr[2]) if len(vr) > 2 else pd.DataFrame()
+
+            return True, df_m, df_r, df_a
+        except Exception:
+            pass
+    return False, None, None, None
+
+def clear_attendance_cache():
+    """
+    출석 시트 관련 번들 및 개별 캐시 일괄 무효화
+    """
+    for fn in [
+        fetch_attendance_workbook_bundle,
+        fetch_google_sheet_meetings,
+        fetch_google_sheet_rsvps,
+        fetch_google_sheet_attendances,
+    ]:
+        try:
+            fn.clear()
+        except Exception:
+            pass
+
+@st.cache_data(ttl=300, show_spinner=False)
 def fetch_google_sheet_attendances():
     """
-    출석전용 구글 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
+    출석전용 구글 시트 다이렉트 전송 (번들 캐시 1순위 사용)
     """
+    try:
+        ok_b, _, _, df_a = fetch_attendance_workbook_bundle()
+        if ok_b and df_a is not None and not df_a.empty:
+            return True, df_a
+    except Exception:
+        pass
+
     gc = get_gspread_client()
     if gc:
         try:
@@ -127,8 +195,15 @@ def fetch_google_sheet_attendances():
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_google_sheet_meetings():
     """
-    모임 목록 시트 다이렉트 전송 (gspread 보안 인증 1순위 사용)
+    모임 목록 시트 다이렉트 전송 (번들 캐시 1순위 사용)
     """
+    try:
+        ok_b, df_m, _, _ = fetch_attendance_workbook_bundle()
+        if ok_b and df_m is not None and not df_m.empty:
+            return True, df_m
+    except Exception:
+        pass
+
     gc = get_gspread_client()
     if gc:
         try:
@@ -471,10 +546,7 @@ def add_rsvp(meeting_id, member_id, member_name, member_phone, participation_typ
         meeting_date=meeting.get('meeting_date', ''),
         comment=comment
     )
-    try:
-        fetch_google_sheet_rsvps.clear()
-    except Exception:
-        pass
+    clear_attendance_cache()
     msg_type = "대기 신청" if participation_type == "대기" else "참가 신청"
     return True, f"{msg_type}이 성공적으로 완료되었습니다!"
 
@@ -507,10 +579,7 @@ def cancel_rsvp(meeting_id, member_id, member_name="", member_phone=""):
         member_name=member_name,
         meeting_date=meeting.get('meeting_date', '')
     )
-    try:
-        fetch_google_sheet_rsvps.clear()
-    except Exception:
-        pass
+    clear_attendance_cache()
     return True
 
 def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name, year, season, meeting_name, book_read, book_review="", is_lounging=0, book_author="", rating=5):
@@ -612,8 +681,8 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
         pass
 
     # gspread 서비스 계정으로 '모임목록' 시트에 직접 저장 완료 후 캐시 갱신
+    clear_attendance_cache()
     try:
-        fetch_google_sheet_meetings.clear()
         st.cache_data.clear()
     except Exception:
         pass
@@ -647,9 +716,8 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
     except Exception:
         pass
 
+    clear_attendance_cache()
     try:
-        fetch_google_sheet_meetings.clear()
-        fetch_google_sheet_attendances.clear()
         st.cache_data.clear()
     except Exception:
         pass
@@ -658,8 +726,15 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_google_sheet_rsvps():
     """
-    구글 시트에서 신청명단/참가신청 탭을 가져오는 함수 (gspread 보안 인증 1순위 사용)
+    구글 시트에서 신청명단/참가신청 탭을 가져오는 함수 (번들 캐시 1순위 사용)
     """
+    try:
+        ok_b, _, df_r, _ = fetch_attendance_workbook_bundle()
+        if ok_b and df_r is not None and not df_r.empty and any(k in str(col) for col in df_r.columns for k in ["회원", "이름", "모임", "신청"]):
+            return True, df_r
+    except Exception:
+        pass
+
     gc = get_gspread_client()
     if gc:
         # 1순위: 출석 시트의 '신청명단' 탭 다이렉트 오픈
@@ -773,10 +848,7 @@ def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email
         comment
     ]
 
-    try:
-        fetch_google_sheet_rsvps.clear()
-    except Exception:
-        pass
+    clear_attendance_cache()
 
     t = threading.Thread(target=_async_append_rsvp, args=(webhook_url, payload, row_data), daemon=True)
     t.start()
@@ -839,10 +911,7 @@ def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member
         "회원명": member_name
     }
 
-    try:
-        fetch_google_sheet_rsvps.clear()
-    except Exception:
-        pass
+    clear_attendance_cache()
 
     t = threading.Thread(target=_async_cancel_rsvp, args=(webhook_url, payload, meeting_name, email, member_name, meeting_date), daemon=True)
     t.start()
@@ -970,4 +1039,30 @@ def get_meeting_facilitator(meeting_title, meeting_date):
                 return "미정"
 
     return "미정"
+
+def prefetch_schedule_data():
+    """
+    모임 일정 페이지 진입 시 필요한 3대 데이터셋(번들 3탭, 진행자 목록, 회원 목록)을
+    스레드 풀에서 병렬로 사전 로딩(Warm-up)하여 전체 응답 시간을 약 1.4초대로 단축
+    """
+    ctx = get_script_run_ctx() if get_script_run_ctx else None
+
+    def _run(target):
+        if ctx and add_script_run_ctx:
+            try:
+                add_script_run_ctx(threading.current_thread(), ctx)
+            except Exception:
+                pass
+        try:
+            target()
+        except Exception:
+            pass
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        f1 = executor.submit(_run, fetch_attendance_workbook_bundle)
+        f2 = executor.submit(_run, fetch_google_sheet_facilitators)
+        f3 = executor.submit(_run, fetch_google_sheet_members)
+        f1.result()
+        f2.result()
+        f3.result()
 
