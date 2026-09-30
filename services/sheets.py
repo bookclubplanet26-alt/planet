@@ -107,7 +107,7 @@ def fetch_attendance_workbook_bundle():
             res = sh.values_batch_get(["모임목록", "신청명단", "출석목록"])
             vr = res.get("valueRanges", [])
 
-            def _to_df(v):
+            def _to_df(v, max_tail_rows=None):
                 rows = v.get("values", [])
                 if not rows or len(rows) < 2:
                     return pd.DataFrame()
@@ -121,12 +121,17 @@ def fetch_attendance_workbook_bundle():
                     else:
                         seen[h] = 0
                         headers.append(h)
-                data = [(r[:len(headers)] + [''] * max(0, len(headers) - len(r))) for r in rows[1:]]
+
+                data_rows = rows[1:]
+                if max_tail_rows and len(data_rows) > max_tail_rows:
+                    data_rows = data_rows[-max_tail_rows:]
+
+                data = [(r[:len(headers)] + [''] * max(0, len(headers) - len(r))) for r in data_rows]
                 return pd.DataFrame(data, columns=headers)
 
-            df_m = _to_df(vr[0]) if len(vr) > 0 else pd.DataFrame()
-            df_r = _to_df(vr[1]) if len(vr) > 1 else pd.DataFrame()
-            df_a = _to_df(vr[2]) if len(vr) > 2 else pd.DataFrame()
+            df_m = _to_df(vr[0], max_tail_rows=300) if len(vr) > 0 else pd.DataFrame()
+            df_r = _to_df(vr[1], max_tail_rows=600) if len(vr) > 1 else pd.DataFrame()
+            df_a = _to_df(vr[2], max_tail_rows=600) if len(vr) > 2 else pd.DataFrame()
 
             return True, df_m, df_r, df_a
         except Exception:
@@ -383,7 +388,8 @@ def get_all_meeting_rsvps_map(meetings=None):
     seen_map = {m['id']: set() for m in meetings}
     m_info_list = [(m['id'], str(m.get('title', '')).strip(), str(m.get('meeting_date', '')).strip()) for m in meetings]
 
-    for idx, row in df.iterrows():
+    records = df.to_dict('records')
+    for idx, row in enumerate(records):
         row_m = _clean_str(row.get(m_col))
         row_d = _clean_str(row.get(date_col)) if date_col else ""
 
