@@ -192,10 +192,14 @@ def render_attendance():
         
         col_box, col_logout = st.columns([4, 1])
         with col_box:
+            u_name = google_user.get('name', '회원')
+            u_nick = google_user.get('nickname', '')
+            u_disp = f"{u_name} - {u_nick}" if u_nick else u_name
+            u_email = google_user.get('email', '')
             st.markdown(f"""
             <div class="info-callout" style="background-color: #E8F0FE; border-left-color: #1A73E8; color: #174EA6; padding: 16px; font-size: 1.05rem;">
                 <b>✅ Google 인증 완료{admin_badge}:</b><br/>
-                환영합니다. <b>{google_user['name']} - {google_user['nickname']}</b> ({google_user['email']})<br/>
+                환영합니다. <b>{u_disp}</b> ({u_email})<br/>
                 <span style="font-size: 0.98rem; color: #185ABC;">{att_txt}</span>
             </div>
             """, unsafe_allow_html=True)
@@ -329,9 +333,9 @@ def render_attendance():
             my_rsvp = {
                 "id": 9999,
                 "meeting_id": selected_meeting['id'],
-                "member_id": google_user['id'],
-                "member_name": google_user['display_name'],
-                "member_phone": google_user['email'],
+                "member_id": google_user.get('id', 0),
+                "member_name": google_user.get('display_name', google_user.get('name', '운영진')),
+                "member_phone": google_user.get('email', ''),
                 "participation_type": "운영진"
             }
             st.info(f"👑 **운영진 권한**: [{selected_meeting['title']}] 모임에 사전 신청 내역이 없으나, 운영진 권한으로 즉시 출석체크 및 실시간 명단 조회가 가능합니다.")

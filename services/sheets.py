@@ -1047,27 +1047,10 @@ def get_meeting_facilitator(meeting_title, meeting_date):
 
 def prefetch_schedule_data():
     """
-    모임 일정 페이지 진입 시 필요한 3대 데이터셋(번들 3탭, 진행자 목록, 회원 목록)을
-    스레드 풀에서 병렬로 사전 로딩(Warm-up)하여 전체 응답 시간을 약 1.4초대로 단축
+    모임 일정/출석 페이지 진입 시 주요 3대 탭 번들(모임, 신청, 출석)을 안전하게 1회 사전 로딩
     """
-    ctx = get_script_run_ctx() if get_script_run_ctx else None
-
-    def _run(target):
-        if ctx and add_script_run_ctx:
-            try:
-                add_script_run_ctx(threading.current_thread(), ctx)
-            except Exception:
-                pass
-        try:
-            target()
-        except Exception:
-            pass
-
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        f1 = executor.submit(_run, fetch_attendance_workbook_bundle)
-        f2 = executor.submit(_run, fetch_google_sheet_facilitators)
-        f3 = executor.submit(_run, fetch_google_sheet_members)
-        f1.result()
-        f2.result()
-        f3.result()
+    try:
+        fetch_attendance_workbook_bundle()
+    except Exception:
+        pass
 

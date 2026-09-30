@@ -766,10 +766,14 @@ def render_schedule():
                 att_cnt = dep_info['current_count'] if dep_info else get_member_attendance_count(google_user['email'], google_user['display_name'], target_season=m_season)
                 att_txt = f"🏆 {season_label} 출석 횟수: <b>{att_cnt}회</b>"
             
+            u_name = google_user.get('name', '회원')
+            u_nick = google_user.get('nickname', '')
+            u_disp = f"{u_name} - {u_nick}" if u_nick else u_name
+            u_email = google_user.get('email', '')
             st.markdown(f"""
             <div class="info-callout" style="background-color: #E8F0FE; border-left-color: #1A73E8; color: #174EA6; padding: 16px; font-size: 1.05rem;">
                 <b>✅ Google 인증 완료{admin_badge}:</b><br/>
-                환영합니다. <b>{google_user['name']} - {google_user['nickname']}</b> ({google_user['email']})<br/>
+                환영합니다. <b>{u_disp}</b> ({u_email})<br/>
                 <span style="font-size: 0.98rem; color: #185ABC;">{att_txt}</span>
             </div>
             """, unsafe_allow_html=True)
