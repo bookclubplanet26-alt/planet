@@ -10,6 +10,7 @@ from services.config import (
     GOOGLE_SHEET_ID,
     GOOGLE_SHEET_ATTENDANCE_ID,
     ATTENDANCE_WEBHOOK_URL,
+    WEBHOOK_SECRET_KEY,
     SERVICE_ACCOUNT_FILE,
     get_current_kst,
     get_club_season_code,
@@ -27,6 +28,7 @@ from services.geo import (
 
 # 3. 구글 시트 연동 전담 모듈 (services/sheets.py)
 from services.sheets import (
+    sanitize_sheet_cell,
     get_gspread_client,
     fetch_google_sheet_members,
     fetch_google_sheet_attendances,

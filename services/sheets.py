@@ -14,8 +14,23 @@ except Exception:
 
 from services.config import (
     GOOGLE_SHEET_ID, GOOGLE_SHEET_ATTENDANCE_ID, GOOGLE_SHEET_FACILITATOR_ID,
-    SERVICE_ACCOUNT_FILE, get_current_kst
+    SERVICE_ACCOUNT_FILE, ATTENDANCE_WEBHOOK_URL, WEBHOOK_SECRET_KEY, get_current_kst
 )
+
+def sanitize_sheet_cell(val):
+    """
+    구글 시트 수식 인젝션(Formula / CSV Injection) 방어
+    - 셀 첫 글자가 '=', '+', '-', '@', '\t', '\r' 등인 경우 앞에 작은따옴표(')를 부착하여
+      수식이 실행되지 않고 안전한 순수 텍스트로 보존되도록 강제 이스케이프
+    """
+    if val is None:
+        return ""
+    if not isinstance(val, str):
+        return val
+    s = val.strip()
+    if s and s[0] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + s
+    return val
 
 @st.cache_resource(show_spinner=False)
 def get_gspread_client():
@@ -45,11 +60,14 @@ def get_gspread_client():
 
 def _async_send_post(webhook_url, payload):
     """
-    백그라운드 비동기 스레드로 웹훅 URL에 POST 전송 (요청 대기시간 0초)
+    백그라운드 비동기 스레드로 웹훅 URL에 POST 전송 (요청 대기시간 0초, 인증 토큰 자동 부착)
     """
     try:
         if webhook_url:
-            requests.post(webhook_url, json=payload, timeout=8)
+            headers = {"x-planet-auth-token": WEBHOOK_SECRET_KEY}
+            if isinstance(payload, dict):
+                payload["auth_token"] = WEBHOOK_SECRET_KEY
+            requests.post(webhook_url, json=payload, headers=headers, timeout=8)
     except Exception:
         pass
 
@@ -599,24 +617,24 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
 
     payload = {
         "checked_at": checked_at,
-        "email": email,
-        "name": name,
+        "email": sanitize_sheet_cell(email),
+        "name": sanitize_sheet_cell(name),
         "year": year,
         "season": season,
-        "meeting_name": meeting_name,
-        "book_read": clean_book_title,
-        "book_title": clean_book_title,
-        "도서명": clean_book_title,
-        "book_review": book_review,
-        "review": book_review,
-        "감상평": book_review,
-        "한줄평": book_review,
+        "meeting_name": sanitize_sheet_cell(meeting_name),
+        "book_read": sanitize_sheet_cell(clean_book_title),
+        "book_title": sanitize_sheet_cell(clean_book_title),
+        "도서명": sanitize_sheet_cell(clean_book_title),
+        "book_review": sanitize_sheet_cell(book_review),
+        "review": sanitize_sheet_cell(book_review),
+        "감상평": sanitize_sheet_cell(book_review),
+        "한줄평": sanitize_sheet_cell(book_review),
         "is_lounging": is_lounging,
         "lounging": is_lounging,
         "라운징": is_lounging,
-        "book_author": book_author,
-        "author": book_author,
-        "저자명": book_author,
+        "book_author": sanitize_sheet_cell(book_author),
+        "author": sanitize_sheet_cell(book_author),
+        "저자명": sanitize_sheet_cell(book_author),
         "rating": rating,
         "별점": rating
     }
@@ -656,17 +674,17 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
             pass
 
     row_data = [
-        title,
-        str(meeting_date),
-        str(meeting_time),
-        str(location_name),
-        str(book_title),
-        str(author),
+        sanitize_sheet_cell(title),
+        sanitize_sheet_cell(str(meeting_date)),
+        sanitize_sheet_cell(str(meeting_time)),
+        sanitize_sheet_cell(str(location_name)),
+        sanitize_sheet_cell(str(book_title)),
+        sanitize_sheet_cell(str(author)),
         max_participants,
-        clean_desc,
-        leader_name,
-        k_url,
-        acc_info
+        sanitize_sheet_cell(clean_desc),
+        sanitize_sheet_cell(leader_name),
+        sanitize_sheet_cell(k_url),
+        sanitize_sheet_cell(acc_info)
     ]
 
     # 1순위: gspread 서비스 계정으로 '모임목록' 시트에 즉시 행 추가
@@ -810,7 +828,7 @@ def _async_append_rsvp(webhook_url, payload, row_data):
 
     try:
         if webhook_url:
-            requests.post(webhook_url, json=payload, timeout=8)
+            _async_send_post(webhook_url, payload)
     except Exception:
         pass
 
@@ -823,34 +841,40 @@ def add_rsvp_to_google_sheet_async(webhook_url, meeting_name, member_name, email
 
     now_str = get_current_kst().strftime("%Y-%m-%d %H:%M:%S")
 
+    clean_mname = sanitize_sheet_cell(meeting_name)
+    clean_name = sanitize_sheet_cell(member_name)
+    clean_email = sanitize_sheet_cell(email)
+    clean_type = sanitize_sheet_cell(participation_type)
+    clean_comment = sanitize_sheet_cell(comment)
+
     payload = {
         "type": "add_rsvp",
         "action": "add_rsvp",
         "created_at": now_str,
-        "meeting_name": meeting_name,
-        "모임명": meeting_name,
+        "meeting_name": clean_mname,
+        "모임명": clean_mname,
         "meeting_date": meeting_date,
         "모임일자": meeting_date,
-        "member_name": member_name,
-        "회원명": member_name,
-        "이름": member_name,
-        "email": email,
-        "이메일": email,
-        "participation_type": participation_type,
-        "참여방식": participation_type,
-        "방식": participation_type,
-        "comment": comment,
-        "한마디": comment
+        "member_name": clean_name,
+        "회원명": clean_name,
+        "이름": clean_name,
+        "email": clean_email,
+        "이메일": clean_email,
+        "participation_type": clean_type,
+        "참여방식": clean_type,
+        "방식": clean_type,
+        "comment": clean_comment,
+        "한마디": clean_comment
     }
 
     row_data = [
         now_str,
-        meeting_name,
-        meeting_date if meeting_date else "",
-        member_name,
-        email,
-        participation_type,
-        comment
+        clean_mname,
+        sanitize_sheet_cell(meeting_date if meeting_date else ""),
+        clean_name,
+        clean_email,
+        clean_type,
+        clean_comment
     ]
 
     clear_attendance_cache()
@@ -892,7 +916,7 @@ def _async_cancel_rsvp(webhook_url, payload, meeting_name, email, member_name=""
 
     try:
         if webhook_url:
-            requests.post(webhook_url, json=payload, timeout=8)
+            _async_send_post(webhook_url, payload)
     except Exception:
         pass
 
@@ -906,14 +930,14 @@ def cancel_rsvp_from_google_sheet_async(webhook_url, meeting_name, email, member
     payload = {
         "type": "cancel_rsvp",
         "action": "cancel_rsvp",
-        "meeting_name": meeting_name,
-        "모임명": meeting_name,
+        "meeting_name": sanitize_sheet_cell(meeting_name),
+        "모임명": sanitize_sheet_cell(meeting_name),
         "meeting_date": meeting_date,
         "모임일자": meeting_date,
-        "email": email,
-        "이메일": email,
-        "member_name": member_name,
-        "회원명": member_name
+        "email": sanitize_sheet_cell(email),
+        "이메일": sanitize_sheet_cell(email),
+        "member_name": sanitize_sheet_cell(member_name),
+        "회원명": sanitize_sheet_cell(member_name)
     }
 
     clear_attendance_cache()

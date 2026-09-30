@@ -21,6 +21,7 @@ ATTENDANCE_WEBHOOK_URL = _get_secret(
     "ATTENDANCE_WEBHOOK_URL", 
     "https://script.google.com/macros/s/AKfycbw1KwJAy3_GGXkQ_pYISTxExafydX2JGPyY6BsS711V1m4s49N7VwDL2dmeJbF8qBFMrA/exec"
 )
+WEBHOOK_SECRET_KEY = _get_secret("WEBHOOK_SECRET_KEY", "planet_default_auth_key_2026")
 
 # GCP 서비스 계정 키 파일 경로 (st.secrets 또는 환경변수 우선 조회, 없으면 일반 service_account.json)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
