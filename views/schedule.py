@@ -306,12 +306,26 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         meta_box_html = f'<div class="meeting-meta-box">{"".join(meta_items)}</div>'
         st.markdown(meta_box_html, unsafe_allow_html=True)
 
+        # 사용자 모임별 참여 자격(시즌) 판정
+        is_eligible, reason_type, reason_msg = user_eligibility
+        card_is_eligible = is_eligible
+        card_reason_msg = reason_msg
+
+        # 차기 시즌 사전 등록 회원(예: 2610)의 해당 시즌 모임 사전 신청 및 카톡 열람 허용
+        if not card_is_eligible and reason_type == "PRE_REGISTERED" and google_user:
+            user_season = str(google_user.get('season') or '').strip()
+            m_date_str = str(meeting.get('meeting_date') or '').strip()
+            if user_season in SEASON_DATE_CONFIG and m_date_str:
+                s_conf = SEASON_DATE_CONFIG[user_season]
+                if s_conf.get("start", "") <= m_date_str <= s_conf.get("end", ""):
+                    card_is_eligible = True
+
         # 3. 오픈 카카오톡방 주소 (시즌 회원에게 전용 링크 버튼 제공 - 프로토콜 검증 및 XSS 방어)
         clean_k_url = str(kakao_url).strip() if kakao_url else ""
         if clean_k_url and clean_k_url.lower() not in ["nan", "none", "null"]:
             if clean_k_url.startswith(("https://", "http://")):
                 safe_k_url = html.escape(clean_k_url, quote=True)
-                if is_eligible or is_admin:
+                if card_is_eligible or is_admin:
                     kakao_btn_html = f'<div style="margin:6px 0 10px 0;"><a href="{safe_k_url}" target="_blank" rel="noopener noreferrer" class="kakao-link-btn">💬 <b>오픈 카톡방 입장하기</b> ↗</a></div>'
                     st.markdown(kakao_btn_html, unsafe_allow_html=True)
                 else:
@@ -334,10 +348,10 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                         st.toast("✅ 신청이 취소되었습니다.")
                         st.rerun()
             else:
-                if not is_eligible and not is_admin:
+                if not card_is_eligible and not is_admin:
                     st.warning(f"""
                     🚫 **모임 신청 제한 (시즌 등록 필요)**  
-                    {reason_msg}  
+                    {card_reason_msg}  
                     📌 모든 모임에 참여하시려면 **이번 시즌 예치금 입금 및 등록**을 먼저 완료해 주세요!
                     """)
                 else:
@@ -767,7 +781,7 @@ def render_schedule():
                     <div style="margin: 10px 0 16px 0; padding: 14px 18px; background-color: #E8F5E9; border: 1px solid #A5D6A7; border-left: 5px solid #4CAF50; border-radius: 10px; color: #1B5E20; font-size: 0.95rem; line-height: 1.55;">
                         <div style="font-weight: bold; font-size: 1.02rem; margin-bottom: 4px; color: #2E7D32;">🌱 차기 시즌 사전 등록 완료</div>
                         <b>{reason_msg}</b><br/>
-                        시즌 시작일 이후 열리는 모임부터 참가 신청 및 활동이 활성화됩니다.
+                        등록하신 차기 시즌 모임은 지금 바로 사전에 참가 신청하실 수 있습니다.
                     </div>
                     """, unsafe_allow_html=True)
                 else:
