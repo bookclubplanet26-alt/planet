@@ -655,44 +655,45 @@ def cancel_rsvp(meeting_id, member_id, member_name="", member_phone=""):
 
 def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name, year="", season="", meeting_name="", book_read="", book_review="", is_lounging=0, book_author="", rating=5):
     """
-    백그라운드 비동기 스레드로 구글 시트에 출석 정보 전송 (사용자 대기시간 0초)
+    백그라운드 비동기 스레드로 구글 시트 '출석목록' 탭에 직접 행 추가 (연도/시즌 제외 9개 컬럼, 사용자 대기시간 0초)
     """
-    if not webhook_url:
-        return False
-    
     clean_book_title = str(book_read or "").strip()
+    clean_review = str(book_review or "").strip()
+    clean_author = str(book_author or "").strip()
 
-    payload = {
-        "checked_at": checked_at,
-        "email": sanitize_sheet_cell(email),
-        "name": sanitize_sheet_cell(name),
-        "year": year,
-        "season": season,
-        "meeting_name": sanitize_sheet_cell(meeting_name),
-        "book_read": sanitize_sheet_cell(clean_book_title),
-        "book_title": sanitize_sheet_cell(clean_book_title),
-        "도서명": sanitize_sheet_cell(clean_book_title),
-        "book_review": sanitize_sheet_cell(book_review),
-        "review": sanitize_sheet_cell(book_review),
-        "감상평": sanitize_sheet_cell(book_review),
-        "한줄평": sanitize_sheet_cell(book_review),
-        "is_lounging": is_lounging,
-        "lounging": is_lounging,
-        "라운징": is_lounging,
-        "book_author": sanitize_sheet_cell(book_author),
-        "author": sanitize_sheet_cell(book_author),
-        "저자명": sanitize_sheet_cell(book_author),
-        "rating": rating,
-        "별점": rating
-    }
-    
+    row_data = [
+        sanitize_sheet_cell(checked_at),
+        sanitize_sheet_cell(email),
+        sanitize_sheet_cell(name),
+        sanitize_sheet_cell(meeting_name),
+        sanitize_sheet_cell(clean_book_title),
+        sanitize_sheet_cell(clean_review),
+        str(is_lounging),
+        sanitize_sheet_cell(clean_author),
+        str(rating)
+    ]
+
+    def _worker():
+        try:
+            gc = get_gspread_client()
+            if gc:
+                sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+                try:
+                    ws = sh.worksheet("출석목록")
+                    ws.append_row(row_data)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        clear_attendance_cache()
+
     try:
-        fetch_google_sheet_attendances.clear()
+        clear_attendance_cache()
         st.cache_data.clear()
     except Exception:
         pass
-    
-    t = threading.Thread(target=_async_send_post, args=(webhook_url, payload), daemon=True)
+
+    t = threading.Thread(target=_worker, daemon=True)
     t.start()
     return True
 
