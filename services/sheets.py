@@ -680,7 +680,7 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
                 sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
                 try:
                     ws = sh.worksheet("출석목록")
-                    ws.append_row(row_data)
+                    ws.append_row(row_data, value_input_option='USER_ENTERED')
                 except Exception:
                     pass
         except Exception:
