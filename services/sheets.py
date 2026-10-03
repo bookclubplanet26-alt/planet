@@ -653,7 +653,7 @@ def cancel_rsvp(meeting_id, member_id, member_name="", member_phone=""):
     clear_attendance_cache()
     return True
 
-def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name, year, season, meeting_name, book_read, book_review="", is_lounging=0, book_author="", rating=5):
+def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name, year="", season="", meeting_name="", book_read="", book_review="", is_lounging=0, book_author="", rating=5):
     """
     백그라운드 비동기 스레드로 구글 시트에 출석 정보 전송 (사용자 대기시간 0초)
     """
