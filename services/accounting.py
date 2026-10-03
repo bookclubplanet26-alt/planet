@@ -44,25 +44,30 @@ def get_member_attendance_count(user_email="", user_name="", target_season=None)
         r_season = str(row.get(season_col, '')).strip() if season_col else ""
         r_date = str(row.get(date_col, '')).strip() if date_col else ""
         
-        # 시즌 일치 여부 판정 (날짜 범위 및 제외일 완벽 반영)
+        # 시즌 일치 여부 판정 (회원의 목표 시즌 날짜 범위 우선 매핑)
         if target_s:
-            season_match = (r_season == target_s)
-            if not season_match and r_date:
+            season_match = False
+            d_clean = r_date[:10].replace('.', '-').replace('/', '-') if r_date else ""
+            
+            # 1순위: 출석일자가 목표 시즌 기간(SEASON_DATE_CONFIG) 내에 속하는지 판정
+            if target_s in SEASON_DATE_CONFIG and d_clean:
                 try:
-                    d_obj = datetime.strptime(r_date[:10].replace('.', '-').replace('/', '-'), "%Y-%m-%d")
-                    season_match = (get_club_season_code(d_obj) == target_s)
+                    conf = SEASON_DATE_CONFIG[target_s]
+                    if conf["start"] <= d_clean <= conf["end"]:
+                        season_match = True
                 except Exception:
                     pass
             
-            # 날짜 범위 검증: 2609 시즌의 경우 9월 5일 ~ 11월 1일 기간 내 모든 출석 인정
-            if season_match and target_s in SEASON_DATE_CONFIG and r_date:
-                try:
-                    d_clean = r_date[:10].replace('.', '-').replace('/', '-')
-                    conf = SEASON_DATE_CONFIG[target_s]
-                    if d_clean < conf["start"] or d_clean > conf["end"]:
-                        season_match = False
-                except Exception:
-                    pass
+            # 2순위: SEASON_DATE_CONFIG 외 시즌이거나 날짜 미입력 시 시즌 열 코드 또는 get_club_season_code 대조
+            if not season_match:
+                if r_season and r_season == target_s:
+                    season_match = True
+                elif d_clean:
+                    try:
+                        d_obj = datetime.strptime(d_clean, "%Y-%m-%d")
+                        season_match = (get_club_season_code(d_obj) == target_s)
+                    except Exception:
+                        pass
 
             if not season_match:
                 continue

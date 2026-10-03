@@ -10,6 +10,7 @@ from utils import (
     get_current_kst, format_member_attendance_and_deposit_text, check_member_season_eligibility,
     get_all_meetings, get_rsvps_for_meeting, get_all_meeting_rsvps_map, prefetch_schedule_data
 )
+from services.config import SEASON_DATE_CONFIG
 try:
     from streamlit_geolocation import streamlit_geolocation
 except Exception:
@@ -464,14 +465,25 @@ def render_attendance():
                     final_lng = user_gps_lng if user_gps_lng is not None else target_lng
                     final_dist = measured_dist_m if measured_dist_m is not None else 0.0
 
-                    # 출석체크 모임 날짜 기준으로 시즌 코드 판정 (11월 1일 모임도 2609 시즌으로 완벽 기록)
+                    # 출석체크 모임 날짜 기준으로 시즌 코드 판정 (회원의 등록 시즌 우선 매핑)
                     m_date_val = None
-                    if selected_meeting and selected_meeting.get('meeting_date'):
+                    m_date_str = str(selected_meeting.get('meeting_date') or '').strip() if selected_meeting else ''
+                    if m_date_str:
                         try:
-                            m_date_val = datetime.strptime(str(selected_meeting['meeting_date']).strip(), "%Y-%m-%d").date()
+                            m_date_val = datetime.strptime(m_date_str, "%Y-%m-%d").date()
                         except Exception:
                             pass
-                    season_code = get_club_season_code(m_date_val if m_date_val else now_sync)
+                    
+                    user_season = str(google_user.get('season') or '').strip()
+                    if user_season in SEASON_DATE_CONFIG and m_date_str:
+                        s_conf = SEASON_DATE_CONFIG[user_season]
+                        if s_conf["start"] <= m_date_str <= s_conf["end"]:
+                            season_code = user_season
+                        else:
+                            season_code = get_club_season_code(m_date_val if m_date_val else now_sync)
+                    else:
+                        season_code = get_club_season_code(m_date_val if m_date_val else now_sync)
+
                     append_attendance_to_google_sheet_async(
                         ATTENDANCE_WEBHOOK_URL,
                         checked_at=now_str,

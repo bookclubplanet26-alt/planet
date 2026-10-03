@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils import fetch_google_sheet_attendances, fetch_google_sheet_members, format_member_attendance_and_deposit_text, check_member_season_eligibility
+from services.config import SEASON_DATE_CONFIG, get_club_season_code
 
 def render_bookshelf():
     st.subheader("📚 나의 서재 (My Book Planet)")
@@ -142,6 +143,18 @@ def render_bookshelf():
                 book_raw = str(row.get('도서명', '')).strip()
                 book_review_col = str(row.get('한줄평', '') or row.get('감상평', '') or row.get('review', '')).strip()
                 season_val = str(row.get('시즌 코드', '')).strip() or str(row.get('시즌', '')).strip()
+                if not season_val and date_val:
+                    d_clean = date_val[:10].replace('.', '-').replace('/', '-')
+                    for s_code, s_conf in SEASON_DATE_CONFIG.items():
+                        if s_conf["start"] <= d_clean <= s_conf["end"]:
+                            season_val = s_code
+                            break
+                    if not season_val:
+                        try:
+                            from datetime import datetime
+                            season_val = get_club_season_code(datetime.strptime(d_clean, "%Y-%m-%d"))
+                        except Exception:
+                            pass
                 
                 # 도서명과 감상평 분리 (이전 저장 형식 호환)
                 book_title = book_raw
