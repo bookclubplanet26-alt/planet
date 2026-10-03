@@ -10,7 +10,7 @@ from utils import (
     get_current_kst, format_member_attendance_and_deposit_text, check_member_season_eligibility,
     get_all_meetings, get_rsvps_for_meeting, get_all_meeting_rsvps_map, prefetch_schedule_data
 )
-from services.config import SEASON_DATE_CONFIG
+from services.config import SEASON_DATE_CONFIG, get_season_date_config
 try:
     from streamlit_geolocation import streamlit_geolocation
 except Exception:
@@ -475,9 +475,10 @@ def render_attendance():
                             pass
                     
                     user_season = str(google_user.get('season') or '').strip()
-                    if user_season in SEASON_DATE_CONFIG and m_date_str:
-                        s_conf = SEASON_DATE_CONFIG[user_season]
-                        if s_conf["start"] <= m_date_str <= s_conf["end"]:
+                    s_config = get_season_date_config()
+                    if user_season in s_config and m_date_str:
+                        s_conf = s_config[user_season]
+                        if s_conf.get("start") and s_conf.get("end") and s_conf["start"] <= m_date_str <= s_conf["end"]:
                             season_code = user_season
                         else:
                             season_code = get_club_season_code(m_date_val if m_date_val else now_sync)

@@ -9,7 +9,7 @@ from datetime import datetime, date
 from services.config import (
     GOOGLE_SHEET_ID,
     get_current_kst, get_club_season_code, format_season_display,
-    SEASON_DATE_CONFIG
+    get_season_date_config, SEASON_DATE_CONFIG
 )
 from services.sheets import (
     get_gspread_client, fetch_google_sheet_members, fetch_google_sheet_attendances
@@ -38,6 +38,8 @@ def get_member_attendance_count(user_email="", user_name="", target_season=None)
     lounging_col = next((c for c in att_df.columns if any(k in str(c).lower() for k in ["라운징", "lounging"])), None)
     book_col = next((c for c in att_df.columns if any(k in str(c).lower() for k in ["도서", "책", "book"])), None)
 
+    s_config = get_season_date_config()
+
     for _, row in att_df.iterrows():
         r_email = str(row.get(email_col, '')).strip().lower() if email_col else ""
         r_name = str(row.get(name_col, '')).strip() if name_col else ""
@@ -49,11 +51,11 @@ def get_member_attendance_count(user_email="", user_name="", target_season=None)
             season_match = False
             d_clean = r_date[:10].replace('.', '-').replace('/', '-') if r_date else ""
             
-            # 1순위: 출석일자가 목표 시즌 기간(SEASON_DATE_CONFIG) 내에 속하는지 판정
-            if target_s in SEASON_DATE_CONFIG and d_clean:
+            # 1순위: 출석일자가 목표 시즌 기간(시즌일정 동적 설정) 내에 속하는지 판정
+            if target_s in s_config and d_clean:
                 try:
-                    conf = SEASON_DATE_CONFIG[target_s]
-                    if conf["start"] <= d_clean <= conf["end"]:
+                    conf = s_config[target_s]
+                    if conf.get("start") and conf.get("end") and conf["start"] <= d_clean <= conf["end"]:
                         season_match = True
                 except Exception:
                     pass
@@ -264,9 +266,10 @@ def check_member_season_eligibility(google_user, *args, dep=None, **kwargs):
     # 시즌 유효성 검증
     now_kst = get_current_kst()
     today_str = now_kst.strftime("%Y-%m-%d")
+    s_config = get_season_date_config()
 
-    if user_reg_season in SEASON_DATE_CONFIG:
-        s_conf = SEASON_DATE_CONFIG[user_reg_season]
+    if user_reg_season in s_config:
+        s_conf = s_config[user_reg_season]
         s_start = s_conf.get("start", "")
         s_end = s_conf.get("end", "")
         if today_str < s_start:

@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils import fetch_google_sheet_attendances, fetch_google_sheet_members, format_member_attendance_and_deposit_text, check_member_season_eligibility
-from services.config import SEASON_DATE_CONFIG, get_club_season_code
+from services.config import SEASON_DATE_CONFIG, get_season_date_config, get_club_season_code
 
 def render_bookshelf():
     st.subheader("📚 나의 서재 (My Book Planet)")
@@ -145,8 +145,9 @@ def render_bookshelf():
                 season_val = str(row.get('시즌 코드', '')).strip() or str(row.get('시즌', '')).strip()
                 if not season_val and date_val:
                     d_clean = date_val[:10].replace('.', '-').replace('/', '-')
-                    for s_code, s_conf in SEASON_DATE_CONFIG.items():
-                        if s_conf["start"] <= d_clean <= s_conf["end"]:
+                    s_config = get_season_date_config()
+                    for s_code, s_conf in s_config.items():
+                        if s_conf.get("start") and s_conf.get("end") and s_conf["start"] <= d_clean <= s_conf["end"]:
                             season_val = s_code
                             break
                     if not season_val:

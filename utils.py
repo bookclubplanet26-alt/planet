@@ -14,6 +14,7 @@ from services.config import (
     SERVICE_ACCOUNT_FILE,
     get_current_kst,
     get_club_season_code,
+    get_season_date_config,
     format_season_display,
 )
 
@@ -34,6 +35,7 @@ from services.sheets import (
     fetch_google_sheet_attendances,
     fetch_google_sheet_meetings,
     fetch_google_sheet_rsvps,
+    fetch_google_sheet_seasons,
     get_google_sheet_meetings_list,
     get_all_meetings,
     get_meeting_by_id,

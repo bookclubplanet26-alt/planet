@@ -4,7 +4,7 @@ import datetime
 import html
 import pandas as pd
 import streamlit.components.v1 as components
-from services.config import SEASON_DATE_CONFIG
+from services.config import SEASON_DATE_CONFIG, get_season_date_config
 from utils import (
     LOCATION_PRESETS, fetch_google_sheet_members, get_member_attendance_count, 
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
@@ -63,11 +63,11 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         m_date_val = str(meeting.get("meeting_date", "") if isinstance(meeting, dict) else getattr(meeting, "meeting_date", "")).strip()
         m_season = str(meeting.get("season", "") if isinstance(meeting, dict) else getattr(meeting, "season", "")).strip()
 
-        is_season_match = False
+        s_config = get_season_date_config()
         if m_season and m_season == u_season:
             is_season_match = True
-        elif u_season in SEASON_DATE_CONFIG:
-            s_conf = SEASON_DATE_CONFIG[u_season]
+        elif u_season in s_config:
+            s_conf = s_config[u_season]
             if s_conf.get("start", "") <= m_date_val <= s_conf.get("end", ""):
                 is_season_match = True
 
@@ -315,8 +315,9 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         if not card_is_eligible and reason_type == "PRE_REGISTERED" and google_user:
             user_season = str(google_user.get('season') or '').strip()
             m_date_str = str(meeting.get('meeting_date') or '').strip()
-            if user_season in SEASON_DATE_CONFIG and m_date_str:
-                s_conf = SEASON_DATE_CONFIG[user_season]
+            s_config = get_season_date_config()
+            if user_season in s_config and m_date_str:
+                s_conf = s_config[user_season]
                 if s_conf.get("start", "") <= m_date_str <= s_conf.get("end", ""):
                     card_is_eligible = True
 

@@ -156,6 +156,52 @@ def fetch_attendance_workbook_bundle():
             pass
     return False, None, None, None
 
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_google_sheet_seasons():
+    """
+    구글 시트(시즌일정 탭)에서 시즌별 날짜 구간 설정을 로드하여 딕셔너리로 반환.
+    - 실패 시 config.py의 SEASON_DATE_CONFIG를 fallback으로 안전하게 반환
+    """
+    from services.config import SEASON_DATE_CONFIG
+    gc = get_gspread_client()
+    if gc:
+        try:
+            sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+            try:
+                ws = sh.worksheet("시즌일정")
+            except Exception:
+                return SEASON_DATE_CONFIG
+            rows = ws.get_all_values()
+            if rows and len(rows) > 1:
+                headers = [str(h).strip() for h in rows[0]]
+                c_code = headers.index("시즌코드") if "시즌코드" in headers else 0
+                c_name = headers.index("시즌명") if "시즌명" in headers else 1
+                c_start = headers.index("시작일") if "시작일" in headers else 2
+                c_end = headers.index("종료일") if "종료일" in headers else 3
+
+                res = {}
+                for r in rows[1:]:
+                    if not r or len(r) <= max(c_code, c_start, c_end):
+                        continue
+                    s_code = str(r[c_code]).strip()
+                    if not s_code:
+                        continue
+                    s_name = str(r[c_name]).strip() if c_name < len(r) and r[c_name] else f"{s_code}시즌"
+                    start_d = str(r[c_start]).strip()
+                    end_d = str(r[c_end]).strip()
+                    if start_d and end_d:
+                        res[s_code] = {
+                            "start": start_d,
+                            "end": end_d,
+                            "excluded_dates": [],
+                            "display_name": s_name
+                        }
+                if res:
+                    return res
+        except Exception:
+            pass
+    return SEASON_DATE_CONFIG
+
 def clear_attendance_cache():
     """
     출석 시트 관련 번들 및 개별 캐시 일괄 무효화
@@ -165,6 +211,7 @@ def clear_attendance_cache():
         fetch_google_sheet_meetings,
         fetch_google_sheet_rsvps,
         fetch_google_sheet_attendances,
+        fetch_google_sheet_seasons,
     ]:
         try:
             fn.clear()

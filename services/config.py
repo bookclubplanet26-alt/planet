@@ -58,11 +58,24 @@ SEASON_DATE_CONFIG = {
     }
 }
 
+def get_season_date_config():
+    """
+    동적 시즌 날짜 범위 설정 반환
+    1순위: 구글 스프레드시트 '시즌일정' 탭 동적 캐시
+    2순위: SEASON_DATE_CONFIG (fallback)
+    """
+    try:
+        from services.sheets import fetch_google_sheet_seasons
+        cfg = fetch_google_sheet_seasons()
+        if cfg and isinstance(cfg, dict) and len(cfg) > 0:
+            return cfg
+    except Exception:
+        pass
+    return SEASON_DATE_CONFIG
+
 def get_club_season_code(dt=None):
     """
-    날짜 기준 소속 시즌 코드 반환 (공식 시즌 날짜 범위 우선 매핑)
-    - 2609 시즌: 2026-09-05 ~ 2026-11-01 (11월 1일도 2609 시즌으로 완벽 매핑)
-    - 그 외: 기존 2달 롤링 규칙
+    날짜 기준 소속 시즌 코드 반환 (구글 시트 시즌일정 동적 매핑 우선)
     """
     if dt is None:
         dt = get_current_kst()
@@ -73,9 +86,11 @@ def get_club_season_code(dt=None):
         d_val = dt
     
     d_str = d_val.strftime("%Y-%m-%d")
-    for s_code, s_conf in SEASON_DATE_CONFIG.items():
-        if s_conf["start"] <= d_str <= s_conf["end"]:
-            return s_code
+    s_config = get_season_date_config()
+    for s_code, s_conf in s_config.items():
+        if s_conf.get("start") and s_conf.get("end"):
+            if s_conf["start"] <= d_str <= s_conf["end"]:
+                return s_code
             
     year_short = dt.strftime("%y")
     return f"{year_short}{dt.month:02d}"
@@ -83,11 +98,16 @@ def get_club_season_code(dt=None):
 def format_season_display(season_code):
     """
     시즌 코드(예: 2609, 2610)를 친절한 라벨로 변환
+    - 시즌일정 탭의 display_name 우선 사용
     - 예: '2609' -> '2609시즌(9~10월)'
     """
     if not season_code:
         return ""
     code_str = str(season_code).strip()
+    s_config = get_season_date_config()
+    if code_str in s_config and s_config[code_str].get("display_name"):
+        return s_config[code_str]["display_name"]
+
     if len(code_str) == 4 and code_str.isdigit():
         month_start = int(code_str[2:])
         month_end = month_start + 1
@@ -95,3 +115,4 @@ def format_season_display(season_code):
             month_end = 1
         return f"{code_str}시즌({month_start}~{month_end}월)"
     return f"{code_str}시즌"
+
