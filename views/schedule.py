@@ -75,8 +75,18 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             is_eligible = True
 
     is_bung = ("소모임" in meeting['title'] or "벙" in meeting['title'] or meeting['book_title'] == "자율 / 소모임")
-    is_jijung = (
+    is_regular = (
         not is_bung and (
+            max_count >= 900 or 
+            "토요일 강남" in meeting['title'] or "일요일 종각" in meeting['title'] or 
+            "강남 (" in meeting['title'] or "종각 (" in meeting['title'] or
+            "정규" in meeting['title'] or 
+            "자유 도서" in (meeting['book_title'] or "") or 
+            "자유책" in (meeting['book_title'] or "")
+        ) and "지정책" not in meeting['title'] and "지정" not in meeting['title']
+    )
+    is_jijung = (
+        not is_bung and not is_regular and (
             "지정책" in meeting['title'] or "지정" in meeting['title'] or "지정책" in (meeting['book_title'] or "") or
             "[책장:" in (meeting['description'] or "") or "[카톡:" in (meeting['description'] or "") or
             (max_count > 0 and max_count < 50 and max_count != 999)
@@ -84,13 +94,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
     )
 
     # 무제한 인원 처리 (정규모임)
-    is_unlimited = (
-        max_count >= 900 or 
-        "자유 도서" in meeting['book_title'] or 
-        "자유책" in meeting['book_title'] or 
-        "강남 (" in meeting['title'] or 
-        "종각 (" in meeting['title']
-    )
+    is_unlimited = is_regular or max_count >= 900
 
     desc_raw = meeting['description'] or ""
     leader_name = meeting.get('leader', '') if isinstance(meeting, dict) else getattr(meeting, 'leader', '')
@@ -850,17 +854,20 @@ def render_schedule():
             m for m in upcoming_meetings 
             if ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
         ]
-        jijung_meetings = [
-            m for m in upcoming_meetings 
-            if m not in bung_meetings and (
-                "지정책" in m['title'] or "지정" in m['title'] or "지정책" in (m['book_title'] or "") or
-                "[책장:" in (m['description'] or "") or "[카톡:" in (m['description'] or "") or
-                (m['max_participants'] > 0 and m['max_participants'] < 50 and m['max_participants'] != 999)
-            )
-        ]
         regular_meetings = [
             m for m in upcoming_meetings 
-            if m not in bung_meetings and m not in jijung_meetings
+            if m not in bung_meetings and (
+                m.get('max_participants', 0) >= 900 or
+                "토요일 강남" in m['title'] or "일요일 종각" in m['title'] or 
+                "강남 (" in m['title'] or "종각 (" in m['title'] or
+                "정규" in m['title'] or 
+                "자유 도서" in (m['book_title'] or "") or 
+                "자유책" in (m['book_title'] or "")
+            ) and "지정책" not in m['title'] and "지정" not in m['title']
+        ]
+        jijung_meetings = [
+            m for m in upcoming_meetings 
+            if m not in bung_meetings and m not in regular_meetings
         ]
 
         # 📌 한 줄 4개 탭 구성 (정규모임 | 지정책 | 소모임/벙 | 지난 모임)

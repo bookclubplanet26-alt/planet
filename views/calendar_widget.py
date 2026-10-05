@@ -232,8 +232,18 @@ def render_submeeting_calendar(meetings=None):
             max_p = 8
 
         is_bung = ("소모임" in m_title or "벙" in m_title or book_t == "자율 / 소모임")
-        is_jijung = (
+        is_regular = (
             not is_bung and (
+                max_p >= 900 or 
+                "토요일 강남" in m_title or "일요일 종각" in m_title or 
+                "강남 (" in m_title or "종각 (" in m_title or
+                "정규" in m_title or 
+                "자유 도서" in book_t or 
+                "자유책" in book_t
+            ) and "지정책" not in m_title and "지정" not in m_title
+        )
+        is_jijung = (
+            not is_bung and not is_regular and (
                 "지정책" in m_title or "지정" in m_title or "지정책" in book_t or
                 "[책장:" in m_desc or "[카톡:" in m_desc or
                 (0 < max_p < 50 and max_p != 999)
