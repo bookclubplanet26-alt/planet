@@ -382,18 +382,18 @@ def render_attendance():
     else:
         att_choice = st.radio(
             "📌 출석 유형 선택", 
-            ["📖 정규모임 / 자유책 (출석 1회)", "🛋️ 라운징 (출석 0.5회)"], 
+            ["📖 자유책/지정책 (출석 1회)", "🛋️ 라운징 (출석 0.5회)"], 
             horizontal=True, 
             key="att_type_radio_choice"
         )
 
         current_att_choice = st.session_state.get("att_type_radio_choice", att_choice)
-        att_type_name = "라운징" if "라운징" in str(current_att_choice) else "정규모임"
+        att_type_name = "라운징" if "라운징" in str(current_att_choice) else "자유책/지정책"
 
         if att_type_name == "라운징":
             st.caption("💡 **라운징 안내**: 발제 및 토론 없이 편하게 자유 독서를 하는 방식으로, **출석 0.5회**로 인정됩니다.")
         else:
-            st.caption("💡 **자유책 안내**: 각자 읽은 책을 지참하여 자유롭게 소통하며, **출석 1회**로 인정됩니다.")
+            st.caption("💡 **자유책/지정책 안내**: 각자 읽은 책이나 지정 도서를 지참하여 자유롭게 소통하며, **출석 1회**로 인정됩니다.")
 
         book_read_input = st.text_input("📖 지참 책 제목", placeholder="예: 데미안, 사피엔스 등", key="att_book_read_input")
         book_author_input = st.text_input("✍️ 저자 / 작가 (선택)", placeholder="예: 헤르만 헤세 (선택)", key="att_book_author_input")
@@ -444,8 +444,8 @@ def render_attendance():
             book_author_val = book_author_input.strip()
             book_review_val = book_review_input.strip()
 
-            if att_type_name == "정규모임" and not book_title_val:
-                st.error("⚠️ 정규모임 출석체크를 완료하려면 지참 책 제목을 입력해 주세요.")
+            if att_type_name != "라운징" and not book_title_val:
+                st.error("⚠️ 출석체크를 완료하려면 지참 책 제목을 입력해 주세요.")
             elif not is_valid_time_window and not bypass_time:
                 st.error(f"⚠️ 모임 시간을 확인해 주세요. ({selected_meeting['meeting_date']} 모임 당일 16:00 ~ 17:00만 출석체크 가능)")
             elif not bypass_time and (user_gps_lat is None or user_gps_lng is None):
