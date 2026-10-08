@@ -697,9 +697,10 @@ def append_attendance_to_google_sheet_async(webhook_url, checked_at, email, name
     t.start()
     return True
 
-def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author, meeting_date, meeting_time, location_name, max_participants=8, description="", season="", jijung_leader="", kakao_url="", account_info=""):
+def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author, meeting_date, meeting_time, location_name, max_participants=8, description="", jijung_leader="", kakao_url="", account_info="", season=""):
     """
     새로 개설된 모임 정보를 구글 시트 '모임목록' 탭에 직접 저장하고 캐시를 즉시 갱신
+    (구글 시트 모임목록 11개 컬럼 순서: 모임명, 모임일자, 모임시간, 장소명, 도서명, 저자, 정원, 모임설명, 모임장, 오픈카톡방, 입금계좌)
     """
     leader_name = jijung_leader.strip()
     k_url = kakao_url.strip()
@@ -746,7 +747,7 @@ def append_meeting_to_google_sheet_async(webhook_url, title, book_title, author,
             except Exception:
                 ws = None
             if ws:
-                ws.append_row(row_data)
+                ws.append_row(row_data, value_input_option='USER_ENTERED')
                 appended = True
     except Exception:
         pass

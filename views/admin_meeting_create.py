@@ -4,7 +4,6 @@ from utils import (
     get_current_kst, 
     ATTENDANCE_WEBHOOK_URL, 
     append_meeting_to_google_sheet_async, 
-    get_club_season_code,
     get_all_meetings
 )
 
@@ -104,7 +103,6 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                     st.error(f"🚨 해당 날짜({m_date})에 동일한 모임('{m_title}')이 이미 개설되어 있습니다.")
                 else:
                     with st.spinner("정규 모임 개설 중..."): 
-                        m_season = get_club_season_code()
                         ok = append_meeting_to_google_sheet_async(
                             webhook_url=ATTENDANCE_WEBHOOK_URL,
                             title=m_title,
@@ -115,7 +113,6 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                             location_name=m_loc_name,
                             max_participants=m_max,
                             description=m_desc,
-                            season=m_season,
                             jijung_leader="",
                             kakao_url="",
                             account_info=""
@@ -184,7 +181,6 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                     with st.spinner("지정책 모임 개설 중..."): 
                         pure_desc = m_desc.strip() if m_desc else ""
                         acc_val = account_info.strip() if account_info else ""
-                        m_season = get_club_season_code()
                         ok = append_meeting_to_google_sheet_async(
                             webhook_url=ATTENDANCE_WEBHOOK_URL,
                             title=m_title,
@@ -195,7 +191,6 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                             location_name=m_loc_name,
                             max_participants=m_max,
                             description=pure_desc,
-                            season=m_season,
                             jijung_leader=leader_val,
                             kakao_url=clean_kakao,
                             account_info=acc_val
@@ -253,7 +248,6 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                     st.error(f"🚨 해당 날짜({m_date})에 동일한 모임('{m_title}')이 이미 개설되어 있습니다.")
                 else:
                     with st.spinner("소모임 개설 중..."): 
-                        m_season = get_club_season_code()
                         pure_desc = m_desc.strip() if m_desc else ""
                         ok = append_meeting_to_google_sheet_async(
                             webhook_url=ATTENDANCE_WEBHOOK_URL,
@@ -265,7 +259,6 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                             location_name=m_loc_name,
                             max_participants=m_max,
                             description=pure_desc,
-                            season=m_season,
                             jijung_leader=host_val,
                             kakao_url=clean_kakao,
                             account_info=""

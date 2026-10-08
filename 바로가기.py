@@ -11,6 +11,8 @@ import views.schedule
 import views.attendance
 import views.bookshelf
 import views.intro
+import views.admin_meeting_create
+import views.admin_group_matching
 importlib.reload(styles)
 importlib.reload(services.config)
 importlib.reload(services.accounting)
@@ -21,6 +23,8 @@ importlib.reload(views.schedule)
 importlib.reload(views.attendance)
 importlib.reload(views.bookshelf)
 importlib.reload(views.intro)
+importlib.reload(views.admin_meeting_create)
+importlib.reload(views.admin_group_matching)
 
 from styles import apply_custom_css
 from views.intro import render_intro
@@ -28,6 +32,7 @@ from views.register import render_register
 from views.schedule import render_schedule
 from views.attendance import render_attendance
 from views.bookshelf import render_bookshelf
+from views.admin_group_matching import render_group_matching, check_is_super_admin
 
 # 기본 설정
 st.set_page_config(
@@ -96,6 +101,15 @@ if page == "home":
         st.session_state.current_page = "bookshelf"
         st.rerun()
 
+    # 👑 슈퍼 관리자 전용: 자유책 조 자동 배치 (슈퍼 계정 외에는 비노출)
+    google_user = st.session_state.get("google_user")
+    is_super_admin = check_is_super_admin(google_user)
+    if is_super_admin:
+        st.markdown("<hr style='margin: 12px 0; border: 0; border-top: 1px dashed #BCAAA4;'/>", unsafe_allow_html=True)
+        if st.button("👑 [슈퍼 관리자] 자유책 조 자동 배치", key="btn_nav_group_match", use_container_width=True):
+            st.session_state.current_page = "group_match"
+            st.rerun()
+
 elif page == "intro":
     render_intro()
 elif page == "register":
@@ -106,6 +120,8 @@ elif page == "attendance":
     render_attendance()
 elif page == "bookshelf":
     render_bookshelf()
+elif page == "group_match":
+    render_group_matching()
 
 # 서브 페이지 하단에도 메인 메뉴로 돌아가기 버튼 배치
 if st.session_state.current_page != "home":
