@@ -6,7 +6,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 
-from services.config import get_current_kst
+from services.config import get_current_kst, get_club_season_code
 from services.sheets import (
     fetch_google_sheet_members,
     fetch_google_sheet_meetings,
@@ -136,25 +136,24 @@ def render_group_matching():
         st.info("📅 현재 예정된 정규모임(자유책)이 없습니다.")
         return
 
-    col_m1, col_m2 = st.columns([3, 1])
-    with col_m1:
-        selected_label = st.selectbox(
-            "📅 조를 편성할 모임을 선택하세요",
-            options=meeting_options,
-            index=0,
-            key="sel_matching_meeting"
-        )
-    with col_m2:
-        cutoff_season = st.selectbox(
-            "새 멤버 기준 시즌",
-            options=["2609", "2610", "2701", "2605", "2601"],
-            index=0,
-            key="sel_cutoff_season"
-        )
+    selected_label = st.selectbox(
+        "📅 조를 편성할 모임을 선택하세요",
+        options=meeting_options,
+        index=0,
+        key="sel_matching_meeting"
+    )
 
     selected_meeting = meeting_map.get(selected_label)
     if not selected_meeting:
         return
+
+    # 선택된 모임 일자 기준 자동으로 시즌 코드 계산 (관리자 수동 선택 불필요)
+    m_date_str = str(selected_meeting.get("meeting_date", "")).strip()
+    try:
+        m_dt = datetime.datetime.strptime(m_date_str, "%Y-%m-%d").date()
+        cutoff_season = str(get_club_season_code(m_dt))
+    except Exception:
+        cutoff_season = str(get_club_season_code())
 
     # 회원 사전 구축 (이름 -> 닉네임, 처음등록시즌, 조배치)
     # 회원 사전 구축 (이름 & 이메일 매핑)
