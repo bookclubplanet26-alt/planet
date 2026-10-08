@@ -284,7 +284,6 @@ def render_group_matching():
             table_rows.append({
                 "이름": p["name"],
                 "닉네임": p.get("nickname", "-"),
-                "처음등록시즌": p.get("season", "-"),
                 "구분": "🟢 새멤버 (New)" if is_new else "⚪ 기존멤버 (Old)"
             })
         
