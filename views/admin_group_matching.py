@@ -157,42 +157,86 @@ def render_group_matching():
         return
 
     # 회원 사전 구축 (이름 -> 닉네임, 처음등록시즌, 조배치)
-    mem_dict = {}
+    # 회원 사전 구축 (이름 & 이메일 매핑)
+    mem_by_name = {}
+    mem_by_email = {}
     if df_members is not None and not df_members.empty:
         for _, mrow in df_members.iterrows():
             m_name = str(mrow.get("이름", "")).strip()
+            m_email = str(mrow.get("이메일", "")).strip().lower()
             m_nick = str(mrow.get("닉네임", "")).strip()
             # 회원목록 시트의 '처음등록시즌' 열 정확히 매핑
             m_season = str(mrow.get("처음등록시즌", "")).strip()
             if not m_season:
                 m_season = str(mrow.get("현재등록시즌", "")).strip()
             m_attr = str(mrow.get("조배치", "0")).strip()
+            
+            info = {
+                "name": m_name,
+                "nickname": m_nick,
+                "season": m_season,
+                "group_attr": m_attr
+            }
             if m_name:
-                mem_dict[m_name] = {
-                    "nickname": m_nick,
-                    "season": m_season,
-                    "group_attr": m_attr
-                }
+                mem_by_name[m_name] = info
+            if m_email:
+                mem_by_email[m_email] = info
 
-    # 해당 모임 신청자 추출
+    # 해당 모임 신청자 추출 (모임명 & 모임일자 동시 일치 검사 및 중복 제거)
     m_title_clean = str(selected_meeting.get("title", "")).strip()
+    m_date_clean = str(selected_meeting.get("meeting_date", "")).strip()
+
     target_rsvps = []
+    seen_identifiers = set()
+
     if df_rsvps is not None and not df_rsvps.empty:
         m_col = next((c for c in df_rsvps.columns if any(k in str(c) for k in ["모임명", "모임", "title"])), df_rsvps.columns[0])
+        date_col = next((c for c in df_rsvps.columns if any(k in str(c) for k in ["모임일자", "일자", "날짜", "date"])), None)
         name_col = next((c for c in df_rsvps.columns if any(k in str(c) for k in ["회원명", "이름", "성함", "name"])), None)
+        email_col = next((c for c in df_rsvps.columns if any(k in str(c) for k in ["이메일", "email"])), None)
 
         for _, rrow in df_rsvps.iterrows():
             row_m = str(rrow.get(m_col, "")).strip()
-            if m_title_clean and (m_title_clean in row_m or row_m in m_title_clean):
-                p_name = str(rrow.get(name_col, "")).strip() if name_col else ""
-                if p_name:
-                    m_info = mem_dict.get(p_name, {})
-                    target_rsvps.append({
-                        "name": p_name,
-                        "nickname": m_info.get("nickname", ""),
-                        "season": m_info.get("season", cutoff_season),
-                        "group_attr": m_info.get("group_attr", "0")
-                    })
+            row_d = str(rrow.get(date_col, "")).strip() if date_col else ""
+            row_email = str(rrow.get(email_col, "")).strip().lower() if email_col else ""
+            raw_name = str(rrow.get(name_col, "")).strip() if name_col else ""
+
+            # 1. 모임명 매칭 검사
+            title_match = bool(m_title_clean and (m_title_clean in row_m or row_m in m_title_clean))
+            if not title_match:
+                continue
+
+            # 2. 모임일자(날짜) 매칭 검사 - 과거 누적 데이터와 당일 데이터 분리
+            if m_date_clean and row_d:
+                # 일자 정규화 비교 (2026-10-11 vs 2026.10.11 등)
+                norm_target_d = m_date_clean.replace(".", "-").replace("/", "-")
+                norm_row_d = row_d.replace(".", "-").replace("/", "-")
+                if norm_target_d not in norm_row_d and norm_row_d not in norm_target_d:
+                    continue
+
+            # 3. 중복 신청자 제거 (동일인 중복 제출 방지)
+            ident = row_email if row_email else raw_name
+            if not ident or ident in seen_identifiers:
+                continue
+            seen_identifiers.add(ident)
+
+            # 4. 이름 및 닉네임 분리 ("이름 - 닉네임" 형태 지원)
+            clean_name = raw_name
+            extracted_nick = ""
+            if " - " in raw_name:
+                parts = raw_name.split(" - ", 1)
+                clean_name = parts[0].strip()
+                extracted_nick = parts[1].strip()
+
+            # 5. 회원목록(처음등록시즌, 조배치) 정보 매핑
+            m_info = mem_by_email.get(row_email) or mem_by_name.get(clean_name) or {}
+
+            target_rsvps.append({
+                "name": clean_name or m_info.get("name", "회원"),
+                "nickname": extracted_nick or m_info.get("nickname", ""),
+                "season": m_info.get("season", cutoff_season),
+                "group_attr": m_info.get("group_attr", "0")
+            })
 
     st.markdown("---")
 
