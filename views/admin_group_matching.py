@@ -49,7 +49,7 @@ def render_group_matching():
     <div style="background-color: #F7F5F0; border-left: 5px solid #6D4C41; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
         <h3 style="margin: 0; color: #4E342E; font-size: 1.25rem;">👥 자유책 모임 조 자동 배치 (슈퍼 관리자 전용)</h3>
         <p style="margin: 4px 0 0 0; color: #795548; font-size: 0.88rem;">
-            신규/기존 회원과 조배치 속성을 균등 분배하여 4인 테이블을 자동 구성합니다.
+            기존 및 신규 회원의 자연스러운 교류와 밸런스를 고려하여 4인 테이블을 자동 구성합니다.
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -281,16 +281,14 @@ def render_group_matching():
         for p in target_rsvps:
             cat = classify_member(p, cutoff_season=cutoff_season)
             is_new = cat.startswith("NEW")
-            attr_val = cat.split("_")[1]
             table_rows.append({
                 "이름": p["name"],
                 "닉네임": p.get("nickname", "-"),
                 "처음등록시즌": p.get("season", "-"),
-                "구분": "🟢 새멤버 (New)" if is_new else "⚪ 기존멤버 (Old)",
-                "조배치 속성": f"속성 [{attr_val}]"
+                "구분": "🟢 새멤버 (New)" if is_new else "⚪ 기존멤버 (Old)"
             })
         
-        with st.expander(f"참석자 세부 속성 목록 확인 ({len(target_rsvps)}명)", expanded=False):
+        with st.expander(f"참석자 명단 확인 ({len(target_rsvps)}명)", expanded=False):
             st.dataframe(pd.DataFrame(table_rows), use_container_width=True, hide_index=True)
 
         # Step 3. 조 편성 파라미터 & 실행 버튼
@@ -327,7 +325,7 @@ def render_group_matching():
                     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F0EEE9; padding-bottom:8px; margin-bottom:8px;">
                         <span style="font-weight:700; font-size:1.1rem; color:#4E342E;">🏷️ {g['table_name']} (총 {stats['total']}명)</span>
                         <span style="font-size:0.85rem; color:#6D4C41; background:#F5F2EB; padding:3px 8px; border-radius:12px;">
-                            기존: {stats['old']}명 / 신규: {stats['new']}명 | 속성[0]: {stats['attr_0']}명 / 속성[1]: {stats['attr_1']}명
+                            기존: {stats['old']}명 / 신규: {stats['new']}명
                         </span>
                     </div>
                 </div>
@@ -337,10 +335,9 @@ def render_group_matching():
                 with col_card_left:
                     for m in g["members"]:
                         cat_badge = "🟢 신규" if m["is_new"] else "⚪ 기존"
-                        attr_badge = f"속성 {m['attr']}"
                         nick_str = f"({m.get('nickname')})" if m.get('nickname') else ""
                         st.markdown(
-                            f"• **{m['name']}** {nick_str} &nbsp; <span style='font-size:0.8rem; color:#888;'>[ {cat_badge} | {attr_badge} ]</span>",
+                            f"• **{m['name']}** {nick_str} &nbsp; <span style='font-size:0.8rem; color:#888;'>[ {cat_badge} ]</span>",
                             unsafe_allow_html=True
                         )
 
