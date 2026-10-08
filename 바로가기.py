@@ -106,7 +106,7 @@ if page == "home":
     is_admin = check_is_admin(google_user)
     if is_admin:
         st.markdown("<hr style='margin: 12px 0; border: 0; border-top: 1px dashed #BCAAA4;'/>", unsafe_allow_html=True)
-        if st.button("👥 [운영진] 자유책 조 자동 배치", key="btn_nav_group_match", use_container_width=True):
+        if st.button("🐰 [운영진] 자유책 조 자동 배치", key="btn_nav_group_match", use_container_width=True):
             st.session_state.current_page = "group_match"
             st.rerun()
 

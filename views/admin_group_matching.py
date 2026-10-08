@@ -54,7 +54,7 @@ def render_group_matching():
 
     st.markdown("""
     <div style="background-color: #F7F5F0; border-left: 5px solid #6D4C41; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
-        <h3 style="margin: 0; color: #4E342E; font-size: 1.25rem;">👥 자유책 모임 조 자동 배치 (운영진 메뉴)</h3>
+        <h3 style="margin: 0; color: #4E342E; font-size: 1.25rem;">🐰 자유책 모임 조 자동 배치 (운영진 메뉴)</h3>
         <p style="margin: 4px 0 0 0; color: #795548; font-size: 0.88rem;">
             기존 및 신규 회원의 자연스러운 교류와 밸런스를 고려하여 4인 테이블을 자동 구성합니다.
         </p>
