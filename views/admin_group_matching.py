@@ -86,13 +86,8 @@ def render_group_matching():
         st.warning("등록된 모임 목록을 가져올 수 없습니다.")
         return
 
-    # Step 1-1. 정규모임 & 예정된 모임만 필터링
+    # Step 1-1. 정규모임 & 예정된 모임만 필터링 (지난 모임 제외)
     today_kst = get_current_kst().date()
-    
-    # 지난 모임 포함 토글 (테스트/과거 검토용)
-    col_filter1, col_filter2 = st.columns([3, 1])
-    with col_filter2:
-        include_past = st.checkbox("지난 모임 포함", value=False, key="chk_include_past_meetings")
 
     meeting_options = []
     meeting_map = {}
@@ -130,7 +125,7 @@ def render_group_matching():
                 continue
 
         is_past = (m_date < today_kst) if m_date else False
-        if is_past and not include_past:
+        if is_past:
             continue
 
         label = f"[{m_date_str}] {m_title}"
@@ -138,7 +133,7 @@ def render_group_matching():
         meeting_map[label] = m
 
     if not meeting_options:
-        st.info("📅 현재 예정된 정규모임(자유책)이 없습니다. (위 '지난 모임 포함'을 체크하면 과거 모임으로 시뮬레이션할 수 있습니다.)")
+        st.info("📅 현재 예정된 정규모임(자유책)이 없습니다.")
         return
 
     col_m1, col_m2 = st.columns([3, 1])
@@ -167,7 +162,10 @@ def render_group_matching():
         for _, mrow in df_members.iterrows():
             m_name = str(mrow.get("이름", "")).strip()
             m_nick = str(mrow.get("닉네임", "")).strip()
+            # 회원목록 시트의 '처음등록시즌' 열 정확히 매핑
             m_season = str(mrow.get("처음등록시즌", "")).strip()
+            if not m_season:
+                m_season = str(mrow.get("현재등록시즌", "")).strip()
             m_attr = str(mrow.get("조배치", "0")).strip()
             if m_name:
                 mem_dict[m_name] = {
@@ -244,7 +242,7 @@ def render_group_matching():
             table_rows.append({
                 "이름": p["name"],
                 "닉네임": p.get("nickname", "-"),
-                "최초 가입시즌": p.get("season", "-"),
+                "처음등록시즌": p.get("season", "-"),
                 "구분": "🟢 새멤버 (New)" if is_new else "⚪ 기존멤버 (Old)",
                 "조배치 속성": f"속성 [{attr_val}]"
             })
