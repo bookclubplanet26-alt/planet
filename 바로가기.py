@@ -32,7 +32,7 @@ from views.register import render_register
 from views.schedule import render_schedule
 from views.attendance import render_attendance
 from views.bookshelf import render_bookshelf
-from views.admin_group_matching import render_group_matching, check_is_super_admin
+from views.admin_group_matching import render_group_matching, check_is_admin, check_is_super_admin
 
 # 기본 설정
 st.set_page_config(
@@ -101,12 +101,12 @@ if page == "home":
         st.session_state.current_page = "bookshelf"
         st.rerun()
 
-    # 👑 슈퍼 관리자 전용: 자유책 조 자동 배치 (슈퍼 계정 외에는 비노출)
+    # 👑 운영진(관리자) 전용: 자유책 조 자동 배치 (비인가 회원에게는 비노출)
     google_user = st.session_state.get("google_user")
-    is_super_admin = check_is_super_admin(google_user)
-    if is_super_admin:
+    is_admin = check_is_admin(google_user)
+    if is_admin:
         st.markdown("<hr style='margin: 12px 0; border: 0; border-top: 1px dashed #BCAAA4;'/>", unsafe_allow_html=True)
-        if st.button("👑 [슈퍼 관리자] 자유책 조 자동 배치", key="btn_nav_group_match", use_container_width=True):
+        if st.button("👥 [운영진] 자유책 조 자동 배치", key="btn_nav_group_match", use_container_width=True):
             st.session_state.current_page = "group_match"
             st.rerun()
 

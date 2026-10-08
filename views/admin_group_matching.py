@@ -22,46 +22,53 @@ from services.group_matching import (
 SUPER_ADMIN_EMAILS = ["hanjisubusiness22@gmail.com"]
 
 
-def check_is_super_admin(google_user=None):
-    """슈퍼 관리자 권한 여부 확인"""
+def check_is_admin(google_user=None):
+    """운영진(관리자) 및 슈퍼 관리자 권한 여부 확인"""
     if google_user is None:
         google_user = st.session_state.get("google_user")
     
-    # 1. 구글 로그인 이메일 검사
     if google_user:
+        # 1. 슈퍼 관리자 이메일 검사
         u_email = str(google_user.get("email", "")).strip().lower()
         if u_email in SUPER_ADMIN_EMAILS:
             return True
 
-    # 2. 로컬 개발/테스트용 세션 플래그
+        # 2. 회원목록 시트의 '운영진' 플래그 (is_admin == 1)
+        if google_user.get("is_admin", 0) == 1:
+            return True
+
+    # 3. 로컬 개발/테스트용 세션 플래그
     if st.session_state.get("dev_super_admin_mode", False):
         return True
 
     return False
 
+# 하위 호환성 유지
+check_is_super_admin = check_is_admin
+
 
 def render_group_matching():
     """자유책 조 자동 배치 화면 렌더링"""
     google_user = st.session_state.get("google_user")
-    is_super_admin = check_is_super_admin(google_user)
+    is_admin = check_is_admin(google_user)
 
     st.markdown("""
     <div style="background-color: #F7F5F0; border-left: 5px solid #6D4C41; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
-        <h3 style="margin: 0; color: #4E342E; font-size: 1.25rem;">👥 자유책 모임 조 자동 배치 (슈퍼 관리자 전용)</h3>
+        <h3 style="margin: 0; color: #4E342E; font-size: 1.25rem;">👥 자유책 모임 조 자동 배치 (운영진 메뉴)</h3>
         <p style="margin: 4px 0 0 0; color: #795548; font-size: 0.88rem;">
             기존 및 신규 회원의 자연스러운 교류와 밸런스를 고려하여 4인 테이블을 자동 구성합니다.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    if not is_super_admin:
-        st.error("🔒 이 페이지는 슈퍼 관리자(Super Admin) 전용 메뉴입니다.")
-        st.info("슈퍼 관리자 구글 계정으로 로그인되어 있어야 이용하실 수 있습니다.")
+    if not is_admin:
+        st.error("🔒 이 페이지는 북클럽 플래닛 운영진 전용 메뉴입니다.")
+        st.info("운영진 계정으로 로그인되어 있어야 이용하실 수 있습니다.")
         
-        # 로컬 테스트 지원용 (슈퍼 관리자 이메일 인증 우회 테스트)
+        # 로컬 테스트 지원용 (운영진 인증 우회 테스트)
         with st.expander("🛠️ 로컬 개발자 인증 도구"):
             adm_pw = st.text_input("테스트 인증키", type="password", key="adm_dev_pwd")
-            if st.button("슈퍼 관리자 모드 활성화"):
+            if st.button("운영진 모드 활성화"):
                 if adm_pw == "hanji22":
                     st.session_state["dev_super_admin_mode"] = True
                     st.success("슈퍼 관리자 모드가 활성화되었습니다!")
