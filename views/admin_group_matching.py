@@ -86,16 +86,60 @@ def render_group_matching():
         st.warning("등록된 모임 목록을 가져올 수 없습니다.")
         return
 
-    # 정규 자유책 모임 위주 정렬 (최신순)
+    # Step 1-1. 정규모임 & 예정된 모임만 필터링
+    today_kst = get_current_kst().date()
+    
+    # 지난 모임 포함 토글 (테스트/과거 검토용)
+    col_filter1, col_filter2 = st.columns([3, 1])
+    with col_filter2:
+        include_past = st.checkbox("지난 모임 포함", value=False, key="chk_include_past_meetings")
+
     meeting_options = []
     meeting_map = {}
+
     for m in all_meetings:
-        m_id = str(m.get("id"))
-        m_title = str(m.get("title", ""))
-        m_date = str(m.get("meeting_date", ""))
-        label = f"[{m_date}] {m_title}"
+        m_title = str(m.get("title", "")).strip()
+        m_date_str = str(m.get("meeting_date", "")).strip()
+        m_book = str(m.get("book_title", "")).strip()
+        m_cat = str(m.get("category", "")).strip()
+        max_count = m.get("max_participants", 0)
+
+        # 1. 정규모임 여부 검사 (소모임/벙 및 지정책 제외)
+        is_bung = ("소모임" in m_title or "벙" in m_title or m_book == "자율 / 소모임")
+        is_jijung = ("지정책" in m_title or "지정" in m_title or "지정책" in m_book)
+        is_regular = (
+            not is_bung and not is_jijung and (
+                max_count >= 900 or
+                "토요일 강남" in m_title or "일요일 종각" in m_title or
+                "강남 (" in m_title or "종각 (" in m_title or
+                "정규" in m_title or
+                "자유 도서" in m_book or "자유책" in m_book or
+                m_cat == "정규 모임"
+            )
+        )
+        if not is_regular:
+            continue
+
+        # 2. 날짜 검사 (지나간 모임 제외)
+        m_date = None
+        for fmt in ["%Y-%m-%d", "%Y.%m.%d", "%Y/%m/%d"]:
+            try:
+                m_date = datetime.datetime.strptime(m_date_str, fmt).date()
+                break
+            except Exception:
+                continue
+
+        is_past = (m_date < today_kst) if m_date else False
+        if is_past and not include_past:
+            continue
+
+        label = f"[{m_date_str}] {m_title}"
         meeting_options.append(label)
         meeting_map[label] = m
+
+    if not meeting_options:
+        st.info("📅 현재 예정된 정규모임(자유책)이 없습니다. (위 '지난 모임 포함'을 체크하면 과거 모임으로 시뮬레이션할 수 있습니다.)")
+        return
 
     col_m1, col_m2 = st.columns([3, 1])
     with col_m1:
