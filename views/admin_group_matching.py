@@ -54,6 +54,10 @@ def render_group_matching():
     google_user = st.session_state.get("google_user")
     is_admin = check_is_admin(google_user)
 
+    if not is_admin:
+        st.error("🚫 접근 권한이 없습니다. 운영진(관리자) 계정으로 로그인해주세요.")
+        st.stop()
+
     st.markdown("""
     <div style="background-color: #F7F5F0; border-left: 5px solid #6D4C41; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
         <h3 style="margin: 0; color: #4E342E; font-size: 1.25rem;">🐰 모임 조 자동 배치 (운영진 메뉴)</h3>

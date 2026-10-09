@@ -625,9 +625,9 @@ def apply_custom_css():
         st.markdown('''
         <style>
         /* 비관리자: 사이드바 App 바로가기 목록에서 6번 조배치 메뉴 완전 숨김 */
-        [data-testid="stSidebarNav"] li:has(a[href*="자유책_조배치"]),
+        [data-testid="stSidebarNav"] li:has(a[href*="모임_조_자동_배치"]),
         [data-testid="stSidebarNav"] li:has(a[href*="6_"]),
-        [data-testid="stSidebarNav"] a[href*="자유책_조배치"],
+        [data-testid="stSidebarNav"] a[href*="모임_조_자동_배치"],
         [data-testid="stSidebarNav"] a[href*="6_"],
         ul[data-testid="stSidebarNavItems"] li:nth-child(6) {
             display: none !important;
