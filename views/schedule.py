@@ -638,12 +638,16 @@ def render_schedule():
     is_dedicated = bool(google_user and google_user.get("is_dedicated", 0) == 1)
     can_create_meeting = (is_admin or is_dedicated)
 
-    # 탭 구성: 관리자 또는 열심멤버일 경우 '➕ 새 모임 개설' 탭 제공
-    if can_create_meeting:
+    # 탭 구성: 관리자일 경우 '➕ 새 모임 개설' 옆에 '🐰 조배치' 탭까지 함께 제공
+    if is_admin:
+        tab1, tab2, tab3 = st.tabs(["📚 예정된 모임 목록", "➕ 새 모임 개설", "🐰 조배치"])
+    elif is_dedicated:
         tab1, tab2 = st.tabs(["📚 예정된 모임 목록", "➕ 새 모임 개설"])
+        tab3 = None
     else:
         tab1, = st.tabs(["📚 예정된 모임 목록"])
         tab2 = None
+        tab3 = None
 
     with tab1:
         rsvps_map = get_all_meeting_rsvps_map(meetings)
@@ -915,5 +919,10 @@ def render_schedule():
         with tab2:
             from views.admin_meeting_create import render_admin_meeting_create
             render_admin_meeting_create(google_user=google_user, is_admin=is_admin, is_dedicated=is_dedicated)
+
+    if tab3:
+        with tab3:
+            from views.admin_group_matching import render_group_matching
+            render_group_matching()
 
 
