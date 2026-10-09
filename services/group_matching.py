@@ -214,3 +214,103 @@ def dissolve_and_redistribute_group(
         g["table_name"] = f"{i + 1}조"
 
     return remaining_groups
+
+
+def remove_member_from_groups(groups: List[Dict[str, Any]], member_name: str) -> Tuple[List[Dict[str, Any]], int]:
+    """
+    [개별 결원/노쇼 제외]
+    모든 조에서 특정 회원(member_name)을 찾아서 제거하고 해당 조의 stats를 갱신.
+    반환: (갱신된 groups, 변경된 조의 index 또는 -1)
+    """
+    if not groups or not member_name:
+        return groups, -1
+
+    changed_group_idx = -1
+    for g_idx, g in enumerate(groups):
+        m_list = g["members"]
+        target_m = next((m for m in m_list if m["name"] == member_name), None)
+        if target_m:
+            m_list.remove(target_m)
+            changed_group_idx = g_idx
+            # 통계 갱신
+            g["stats"] = {
+                "total": len(m_list),
+                "old": sum(1 for m in m_list if not m["is_new"]),
+                "new": sum(1 for m in m_list if m["is_new"]),
+                "attr_0": sum(1 for m in m_list if m["attr"] == "0"),
+                "attr_1": sum(1 for m in m_list if m["attr"] == "1"),
+            }
+            break
+
+    return groups, changed_group_idx
+
+
+def fill_vacancy_from_largest_group(groups: List[Dict[str, Any]], target_group_idx: int) -> Tuple[List[Dict[str, Any]], str]:
+    """
+    [스마트 1인 보충]
+    인원이 부족한 조(target_group_idx)에 대해, 가장 인원이 많은 조(5인 이상 조) 중
+    신규/기존 밸런스를 가장 잘 맞출 수 있는 회원 1명을 자동으로 타겟 조로 이동.
+    반환: (갱신된 groups, 이동된 회원 이름 또는 None)
+    """
+    if not groups or target_group_idx < 0 or target_group_idx >= len(groups):
+        return groups, None
+
+    target_g = groups[target_group_idx]
+    target_count = len(target_g["members"])
+
+    # 1. 인원이 가장 많은 조 후보 찾기 (현재 조보다 인원이 2명 이상 많거나 5명 이상인 조)
+    donor_candidates = [
+        (idx, g) for idx, g in enumerate(groups) 
+        if idx != target_group_idx and len(g["members"]) >= 5
+    ]
+    if not donor_candidates:
+        # 5명 조가 없으면 4명 조 중에서도 현재 타겟이 2명 이하일 경우 허용
+        if target_count <= 2:
+            donor_candidates = [
+                (idx, g) for idx, g in enumerate(groups) 
+                if idx != target_group_idx and len(g["members"]) >= 4
+            ]
+
+    if not donor_candidates:
+        return groups, None
+
+    # 가장 인원 많은 조 우선 (내림차순)
+    donor_candidates.sort(key=lambda item: len(item[1]["members"]), reverse=True)
+    donor_idx, donor_g = donor_candidates[0]
+
+    # 2. 이동시킬 최적의 1인 선발 (타겟 조의 밸런스를 개선하는 회원)
+    best_member = None
+    min_penalty = float("inf")
+
+    t_old = target_g["stats"]["old"]
+    t_new = target_g["stats"]["new"]
+
+    for m in donor_g["members"]:
+        # 타겟 조에 추가했을 때 밸런스 점수
+        sim_old = t_old + (1 if not m["is_new"] else 0)
+        sim_new = t_new + (1 if m["is_new"] else 0)
+        penalty = abs(sim_old - sim_new)
+
+        if penalty < min_penalty:
+            min_penalty = penalty
+            best_member = m
+
+    if not best_member:
+        best_member = donor_g["members"][-1]
+
+    # 3. 회원 이동 및 양쪽 통계 갱신
+    donor_g["members"].remove(best_member)
+    target_g["members"].append(best_member)
+
+    for g in [donor_g, target_g]:
+        m_list = g["members"]
+        g["stats"] = {
+            "total": len(m_list),
+            "old": sum(1 for m in m_list if not m["is_new"]),
+            "new": sum(1 for m in m_list if m["is_new"]),
+            "attr_0": sum(1 for m in m_list if m["attr"] == "0"),
+            "attr_1": sum(1 for m in m_list if m["attr"] == "1"),
+        }
+
+    return groups, best_member["name"]
+

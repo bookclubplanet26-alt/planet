@@ -16,7 +16,9 @@ from services.sheets import (
 from services.group_matching import (
     assign_groups,
     dissolve_and_redistribute_group,
-    classify_member
+    classify_member,
+    remove_member_from_groups,
+    fill_vacancy_from_largest_group
 )
 
 SUPER_ADMIN_EMAILS = ["hanjisubusiness22@gmail.com"]
@@ -283,9 +285,18 @@ def render_group_matching():
         target_rsvps = st.session_state["mock_participants_list"]
 
     if target_rsvps:
+        # 사전 불참자 제외 멀티셀렉트
+        all_candidate_names = [p["name"] for p in target_rsvps]
+        excluded_names = st.multiselect(
+            "🚫 당일 사전 불참(제외)할 인원 선택 (선택 시 조 배치에서 즉시 제외)",
+            options=all_candidate_names,
+            key="ms_excluded_participants"
+        )
+        active_rsvps = [p for p in target_rsvps if p["name"] not in excluded_names]
+
         # 명단 요약 데이터프레임
         table_rows = []
-        for p in target_rsvps:
+        for p in active_rsvps:
             cat = classify_member(p, cutoff_season=cutoff_season)
             is_new = cat.startswith("NEW")
             table_rows.append({
@@ -294,7 +305,7 @@ def render_group_matching():
                 "구분": "🟢 새멤버 (New)" if is_new else "⚪ 기존멤버 (Old)"
             })
         
-        with st.expander(f"참석자 명단 확인 ({len(target_rsvps)}명)", expanded=False):
+        with st.expander(f"참석자 명단 확인 (최종 {len(active_rsvps)}명 / 제외 {len(excluded_names)}명)", expanded=False):
             st.dataframe(pd.DataFrame(table_rows), use_container_width=True, hide_index=True)
 
         # Step 3. 조 편성 파라미터 & 실행 버튼
@@ -308,7 +319,7 @@ def render_group_matching():
 
         if assign_btn:
             new_groups = assign_groups(
-                target_rsvps,
+                active_rsvps,
                 target_size=target_size,
                 cutoff_season=cutoff_season
             )
@@ -327,8 +338,8 @@ def render_group_matching():
             stats = g["stats"]
             with st.container():
                 st.markdown(f"""
-                <div style="background:#FFFFFF; border:1px solid #E0DCD3; border-radius:8px; padding:12px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F0EEE9; padding-bottom:8px; margin-bottom:8px;">
+                <div style="background:#FFFFFF; border:1px solid #E0DCD3; border-radius:8px; padding:12px 16px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span style="font-weight:700; font-size:1.1rem; color:#4E342E;">🏷️ {g['table_name']} (총 {stats['total']}명)</span>
                         <span style="font-size:0.85rem; color:#6D4C41; background:#F5F2EB; padding:3px 8px; border-radius:12px;">
                             기존: {stats['old']}명 / 신규: {stats['new']}명
@@ -337,24 +348,45 @@ def render_group_matching():
                 </div>
                 """, unsafe_allow_html=True)
 
-                col_card_left, col_card_right = st.columns([3.5, 1.5])
-                with col_card_left:
-                    for m in g["members"]:
+                # 조원 목록 (개별 1인 제외 버튼 포함)
+                for m_idx, m in enumerate(g["members"]):
+                    c_m_info, c_m_del = st.columns([4, 1.2])
+                    with c_m_info:
                         cat_badge = "🟢 신규" if m["is_new"] else "⚪ 기존"
                         nick_str = f"({m.get('nickname')})" if m.get('nickname') else ""
                         st.markdown(
                             f"• **{m['name']}** {nick_str} &nbsp; <span style='font-size:0.8rem; color:#888;'>[ {cat_badge} ]</span>",
                             unsafe_allow_html=True
                         )
+                    with c_m_del:
+                        if st.button("❌ 제외", key=f"del_m_{idx}_{m_idx}_{m['name']}", help=f"'{m['name']}' 회원을 조에서 제외합니다"):
+                            groups, _ = remove_member_from_groups(groups, m["name"])
+                            st.session_state.current_assigned_groups = groups
+                            st.toast(f"'{m['name']}' 님이 조에서 제외되었습니다.", icon="👋")
+                            st.rerun()
 
-                with col_card_right:
-                    # 노쇼 발생 시 2번 조 해체 및 분산 흡수 버튼
+                # 결원 대응 액션 버튼 (스마트 1인 보충 & 조 해체 분산)
+                has_5_plus = any(len(og["members"]) >= 5 for o_idx, og in enumerate(groups) if o_idx != idx)
+                c_act1, c_act2 = st.columns(2)
+                
+                with c_act1:
+                    if stats['total'] <= 3 and has_5_plus:
+                        if st.button(f"🔄 1명 보충 (5인 조에서 이동)", key=f"fill_btn_{idx}", use_container_width=True):
+                            groups, moved_name = fill_vacancy_from_largest_group(groups, idx)
+                            if moved_name:
+                                st.session_state.current_assigned_groups = groups
+                                st.toast(f"'{moved_name}' 님이 {g['table_name']}로 이동되었습니다!", icon="🔄")
+                                st.rerun()
+
+                with c_act2:
                     if len(groups) > 1:
-                        if st.button(f"💥 {g['table_name']} 해체 & 분산", key=f"dissolve_btn_{idx}", use_container_width=True):
+                        if st.button(f"💥 {g['table_name']} 해체 & 타 조 분산", key=f"dissolve_btn_{idx}", use_container_width=True):
                             reorganized = dissolve_and_redistribute_group(groups, idx)
                             st.session_state.current_assigned_groups = reorganized
                             st.toast(f"🚨 {g['table_name']}를 해체하고 인원을 타 조로 균등 분산 흡수했습니다!", icon="🔄")
                             st.rerun()
+                
+                st.markdown("<hr style='margin: 8px 0 16px 0; border: 0; border-top: 1px dashed #E0DCD3;'/>", unsafe_allow_html=True)
 
         # Step 5. 카카오톡 공지용 텍스트 복사 박스
         st.markdown("#### 📢 카카오톡 공지용 텍스트")
