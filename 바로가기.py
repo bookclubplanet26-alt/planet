@@ -5,6 +5,7 @@ import styles
 import services.config
 import services.accounting
 import services.sheets
+import services.group_matching
 import utils
 import views.calendar_widget
 import views.schedule
@@ -17,6 +18,7 @@ importlib.reload(styles)
 importlib.reload(services.config)
 importlib.reload(services.accounting)
 importlib.reload(services.sheets)
+importlib.reload(services.group_matching)
 importlib.reload(utils)
 importlib.reload(views.calendar_widget)
 importlib.reload(views.schedule)
