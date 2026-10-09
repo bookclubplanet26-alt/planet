@@ -599,3 +599,27 @@ def apply_custom_css():
     }
     </style>
     ''', unsafe_allow_html=True)
+
+    # 4. 관리자 메일 인증 여부에 따른 사이드바 'App 바로가기' 조배치 메뉴 동적 제어
+    google_user = st.session_state.get("google_user")
+    is_admin = bool(
+        google_user and (
+            google_user.get("is_admin", 0) == 1 or 
+            str(google_user.get("email", "")).strip().lower() in ["hanjisubusiness22@gmail.com"]
+        )
+    ) or bool(st.session_state.get("dev_super_admin_mode", False))
+
+    if not is_admin:
+        st.markdown('''
+        <style>
+        /* 비관리자: 사이드바 App 바로가기 목록에서 6번 조배치 메뉴 완전 숨김 */
+        [data-testid="stSidebarNav"] li:has(a[href*="자유책_조배치"]),
+        [data-testid="stSidebarNav"] li:has(a[href*="6_"]),
+        [data-testid="stSidebarNav"] a[href*="자유책_조배치"],
+        [data-testid="stSidebarNav"] a[href*="6_"],
+        ul[data-testid="stSidebarNavItems"] li:nth-child(6) {
+            display: none !important;
+        }
+        </style>
+        ''', unsafe_allow_html=True)
+
