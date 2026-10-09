@@ -339,9 +339,12 @@ def render_group_matching():
         with col_p2:
             st.write("")
             st.write("")
-            assign_btn = st.button("🎲 모임 조 자동 배치 실행", type="primary", use_container_width=True)
+            assign_btn = st.button("🎲 모임 조 자동 배치 실행", type="primary", use_container_width=True, disabled=(len(active_rsvps) < 3))
 
-        if assign_btn:
+        if len(active_rsvps) < 3:
+            st.warning("⚠️ 조 편성을 위해 최소 3명 이상의 참석자가 필요합니다. (제외 인원을 확인해주세요)")
+
+        if assign_btn and len(active_rsvps) >= 3:
             new_groups = assign_groups(
                 active_rsvps,
                 target_size=target_size,

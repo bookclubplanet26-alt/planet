@@ -18,6 +18,18 @@ def apply_custom_css():
         font-family: 'Pretendard', 'Noto Sans KR', 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif !important;
     }
 
+    /* 멀티셀렉트(st.multiselect) 드롭다운 내 'Select all' 및 'Select matches' 일괄선택 옵션 숨김 */
+    li[id*="__select_all__"],
+    li[id*="__select_matches__"],
+    div[id*="__select_all__"],
+    div[id*="__select_matches__"],
+    [data-key*="__select_all__"],
+    [data-key*="__select_matches__"],
+    [id*="__select_all__"],
+    [id*="__select_matches__"] {
+        display: none !important;
+    }
+
     /* 1. 모바일 반응형 여백 (컴팩트 최적화) */
     .main .block-container {
         padding-top: 1.25rem;
