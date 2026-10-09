@@ -2,7 +2,7 @@ import streamlit as st
 from views.admin_group_matching import render_group_matching
 from styles import apply_custom_css
 
-st.set_page_config(page_title="자유책 조배치 | 북클럽 플래닛", page_icon="🐰", layout="wide")
+st.set_page_config(page_title="모임 조 자동 배치 | 북클럽 플래닛", page_icon="🐰", layout="wide")
 apply_custom_css()
 
 col_nav_left, col_nav_right = st.columns([1, 2])

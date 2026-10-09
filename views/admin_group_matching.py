@@ -56,7 +56,7 @@ def render_group_matching():
 
     st.markdown("""
     <div style="background-color: #F7F5F0; border-left: 5px solid #6D4C41; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
-        <h3 style="margin: 0; color: #4E342E; font-size: 1.25rem;">🐰 자유책 모임 조 자동 배치 (운영진 메뉴)</h3>
+        <h3 style="margin: 0; color: #4E342E; font-size: 1.25rem;">🐰 모임 조 자동 배치 (운영진 메뉴)</h3>
         <p style="margin: 4px 0 0 0; color: #795548; font-size: 0.88rem;">
             기존 및 신규 회원의 자연스러운 교류와 밸런스를 고려하여 4인 테이블을 자동 구성합니다.
         </p>
@@ -202,12 +202,16 @@ def render_group_matching():
         date_col = next((c for c in df_rsvps.columns if any(k in str(c) for k in ["모임일자", "일자", "날짜", "date"])), None)
         name_col = next((c for c in df_rsvps.columns if any(k in str(c) for k in ["회원명", "이름", "성함", "name"])), None)
         email_col = next((c for c in df_rsvps.columns if any(k in str(c) for k in ["이메일", "email"])), None)
+        type_col = next((c for c in df_rsvps.columns if any(k in str(c) for k in ["참여방식", "방식", "type"])), None)
 
         for _, rrow in df_rsvps.iterrows():
             row_m = str(rrow.get(m_col, "")).strip()
             row_d = str(rrow.get(date_col, "")).strip() if date_col else ""
             row_email = str(rrow.get(email_col, "")).strip().lower() if email_col else ""
             raw_name = str(rrow.get(name_col, "")).strip() if name_col else ""
+            part_type = str(rrow.get(type_col, "자유책")).strip() if type_col else "자유책"
+            if not part_type:
+                part_type = "자유책"
 
             # 1. 모임명 매칭 검사
             title_match = bool(m_title_clean and (m_title_clean in row_m or row_m in m_title_clean))
@@ -216,7 +220,6 @@ def render_group_matching():
 
             # 2. 모임일자(날짜) 매칭 검사 - 과거 누적 데이터와 당일 데이터 분리
             if m_date_clean and row_d:
-                # 일자 정규화 비교 (2026-10-11 vs 2026.10.11 등)
                 norm_target_d = m_date_clean.replace(".", "-").replace("/", "-")
                 norm_row_d = row_d.replace(".", "-").replace("/", "-")
                 if norm_target_d not in norm_row_d and norm_row_d not in norm_target_d:
@@ -243,7 +246,8 @@ def render_group_matching():
                 "name": clean_name or m_info.get("name", "회원"),
                 "nickname": extracted_nick or m_info.get("nickname", ""),
                 "season": m_info.get("season", cutoff_season),
-                "group_attr": m_info.get("group_attr", "0")
+                "group_attr": m_info.get("group_attr", "0"),
+                "part_type": part_type
             })
 
     st.markdown("---")
@@ -255,28 +259,28 @@ def render_group_matching():
         st.info("💡 해당 모임에 아직 신청자가 없습니다. 아래 버튼으로 시뮬레이션 샘플을 불러올 수 있습니다.")
         if st.button("🧪 시뮬레이션용 가상 샘플 명단(18명) 로드"):
             sample_raw = [
-                ("김민수", "망고", "2501", "0"),
-                ("이영희", "라떼", "2505", "1"),
-                ("박지민", "포레스트", "2609", "0"),
-                ("정수진", "클로버", "2609", "1"),
-                ("최준호", "블루", "2409", "0"),
-                ("강다은", "단풍", "2509", "1"),
-                ("윤서준", "밤하늘", "2609", "0"),
-                ("한지원", "모모", "2609", "1"),
-                ("오태양", "썬", "2501", "1"),
-                ("서예린", "린", "2505", "0"),
-                ("송민혁", "호크", "2609", "1"),
-                ("임수아", "애플", "2609", "0"),
-                ("조현우", "윈드", "2405", "1"),
-                ("백지우", "스노우", "2609", "0"),
-                ("신동혁", "제우스", "2509", "0"),
-                ("황유진", "진", "2609", "1"),
-                ("권태훈", "태양", "2505", "0"),
-                ("문채원", "달빛", "2609", "1"),
+                ("김민수", "망고", "2501", "0", "자유책"),
+                ("이영희", "라떼", "2505", "1", "자유책"),
+                ("박지민", "포레스트", "2609", "0", "자유책"),
+                ("정수진", "클로버", "2609", "1", "자유책"),
+                ("최준호", "블루", "2409", "0", "자유책"),
+                ("강다은", "단풍", "2509", "1", "자유책"),
+                ("윤서준", "밤하늘", "2609", "0", "자유책"),
+                ("한지원", "모모", "2609", "1", "자유책"),
+                ("오태양", "썬", "2501", "1", "자유책"),
+                ("서예린", "린", "2505", "0", "자유책"),
+                ("송민혁", "호크", "2609", "1", "자유책"),
+                ("임수아", "애플", "2609", "0", "자유책"),
+                ("조현우", "윈드", "2405", "1", "자유책"),
+                ("백지우", "스노우", "2609", "0", "자유책"),
+                ("신동혁", "제우스", "2509", "0", "자유책"),
+                ("황유진", "진", "2609", "1", "자유책"),
+                ("권태훈", "태양", "2505", "0", "자유책"),
+                ("문채원", "달빛", "2609", "1", "자유책"),
             ]
             target_rsvps = [
-                {"name": n, "nickname": nk, "season": s, "group_attr": a}
-                for n, nk, s, a in sample_raw
+                {"name": n, "nickname": nk, "season": s, "group_attr": a, "part_type": pt}
+                for n, nk, s, a, pt in sample_raw
             ]
             st.session_state["mock_participants_list"] = target_rsvps
             st.rerun()
@@ -285,14 +289,33 @@ def render_group_matching():
         target_rsvps = st.session_state["mock_participants_list"]
 
     if target_rsvps:
-        # 사전 불참자 제외 멀티셀렉트
-        all_candidate_names = [p["name"] for p in target_rsvps]
-        excluded_names = st.multiselect(
-            "🚫 당일 사전 불참(제외)할 인원 선택 (선택 시 조 배치에서 즉시 제외)",
-            options=all_candidate_names,
-            key="ms_excluded_participants"
-        )
-        active_rsvps = [p for p in target_rsvps if p["name"] not in excluded_names]
+        # 자유책 전용 자동 선택 필터 (셀렉트박스) & 불참자 제외 멀티셀렉트
+        col_f1, col_f2 = st.columns([1.5, 2.5])
+        with col_f1:
+            part_filter = st.selectbox(
+                "📌 조 배치 대상 선택",
+                options=["📖 자유책 참여자만 (기본)", "👥 전체 신청자 포함 (지정책/라운징 등)"],
+                index=0,
+                key="sb_part_filter",
+                help="자유책 모임 조에는 기본적으로 자유책 신청자만 자동 배치됩니다."
+            )
+
+        if part_filter.startswith("📖"):
+            candidate_rsvps = [p for p in target_rsvps if "자유" in p.get("part_type", "") or p.get("part_type", "") == "자유책"]
+            if not candidate_rsvps:
+                candidate_rsvps = target_rsvps
+        else:
+            candidate_rsvps = target_rsvps
+
+        with col_f2:
+            all_candidate_names = [p["name"] for p in candidate_rsvps]
+            excluded_names = st.multiselect(
+                "🚫 당일 추가 불참(제외)할 인원 선택",
+                options=all_candidate_names,
+                key="ms_excluded_participants"
+            )
+
+        active_rsvps = [p for p in candidate_rsvps if p["name"] not in excluded_names]
 
         # 명단 요약 데이터프레임
         table_rows = []
@@ -302,10 +325,11 @@ def render_group_matching():
             table_rows.append({
                 "이름": p["name"],
                 "닉네임": p.get("nickname", "-"),
+                "참여방식": p.get("part_type", "자유책"),
                 "구분": "🟢 새멤버 (New)" if is_new else "⚪ 기존멤버 (Old)"
             })
         
-        with st.expander(f"참석자 명단 확인 (최종 {len(active_rsvps)}명 / 제외 {len(excluded_names)}명)", expanded=False):
+        with st.expander(f"참석자 명단 확인 (최종 대상 {len(active_rsvps)}명 / 전체 {len(target_rsvps)}명)", expanded=False):
             st.dataframe(pd.DataFrame(table_rows), use_container_width=True, hide_index=True)
 
         # Step 3. 조 편성 파라미터 & 실행 버튼
@@ -315,7 +339,7 @@ def render_group_matching():
         with col_p2:
             st.write("")
             st.write("")
-            assign_btn = st.button("🎲 자유책 조 자동 배치 실행", type="primary", use_container_width=True)
+            assign_btn = st.button("🎲 모임 조 자동 배치 실행", type="primary", use_container_width=True)
 
         if assign_btn:
             new_groups = assign_groups(
@@ -331,7 +355,7 @@ def render_group_matching():
     groups = st.session_state.current_assigned_groups
     if groups:
         st.markdown("---")
-        st.markdown(f"### 🎯 자유책 모임 조 편성 결과 (총 {len(groups)}개 테이블)")
+        st.markdown(f"### 🎯 모임 조 편성 결과 (총 {len(groups)}개 테이블)")
 
         # 각 조 카드 렌더링
         for idx, g in enumerate(groups):
@@ -391,7 +415,7 @@ def render_group_matching():
         # Step 5. 카카오톡 공지용 텍스트 복사 박스
         st.markdown("#### 📢 카카오톡 공지용 텍스트")
         notice_lines = [
-            f"📢 [{selected_label}] 자유책 모임 조 안내",
+            f"📢 [{selected_label}] 모임 조 안내",
             ""
         ]
         for g in groups:
