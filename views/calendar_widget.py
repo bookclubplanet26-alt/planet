@@ -90,9 +90,8 @@ def render_season_calendar_2609():
     cur_ym = (now_kst.year, now_kst.month)
 
     candidate_months = [(2026, 9), (2026, 10), (2026, 11)]
-    active_months = [(y, m) for (y, m) in candidate_months if (y, m) >= cur_ym]
-    if not active_months:
-        active_months = [candidate_months[-1]]
+    # 달이 지나도 이전 달력을 계속 볼 수 있도록 전체 시즌 표시
+    active_months = candidate_months
 
     month_cals = [(m, generate_month_calendar_html(y, m, season_start, season_end, chuseok_dates)) for y, m in active_months]
     tab_titles = ["🗓️ 전체보기"] + [f"{m}월" for m, _ in month_cals]
