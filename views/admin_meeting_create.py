@@ -34,7 +34,7 @@ def _is_duplicate_meeting(title, meeting_date):
 
 def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=None):
     """
-    모임 개설 뷰 (관리자: 정규모임/지정책/소모임 전체, 열심멤버: 지정책/소모임 개설 및 본인 이름 고정)
+    모임 개설 뷰 (관리자: 정규모임/지정책/별모임 전체, 열심멤버: 지정책/별모임 개설 및 본인 이름 고정)
     """
     if google_user is None:
         google_user = st.session_state.get("google_user")
@@ -45,11 +45,11 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
 
     st.markdown("#### ➕ 새 모임 개설")
 
-    # 관리자는 정규모임 포함 전체, 열심멤버(비관리자)는 정규모임 제외하고 지정책/소모임만 선택 가능
+    # 관리자는 정규모임 포함 전체, 열심멤버(비관리자)는 정규모임 제외하고 지정책/별모임만 선택 가능
     if is_admin:
-        cat_options = ["선택해주세요", "정규 모임", "지정책", "소모임/벙"]
+        cat_options = ["선택해주세요", "정규 모임", "지정책", "별모임/벙"]
     else:
-        cat_options = ["선택해주세요", "지정책", "소모임/벙"]
+        cat_options = ["선택해주세요", "지정책", "별모임/벙"]
 
     category_choice = st.selectbox(
         "개설할 모임 유형을 선택하세요",
@@ -206,10 +206,10 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                     else:
                         st.error("🚨 구글 시트에 모임을 저장하지 못했습니다. 서비스 계정 권한 또는 네트워크 상태를 확인해 주세요.")
 
-    else: # 소모임/벙
+    else: # 별모임/벙
         with st.form("form_bung_meeting"):
-            st.markdown("##### ☕ 소모임 / 벙 모임 설정")
-            m_title = st.text_input("모임 제목", placeholder="예: [소모임] 주말 보드게임 & 북카페 벙", key="bung_title")
+            st.markdown("##### ☕ 별모임 / 벙 모임 설정")
+            m_title = st.text_input("모임 제목", placeholder="예: [별모임] 주말 보드게임 & 북카페 벙", key="bung_title")
             
             default_host = google_user.get('display_name', '') if google_user else ""
             bung_host = st.text_input(
@@ -220,7 +220,7 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                 key="bung_host",
                 help="열심멤버는 본인 명의로 자동 고정됩니다." if not is_admin else "관리자는 직접 입력 및 수정 가능합니다."
             )
-            m_book = "자율 / 소모임"
+            m_book = "자율 / 별모임"
             m_author = "-"
 
             c1, c2 = st.columns(2)
@@ -236,7 +236,7 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
             kakao_link = st.text_input("오픈 카카오톡방 주소 (URL)", placeholder="예: https://open.kakao.com/o/...", key="bung_kakao_link")
             m_desc = st.text_area("모임 내용 및 안내", placeholder="모임의 자세한 내용을 적어주세요.", key="bung_desc")
 
-            submit_bung = st.form_submit_button("🚀 소모임/벙 개설 완료", type="primary", use_container_width=True)
+            submit_bung = st.form_submit_button("🚀 별모임/벙 개설 완료", type="primary", use_container_width=True)
             if submit_bung:
                 host_val = bung_host.strip() if bung_host else default_host
                 clean_kakao = _format_kakao_link(kakao_link)
@@ -247,7 +247,7 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                 elif _is_duplicate_meeting(m_title, str(m_date)):
                     st.error(f"🚨 해당 날짜({m_date})에 동일한 모임('{m_title}')이 이미 개설되어 있습니다.")
                 else:
-                    with st.spinner("소모임 개설 중..."): 
+                    with st.spinner("별모임 개설 중..."): 
                         pure_desc = m_desc.strip() if m_desc else ""
                         ok = append_meeting_to_google_sheet_async(
                             webhook_url=ATTENDANCE_WEBHOOK_URL,
@@ -264,7 +264,7 @@ def render_admin_meeting_create(google_user=None, is_admin=None, is_dedicated=No
                             account_info=""
                         )
                     if ok:
-                        created_msg = f"🎉 '{m_title}' 소모임/벙 모임이 성공적으로 개설되었습니다!"
+                        created_msg = f"🎉 '{m_title}' 별모임/벙 모임이 성공적으로 개설되었습니다!"
                         st.session_state["meeting_created_toast"] = created_msg
                         st.session_state["reset_admin_category"] = True
                         st.toast(created_msg, icon="🎉")

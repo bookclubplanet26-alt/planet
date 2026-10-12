@@ -212,7 +212,7 @@ def generate_submeeting_calendar_html(year, month, events_by_date):
 
 def render_submeeting_calendar(meetings=None):
     """
-    지정책(📕) 및 소모임/벙(☕) 일정 캘린더
+    지정책(📕) 및 별모임/벙(☕) 일정 캘린더
     - 날짜 아래에 해당 일자에 개설된 모임 이모지(📕, ☕)를 표시
     """
     if meetings is None:
@@ -230,7 +230,7 @@ def render_submeeting_calendar(meetings=None):
         except Exception:
             max_p = 8
 
-        is_bung = ("소모임" in m_title or "벙" in m_title or book_t == "자율 / 소모임")
+        is_bung = ("소모임" in m_title or "별모임" in m_title or "벙" in m_title or book_t in ["자율 / 소모임", "자율 / 별모임"])
         is_regular = (
             not is_bung and (
                 max_p >= 900 or 
@@ -269,14 +269,14 @@ def render_submeeting_calendar(meetings=None):
         elif is_bung:
             events_by_date[d_val].append({
                 "type": "bung",
-                "type_name": "소모임/벙",
+                "type_name": "별모임/벙",
                 "emoji": '<span class="cal-coffee-emoji">☕️</span>',
                 "title": m_title
             })
 
     st.markdown(
         '<div class="cal-legend-caption">'
-        '💡 <b>범례:</b> 📕 지정책 모임 &nbsp;|&nbsp; <span class="cal-coffee-emoji">☕️</span> 소모임 및 벙'
+        '💡 <b>범례:</b> 📕 지정책 모임 &nbsp;|&nbsp; <span class="cal-coffee-emoji">☕️</span> 별모임 및 벙'
         '</div>',
         unsafe_allow_html=True
     )

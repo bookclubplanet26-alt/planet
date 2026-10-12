@@ -74,7 +74,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         if is_season_match:
             is_eligible = True
 
-    is_bung = ("소모임" in meeting['title'] or "벙" in meeting['title'] or meeting['book_title'] == "자율 / 소모임")
+    is_bung = ("소모임" in meeting['title'] or "별모임" in meeting['title'] or "벙" in meeting['title'] or meeting['book_title'] in ["자율 / 소모임", "자율 / 별모임"])
     is_regular = (
         not is_bung and (
             max_count >= 900 or 
@@ -613,8 +613,8 @@ def render_schedule():
 
     meetings = get_all_meetings()
 
-    # 📚 지정책 & 소모임 캘린더 (접기/펼치기)
-    with st.expander("📚 지정책 & 소모임 캘린더", expanded=False):
+    # 📚 지정책 & 별모임 캘린더 (접기/펼치기)
+    with st.expander("📚 지정책 & 별모임 캘린더", expanded=False):
         render_submeeting_calendar(meetings)
 
     # 리셋 플래그 처리 (widget 생성 전 세션 스테이트 설정)
@@ -798,14 +798,14 @@ def render_schedule():
                     <div style="margin: 10px 0 16px 0; padding: 14px 18px; background-color: #FFF3E0; border: 1px solid #FFE082; border-left: 5px solid #FF9800; border-radius: 10px; color: #7F5100; font-size: 0.95rem; line-height: 1.55;">
                         <div style="font-weight: bold; font-size: 1.02rem; margin-bottom: 4px; color: #E65100;">📢 시즌 등록 및 예치금 입금 안내</div>
                         <b>{reason_msg}</b><br/>
-                        정규모임, 지정책, 소모임/벙 등 모든 모임 참가 신청 및 지정책 오픈 카톡방 열람을 위해 먼저 <b>이번 시즌 등록(예치금 입금)</b>을 완료해 주세요!
+                        정규모임, 지정책, 별모임/벙 등 모든 모임 참가 신청 및 지정책 오픈 카톡방 열람을 위해 먼저 <b>이번 시즌 등록(예치금 입금)</b>을 완료해 주세요!
                     </div>
                     """, unsafe_allow_html=True)
 
             if is_admin:
                 st.success("👑 **운영진(관리자) 권한이 확인되었습니다.** 상단 탭에 '➕ 새 모임 개설' 메뉴가 추가되었으며, 각 모임 우측 ❌ 삭제 버튼으로 모임을 삭제할 수 있습니다.")
             elif is_dedicated:
-                st.success("🔥 **열심멤버 권한이 확인되었습니다.** 상단 탭에 '➕ 새 모임 개설' 메뉴에서 지정책 및 소모임/벙을 개설할 수 있으며, 직접 개설한 모임은 ❌ 삭제할 수 있습니다.")
+                st.success("🔥 **열심멤버 권한이 확인되었습니다.** 상단 탭에 '➕ 새 모임 개설' 메뉴에서 지정책 및 별모임/벙을 개설할 수 있으며, 직접 개설한 모임은 ❌ 삭제할 수 있습니다.")
 
             if st.button("🚪 다른 이메일로 인증 (로그아웃)", key="google_logout_btn"):
                 st.session_state.google_user = None
@@ -852,7 +852,7 @@ def render_schedule():
 
         bung_meetings = [
             m for m in upcoming_meetings 
-            if ("소모임" in m['title'] or "벙" in m['title'] or m['book_title'] == "자율 / 소모임")
+            if ("소모임" in m['title'] or "별모임" in m['title'] or "벙" in m['title'] or m['book_title'] in ["자율 / 소모임", "자율 / 별모임"])
         ]
         regular_meetings = [
             m for m in upcoming_meetings 
@@ -870,11 +870,11 @@ def render_schedule():
             if m not in bung_meetings and m not in regular_meetings
         ]
 
-        # 📌 한 줄 4개 탭 구성 (정규모임 | 지정책 | 소모임/벙 | 지난 모임)
+        # 📌 한 줄 4개 탭 구성 (정규모임 | 지정책 | 별모임/벙 | 지난 모임)
         tab_labels = [
             f"📅 정규모임 ({len(regular_meetings)})", 
             f"📖 지정책 ({len(jijung_meetings)})", 
-            f"☕️ 소모임 / 벙 ({len(bung_meetings)})",
+            f"☕️ 별모임 / 벙 ({len(bung_meetings)})",
             f"📜 지난 모임 ({len(past_meetings)})"
         ]
         try:
@@ -898,7 +898,7 @@ def render_schedule():
 
         with m_tab3:
             if not bung_meetings:
-                st.info("현재 예정된 소모임 및 벙 모임이 없습니다.")
+                st.info("현재 예정된 별모임 및 벙 모임이 없습니다.")
             else:
                 for meeting in bung_meetings:
                     render_meeting_card(meeting, google_user, is_admin, key_prefix="bung_m", rsvps=rsvps_map.get(meeting['id'], []), user_eligibility=user_eligibility, is_dedicated=is_dedicated, first_attendees_set=first_attendees_set)
