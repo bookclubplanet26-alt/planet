@@ -1,4 +1,9 @@
 import streamlit as st
+import importlib
+import styles
+import views.register
+importlib.reload(styles)
+importlib.reload(views.register)
 from styles import apply_custom_css
 from views.register import render_register
 

@@ -12,6 +12,7 @@ import views.schedule
 import views.attendance
 import views.bookshelf
 import views.intro
+import views.register
 import views.admin_meeting_create
 import views.admin_group_matching
 importlib.reload(styles)
@@ -25,6 +26,7 @@ importlib.reload(views.schedule)
 importlib.reload(views.attendance)
 importlib.reload(views.bookshelf)
 importlib.reload(views.intro)
+importlib.reload(views.register)
 importlib.reload(views.admin_meeting_create)
 importlib.reload(views.admin_group_matching)
 
