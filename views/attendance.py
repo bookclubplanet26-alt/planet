@@ -33,6 +33,8 @@ def filter_attendances_for_meeting(att_df, selected_meeting):
         except Exception:
             pass
 
+    lounging_col = next((c for c in att_df.columns if any(k in str(c).lower() for k in ["라운징", "lounging"])), None)
+
     results = []
     for idx, row in att_df.iterrows():
         r_email = str(row.get('회원 이메일', '')).strip()
@@ -64,11 +66,19 @@ def filter_attendances_for_meeting(att_df, selected_meeting):
             is_date_match = True
 
         if is_date_match:
+            is_l = False
+            if lounging_col and pd.notna(row.get(lounging_col)):
+                val = str(row.get(lounging_col)).strip()
+                is_l = (val in ["1", "True", "true", "라운징"])
+            if not is_l and "라운징" in r_book:
+                is_l = True
+
             results.append({
                 "member_name": r_name,
                 "email": r_email,
                 "book_read": r_book,
-                "checked_at": r_checked_at
+                "checked_at": r_checked_at,
+                "is_lounging": is_l
             })
 
     return results
@@ -518,7 +528,9 @@ def render_attendance():
                 for sep in [" (💬 ", " (✍️ ", " (⭐", " ("]:
                     if sep in pure_b:
                         pure_b = pure_b.split(sep)[0].strip()
-                b_str = f" (📖 {pure_b})" if pure_b else ""
+                is_l = bool(att.get('is_lounging')) or ("라운징" in pure_b)
+                b_icon = "🛋️" if is_l else "📖"
+                b_str = f" ({b_icon} {pure_b})" if pure_b else ""
                 st.write(f"• **{att['member_name']}**{b_str} - {t_str} 출석완료")
         else:
             st.info("아직 출석 완료한 부원이 없습니다.")

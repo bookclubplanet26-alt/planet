@@ -126,6 +126,8 @@ def render_bookshelf():
         u_email = google_user.get('email', '').strip().lower()
         u_name = google_user.get('name', '').strip()
 
+        lounging_col = next((c for c in att_df.columns if any(k in str(c).lower() for k in ["라운징", "lounging"])), None)
+
         for idx, row in att_df.iterrows():
             r_email = str(row.get('회원 이메일', '')).strip().lower()
             r_name = str(row.get('회원 성함', '')).strip()
@@ -169,17 +171,26 @@ def render_bookshelf():
                     except Exception:
                         pass
 
+                is_l = False
+                if lounging_col and pd.notna(row.get(lounging_col)):
+                    val = str(row.get(lounging_col)).strip()
+                    is_l = (val in ["1", "True", "true", "라운징"])
+                if not is_l and ("라운징" in book_raw or "라운징" in book_title):
+                    is_l = True
+
                 author_val = str(row.get('저자명', '') or row.get('저자', '')).strip()
                 rating_val = str(row.get('별점', '')).strip()
 
+                default_title = "라운징" if is_l else "자유책"
                 my_records.append({
                     "date": date_val,
                     "meeting": meeting_name,
-                    "book_title": book_title if book_title else "자유책",
+                    "book_title": book_title if book_title else default_title,
                     "book_author": author_val,
                     "rating": rating_val,
                     "book_review": book_review,
-                    "season": season_val if season_val else "기타 시즌"
+                    "season": season_val if season_val else "기타 시즌",
+                    "is_lounging": is_l
                 })
 
     if not my_records:
@@ -235,13 +246,16 @@ def render_bookshelf():
             star_text = ""
         star_badge = f" <span style='font-size: 0.9rem; margin-left: 6px;'>{star_text}</span>" if star_text else ""
 
+        is_l_record = bool(r.get('is_lounging')) or ("라운징" in str(r.get('book_title', '')))
+        card_icon = "🛋️" if is_l_record else "📖"
+
         st.markdown(f"""
         <div style="background-color: #FFFFFF; border: 1px solid #EAE5D9; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
             <div style="font-size: 0.85rem; color: #8D6E63; font-weight: bold; margin-bottom: 4px;">
                 🗓️ {date_str} | 📌 {r['meeting']}
             </div>
             <div style="font-size: 1.15rem; font-weight: bold; color: #3E2723; margin-bottom: 6px;">
-                📖 {r['book_title']}{author_text}{star_badge}
+                {card_icon} {r['book_title']}{author_text}{star_badge}
             </div>
             {f'<div style="font-size: 0.92rem; color: #5D4037; background-color: #FAF8F5; padding: 10px; border-radius: 8px; margin-top: 6px;">💬 <i>"{r["book_review"]}"</i></div>' if r['book_review'] else ''}
         </div>
