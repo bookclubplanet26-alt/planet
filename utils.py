@@ -45,6 +45,7 @@ from services.sheets import (
     cancel_rsvp,
     append_attendance_to_google_sheet_async,
     append_meeting_to_google_sheet_async,
+    update_meeting_in_google_sheet_async,
     delete_meeting_from_google_sheet_async,
     add_rsvp_to_google_sheet_async,
     cancel_rsvp_from_google_sheet_async,

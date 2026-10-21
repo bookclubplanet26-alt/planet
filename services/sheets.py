@@ -795,6 +795,76 @@ def delete_meeting_from_google_sheet_async(webhook_url, title, meeting_date=""):
         pass
     return deleted
 
+def update_meeting_in_google_sheet_async(webhook_url, old_title, old_date, new_title, new_date, new_time, new_loc, new_book, new_author, new_max=8, new_desc="", new_leader="", new_kakao="", new_account=""):
+    """
+    구글 시트 '모임목록' 탭에서 특정 모임(old_title, old_date)의 행을 찾아 새로운 정보로 수정.
+    모임명 또는 날짜가 변경된 경우, '신청명단' 탭의 해당 모임명/모임일자도 동기화하여 참가신청자가 유실되지 않도록 보존.
+    """
+    updated = False
+    clean_leader = (new_leader or "").strip()
+    clean_kakao = (new_kakao or "").strip()
+    clean_account = (new_account or "").strip()
+    clean_desc = (new_desc or "").strip()
+
+    row_data = [
+        sanitize_sheet_cell(new_title),
+        sanitize_sheet_cell(str(new_date)),
+        sanitize_sheet_cell(str(new_time)),
+        sanitize_sheet_cell(str(new_loc)),
+        sanitize_sheet_cell(str(new_book)),
+        sanitize_sheet_cell(str(new_author)),
+        int(new_max),
+        sanitize_sheet_cell(clean_desc),
+        sanitize_sheet_cell(clean_leader),
+        sanitize_sheet_cell(clean_kakao),
+        sanitize_sheet_cell(clean_account)
+    ]
+
+    try:
+        gc = get_gspread_client()
+        if gc:
+            sh = gc.open_by_key(GOOGLE_SHEET_ATTENDANCE_ID)
+            try:
+                ws_m = sh.worksheet("모임목록")
+            except Exception:
+                ws_m = None
+
+            if ws_m:
+                records = ws_m.get_all_records()
+                for idx, r in enumerate(records, start=2):
+                    r_title = str(r.get("모임명") or "").strip()
+                    r_date = str(r.get("모임일자") or "").strip()
+                    t_match = (old_title == r_title or old_title in r_title or r_title in old_title)
+                    d_match = (not old_date or not r_date or str(old_date).strip() == r_date)
+                    if t_match and d_match:
+                        ws_m.update(values=[row_data], range_name=f"A{idx}:K{idx}", value_input_option='USER_ENTERED')
+                        updated = True
+                        break
+
+            # 모임명이나 날짜가 변경된 경우, '신청명단' 탭 동기화
+            if updated and (old_title != new_title or str(old_date).strip() != str(new_date).strip()):
+                try:
+                    ws_r = sh.worksheet("신청명단")
+                    r_records = ws_r.get_all_records()
+                    for r_idx, r in enumerate(r_records, start=2):
+                        m_col_val = str(r.get("모임명") or r.get("모임") or "").strip()
+                        d_col_val = str(r.get("모임일자") or r.get("일자") or r.get("날짜") or "").strip()
+                        if (old_title == m_col_val or old_title in m_col_val or m_col_val in old_title) and (not old_date or not d_col_val or str(old_date).strip() == d_col_val):
+                            ws_r.update_cell(r_idx, 2, sanitize_sheet_cell(new_title))
+                            if new_date:
+                                ws_r.update_cell(r_idx, 3, sanitize_sheet_cell(str(new_date)))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    clear_attendance_cache()
+    try:
+        st.cache_data.clear()
+    except Exception:
+        pass
+    return updated
+
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_google_sheet_rsvps():
     """

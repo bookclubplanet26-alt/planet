@@ -20,26 +20,134 @@ SHOW_REGULAR_FACILITATOR = True
 SUPER_ADMIN_EMAILS = ["hanjisubusiness22@gmail.com"]
 
 if hasattr(st, "dialog"):
-    @st.dialog("🗑️ 모임 삭제 확인")
-    def confirm_delete_meeting_dialog(m_title, m_date, m_time):
-        st.markdown(f"#### **[{m_title}]**")
-        st.write(f"🗓️ 일시: **{m_date} {m_time}**")
-        st.warning("⚠️ 해당 모임을 정말 삭제하시겠습니까?\n삭제 시 부원들의 모임 목록에서 완전히 제거됩니다.\n(기존 참가 신청자 명단과 출석 기록은 안전하게 보존됩니다)")
-        
-        c_cancel, c_confirm = st.columns(2)
-        with c_cancel:
-            if st.button("취소", use_container_width=True, key="dlg_del_cancel_btn"):
-                st.rerun()
-        with c_confirm:
-            if st.button("🗑️ 삭제하기", type="primary", use_container_width=True, key="dlg_del_confirm_btn"):
+    @st.dialog("✏️ 모임 정보 수정 및 삭제")
+    def edit_meeting_dialog(meeting):
+        m_id = meeting.get('id', '')
+        old_title = str(meeting.get('title') or '').strip()
+        old_date = str(meeting.get('meeting_date') or '').strip()
+        old_time = str(meeting.get('meeting_time') or '').strip()
+        old_loc = str(meeting.get('location_name') or '').strip()
+        old_book = str(meeting.get('book_title') or '').strip()
+        old_author = str(meeting.get('author') or '').strip()
+        try:
+            old_max = int(meeting.get('max_participants') or 8)
+        except Exception:
+            old_max = 8
+        old_desc = str(meeting.get('description') or '').strip()
+        old_leader = str(meeting.get('leader') or '').strip()
+        old_account = str(meeting.get('account') or '').strip()
+        old_kakao = ""
+
+        # description 내부의 메타태그 분리
+        clean_desc = old_desc
+        if "[책장:" in clean_desc:
+            try:
+                l_part = clean_desc.split("[책장:")[1].split("]")[0]
+                if not old_leader:
+                    old_leader = l_part.strip()
+                clean_desc = clean_desc.replace(f"[책장:{l_part}]", "").strip()
+            except Exception:
+                pass
+        if "[카톡:" in clean_desc:
+            try:
+                k_part = clean_desc.split("[카톡:")[1].split("]")[0]
+                old_kakao = k_part.strip()
+                clean_desc = clean_desc.replace(f"[카톡:{k_part}]", "").strip()
+            except Exception:
+                pass
+        if "[계좌:" in clean_desc:
+            try:
+                a_part = clean_desc.split("[계좌:")[1].split("]")[0]
+                if not old_account:
+                    old_account = a_part.strip()
+                clean_desc = clean_desc.replace(f"[계좌:{a_part}]", "").strip()
+            except Exception:
+                pass
+
+        st.markdown(f"#### **[{old_title}]**")
+        st.caption("모임 정보를 수정하거나 필요 시 모임을 삭제할 수 있습니다.")
+
+        with st.form(key=f"form_edit_m_{m_id}"):
+            f_title = st.text_input("📌 모임 제목", value=old_title)
+            
+            c_d1, c_d2 = st.columns(2)
+            with c_d1:
+                try:
+                    d_parsed = datetime.datetime.strptime(old_date, "%Y-%m-%d").date()
+                except Exception:
+                    d_parsed = get_current_kst().date()
+                f_date = st.date_input("🗓️ 모임 날짜", value=d_parsed)
+            with c_d2:
+                f_time = st.text_input("⏰ 모임 시간", value=old_time, placeholder="예: 14:00 ~ 16:30")
+
+            c_b1, c_b2 = st.columns(2)
+            with c_b1:
+                f_book = st.text_input("📖 도서명", value=old_book)
+            with c_b2:
+                f_author = st.text_input("✍️ 저자", value=old_author)
+
+            c_l1, c_l2 = st.columns(2)
+            with c_l1:
+                f_loc = st.text_input("📍 모임 장소", value=old_loc)
+            with c_l2:
+                f_max = st.number_input("👥 최대 정원 (명)", value=old_max, min_value=2, max_value=999, step=1)
+
+            c_o1, c_o2 = st.columns(2)
+            with c_o1:
+                f_leader = st.text_input("👤 모임장 (또는 진행자)", value=old_leader)
+            with c_o2:
+                f_kakao = st.text_input("💬 오픈카톡방 링크 (선택)", value=old_kakao)
+
+            f_account = st.text_input("💳 입금 계좌 안내 (선택)", value=old_account)
+            f_desc = st.text_area("📝 모임 소개 및 설명", value=clean_desc, height=90)
+
+            st.markdown("<hr style='margin:12px 0 16px 0;'/>", unsafe_allow_html=True)
+            submit_save = st.form_submit_button("💾 수정사항 저장하기", type="primary", use_container_width=True)
+
+        if submit_save:
+            if not f_title.strip():
+                st.error("🚨 모임 제목을 입력해 주세요.")
+            else:
+                from utils import ATTENDANCE_WEBHOOK_URL, update_meeting_in_google_sheet_async
+                with st.spinner("모임 정보 수정 중..."):
+                    ok = update_meeting_in_google_sheet_async(
+                        webhook_url=ATTENDANCE_WEBHOOK_URL,
+                        old_title=old_title,
+                        old_date=old_date,
+                        new_title=f_title.strip(),
+                        new_date=str(f_date),
+                        new_time=f_time.strip(),
+                        new_loc=f_loc.strip(),
+                        new_book=f_book.strip(),
+                        new_author=f_author.strip(),
+                        new_max=int(f_max),
+                        new_desc=f_desc.strip(),
+                        new_leader=f_leader.strip(),
+                        new_kakao=f_kakao.strip(),
+                        new_account=f_account.strip()
+                    )
+                if ok:
+                    msg = f"✨ '{f_title.strip()}' 모임 정보가 성공적으로 수정되었습니다."
+                    st.session_state["meeting_updated_toast"] = msg
+                    st.toast(msg, icon="✨")
+                    st.rerun()
+                else:
+                    st.error("🚨 구글 시트 수정 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+
+        # 모임 삭제 섹션
+        with st.expander("🗑️ 모임 삭제하기 (주의)", expanded=False):
+            st.warning("⚠️ 모임을 삭제하면 부원들의 모임 목록에서 완전히 제거됩니다.\n(기존 참가 신청자 명단과 출석 기록은 안전하게 보존됩니다)")
+            del_chk = st.checkbox("네, 이 모임을 삭제합니다.", key=f"chk_del_m_{m_id}")
+            if st.button("🗑️ 확인 (모임 영구 삭제)", disabled=(not del_chk), type="secondary", use_container_width=True, key=f"btn_confirm_del_{m_id}"):
                 from utils import ATTENDANCE_WEBHOOK_URL, delete_meeting_from_google_sheet_async
-                delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, m_title, m_date)
-                del_msg = f"🗑️ '{m_title}' 모임이 삭제되었습니다."
+                with st.spinner("모임 삭제 중..."):
+                    delete_meeting_from_google_sheet_async(ATTENDANCE_WEBHOOK_URL, old_title, old_date)
+                del_msg = f"🗑️ '{old_title}' 모임이 삭제되었습니다."
                 st.session_state["meeting_deleted_toast"] = del_msg
                 st.toast(del_msg, icon="🗑️")
                 st.rerun()
 else:
-    confirm_delete_meeting_dialog = None
+    edit_meeting_dialog = None
 
 def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended=False, rsvps=None, user_eligibility=None, is_dedicated=False, first_attendees_set=None):
     if rsvps is None:
@@ -209,7 +317,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
         can_delete = is_admin or (is_dedicated and is_my_meeting and not is_regular)
 
         if can_delete:
-            col_t1, col_t2 = st.columns([5, 1])
+            col_t1, col_t2 = st.columns([4.6, 1.2])
             with col_t1:
                 st.markdown(
                     f'<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px; margin-bottom:6px;">'
@@ -221,12 +329,11 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                 if leader_html:
                     st.markdown(leader_html, unsafe_allow_html=True)
             with col_t2:
-                if confirm_delete_meeting_dialog is not None:
-                    if st.button("❌", key=f"{key_prefix}_del_m_{m_id}", help="이 모임을 목록에서 삭제합니다"):
-                        m_time_str = meeting.get('meeting_time', '') if isinstance(meeting, dict) or hasattr(meeting, '__getitem__') else getattr(meeting, 'meeting_time', '')
-                        confirm_delete_meeting_dialog(m_title, m_date, m_time_str)
+                if edit_meeting_dialog is not None:
+                    if st.button("✏️ 수정", key=f"{key_prefix}_edit_m_{m_id}", help="모임 정보를 수정하거나 삭제합니다", use_container_width=True):
+                        edit_meeting_dialog(meeting)
                 else:
-                    with st.popover("❌", help="이 모임을 목록에서 삭제합니다"):
+                    with st.popover("✏️ 수정", help="모임 정보를 수정하거나 삭제합니다"):
                         st.markdown(f"**[{m_title}]**")
                         st.caption(f"🗓️ {m_date}")
                         st.warning("⚠️ 해당 모임을 삭제하시겠습니까?")
@@ -637,6 +744,12 @@ def render_schedule():
         msg = st.session_state["meeting_deleted_toast"]
         st.toast(msg, icon="🗑️")
         st.session_state["meeting_deleted_toast"] = None
+
+    # 모임 수정 완료 메시지 알림 (toast & banner)
+    if "meeting_updated_toast" in st.session_state and st.session_state["meeting_updated_toast"]:
+        msg = st.session_state["meeting_updated_toast"]
+        st.toast(msg, icon="✨")
+        st.session_state["meeting_updated_toast"] = None
 
     is_admin = bool(google_user and google_user.get("is_admin", 0) == 1)
     is_dedicated = bool(google_user and google_user.get("is_dedicated", 0) == 1)
