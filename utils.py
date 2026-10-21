@@ -16,6 +16,7 @@ from services.config import (
     get_club_season_code,
     get_season_date_config,
     format_season_display,
+    clean_member_display_name,
 )
 
 # 2. GPS 및 현장 위치 계산 모듈 (services/geo.py)

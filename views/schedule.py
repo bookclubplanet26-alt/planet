@@ -10,7 +10,8 @@ from utils import (
     get_current_kst, format_member_attendance_and_deposit_text, get_member_deposit_info, 
     check_member_season_eligibility, get_all_meetings, get_rsvps_for_meeting,
     add_rsvp, cancel_rsvp, get_meeting_facilitator, get_all_meeting_rsvps_map,
-    fetch_google_sheet_meetings, fetch_google_sheet_rsvps, prefetch_schedule_data
+    fetch_google_sheet_meetings, fetch_google_sheet_rsvps, prefetch_schedule_data,
+    clean_member_display_name
 )
 
 # 정규모임 진행자 표시 여부 플래그 (True: 표시, False: 기능 유지한 채 임시 숨김)
@@ -466,6 +467,9 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
                     m_name = (r.get('member_name') or '').strip()
                     if not m_name:
                         m_name = (r.get('member_phone') or '').split('@')[0] if r.get('member_phone') else '회원'
+                    elif " - " in m_name:
+                        _p_name, _p_nick = m_name.split(" - ", 1)
+                        _, m_name = clean_member_display_name(_p_name, _p_nick)
                     p_type = r['participation_type'] if 'participation_type' in r.keys() and r['participation_type'] else '자유책'
 
                     # 첫출석 뱃지 판정 (운영진에게만 표시: 🌱이름 형식)
@@ -734,11 +738,12 @@ def render_schedule():
                                 raw_dedicated = str(r[dedicated_col]).strip() if dedicated_col and pd.notna(r[dedicated_col]) else "0"
                                 dedicated_val = 1 if raw_dedicated in ["1", "열심", "열심멤버", "True", "true", "Y", "y"] else 0
 
+                                clean_n, disp_n = clean_member_display_name(u_name, u_nick)
                                 found_member = {
                                     "id": hash(email_str) % 100000,
-                                    "name": u_name,
+                                    "name": clean_n,
                                     "nickname": u_nick,
-                                    "display_name": f"{u_name} - {u_nick}" if u_nick else u_name,
+                                    "display_name": disp_n,
                                     "email": email_str,
                                     "season": u_season,
                                     "registered": reg_val,

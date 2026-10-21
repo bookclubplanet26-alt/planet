@@ -6,7 +6,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 
-from services.config import get_current_kst, get_club_season_code
+from services.config import get_current_kst, get_club_season_code, clean_member_display_name
 from services.sheets import (
     fetch_google_sheet_members,
     fetch_google_sheet_meetings,
@@ -246,8 +246,11 @@ def render_group_matching():
             # 5. 회원목록(처음등록시즌, 조배치) 정보 매핑
             m_info = mem_by_email.get(row_email) or mem_by_name.get(clean_name) or {}
 
+            # 화면 및 조배치 표시용 이름에서 닉네임이 있을 때 끝자리 번호 제거
+            disp_n, _ = clean_member_display_name(clean_name or m_info.get("name", "회원"), extracted_nick or m_info.get("nickname", ""))
+
             target_rsvps.append({
-                "name": clean_name or m_info.get("name", "회원"),
+                "name": disp_n,
                 "nickname": extracted_nick or m_info.get("nickname", ""),
                 "season": m_info.get("season", cutoff_season),
                 "group_attr": m_info.get("group_attr", "0"),

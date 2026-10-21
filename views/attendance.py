@@ -8,7 +8,8 @@ from utils import (
     format_season_display, ATTENDANCE_WEBHOOK_URL, 
     append_attendance_to_google_sheet_async, get_club_season_code,
     get_current_kst, format_member_attendance_and_deposit_text, check_member_season_eligibility,
-    get_all_meetings, get_rsvps_for_meeting, get_all_meeting_rsvps_map, prefetch_schedule_data
+    get_all_meetings, get_rsvps_for_meeting, get_all_meeting_rsvps_map, prefetch_schedule_data,
+    clean_member_display_name
 )
 from services.config import SEASON_DATE_CONFIG, get_season_date_config
 try:
@@ -166,11 +167,12 @@ def render_attendance():
                             raw_dedicated = str(r[dedicated_col]).strip() if dedicated_col and pd.notna(r[dedicated_col]) else "0"
                             dedicated_val = 1 if raw_dedicated in ["1", "열심", "열심멤버", "True", "true", "Y", "y"] else 0
 
+                            clean_n, disp_n = clean_member_display_name(u_name, u_nick)
                             found_member = {
                                 "id": hash(email_str) % 100000,
-                                "name": u_name,
+                                "name": clean_n,
                                 "nickname": u_nick,
-                                "display_name": f"{u_name} - {u_nick}" if u_nick else u_name,
+                                "display_name": disp_n,
                                 "email": email_str,
                                 "season": u_season,
                                 "registered": reg_val,

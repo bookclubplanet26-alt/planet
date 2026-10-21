@@ -116,3 +116,27 @@ def format_season_display(season_code):
         return f"{code_str}시즌({month_start}~{month_end}월)"
     return f"{code_str}시즌"
 
+def clean_member_display_name(raw_name, nickname=""):
+    """
+    회원명 뒤의 식별용 번호 (예: '김윤경(48)', '김윤경 (48)', '김윤경48')를
+    닉네임이 있는 경우 화면 표시용으로 깔끔하게 제거.
+    - 닉네임이 있으면: clean_name="김윤경", display_name="김윤경 - 감자스"
+    - 닉네임이 없으면: clean_name="김윤경(48)", display_name="김윤경(48)" (동명이인 식별 보존)
+    """
+    import re
+    raw_n = str(raw_name or "").strip()
+    nick = str(nickname or "").strip()
+    
+    # 끝자리 괄호 숫자 및 붙은 숫자 제거 (예: "(48)", " (48)", "48")
+    cleaned_n = re.sub(r'[\s_]*\(\d+\)$', '', raw_n).strip()
+    if cleaned_n == raw_n:
+        cleaned_n = re.sub(r'\d+$', '', raw_n).strip()
+    if not cleaned_n:
+        cleaned_n = raw_n
+
+    if nick:
+        return cleaned_n, f"{cleaned_n} - {nick}"
+    else:
+        return raw_n, raw_n
+
+
