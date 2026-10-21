@@ -331,7 +331,7 @@ def render_attendance():
         r for r in rsvps
         if (user_email and str(r.get('member_phone', '')).strip().lower() == user_email) or
            (user_display and str(r.get('member_name', '')).strip() == user_display) or
-           (user_name and str(r.get('member_name', '')).strip() == user_name)
+           (not str(r.get('member_phone', '')).strip() and user_name and str(r.get('member_name', '')).strip() == user_name)
     ), None)
 
     # 구글 시트에서 실시간 출석 기록 조회
@@ -362,22 +362,25 @@ def render_attendance():
     is_correct_time = (time(16, 0) <= now_kst.time() <= time(17, 0))
     is_valid_time_window = is_correct_day and is_correct_time
 
-    # 이미 출석 완료했는지 판단
+    # 이미 출석 완료했는지 판단 (동명이인 혼선 방지: 이메일 우선 엄격 매칭)
     already_checked_in = False
     for att in gs_attendances:
         att_email = str(att.get('email', '')).strip().lower()
         att_name = str(att.get('member_name', '')).strip()
         
-        match_email = (user_email and att_email == user_email)
-        match_name = (
-            (user_display and user_display == att_name) or
-            (user_name and user_name == att_name) or
-            (user_nick and user_nick in att_name) or
-            (user_name and user_name in att_name)
-        )
-        if match_email or match_name:
-            already_checked_in = True
-            break
+        if user_email and att_email:
+            if att_email == user_email:
+                already_checked_in = True
+                break
+        else:
+            match_name = (
+                (user_display and user_display == att_name) or
+                (user_nick and user_nick in att_name and user_name in att_name) or
+                (not user_nick and user_name == att_name)
+            )
+            if match_name:
+                already_checked_in = True
+                break
 
     if "checked_meetings" not in st.session_state:
         st.session_state.checked_meetings = set()
@@ -499,7 +502,7 @@ def render_attendance():
                         ATTENDANCE_WEBHOOK_URL,
                         checked_at=now_str,
                         email=google_user.get('email', ''),
-                        name=my_rsvp['member_name'],
+                        name=google_user.get('display_name') or my_rsvp['member_name'],
                         year="",
                         season="",
                         meeting_name=selected_meeting['title'],

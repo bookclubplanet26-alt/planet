@@ -74,12 +74,12 @@ def get_member_attendance_count(user_email="", user_name="", target_season=None)
             if not season_match:
                 continue
 
-        # 회원 일치 여부 판정
+        # 회원 일치 여부 판정 (동명이인 혼선 방지: 이메일 우선 엄격 매칭)
         is_match = False
-        if e_clean and r_email and e_clean == r_email:
-            is_match = True
-        elif n_clean and r_name and (n_clean in r_name or r_name in n_clean):
-            is_match = True
+        if e_clean and r_email:
+            is_match = (e_clean == r_email)
+        elif n_clean and r_name and not r_email:
+            is_match = (n_clean == r_name)
 
         if is_match:
             is_l = False
