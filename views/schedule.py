@@ -21,7 +21,13 @@ SUPER_ADMIN_EMAILS = ["hanjisubusiness22@gmail.com"]
 
 if hasattr(st, "dialog"):
     @st.dialog("✏️ 모임 정보 수정 및 삭제")
-    def edit_meeting_dialog(meeting):
+    def edit_meeting_dialog(meeting, google_user=None):
+        if google_user is None:
+            google_user = st.session_state.get("google_user")
+
+        is_admin_user = bool(google_user and google_user.get("is_admin", 0) == 1)
+        is_ded_user = bool(google_user and google_user.get("is_dedicated", 0) == 1)
+
         m_id = meeting.get('id', '')
         old_title = str(meeting.get('title') or '').strip()
         old_date = str(meeting.get('meeting_date') or '').strip()
@@ -63,6 +69,31 @@ if hasattr(st, "dialog"):
                 clean_desc = clean_desc.replace(f"[계좌:{a_part}]", "").strip()
             except Exception:
                 pass
+
+        # 🔒 보안 권한 검증: 관리자 또는 본인이 개설한 모임(정규모임 제외)만 수정/삭제 허용
+        is_mine = False
+        if google_user and old_leader:
+            u_disp = str(google_user.get('display_name', '')).strip()
+            u_name = str(google_user.get('name', '')).strip()
+            u_nick = str(google_user.get('nickname', '')).strip()
+            u_email = str(google_user.get('email', '')).strip().lower()
+            l_str = str(old_leader).strip()
+
+            if l_str == u_disp or l_str == u_name:
+                is_mine = True
+            elif u_email and u_email in l_str.lower():
+                is_mine = True
+            elif u_nick and u_name and (u_nick in l_str and u_name in l_str):
+                is_mine = True
+            elif not u_nick and l_str == u_name:
+                is_mine = True
+
+        is_reg = (old_max >= 900) or ("강남 (" in old_title) or ("종각 (" in old_title) or ("정규" in old_title) or ("어텀" in old_title) or ("윈터블" in old_title)
+        has_perm = is_admin_user or (is_ded_user and is_mine and not is_reg)
+
+        if not has_perm:
+            st.error("🚨 해당 모임을 수정하거나 삭제할 권한이 없습니다. (본인이 개설한 모임만 가능)")
+            return
 
         st.markdown(f"#### **[{old_title}]**")
         st.caption("모임 정보를 수정하거나 필요 시 모임을 삭제할 수 있습니다.")
@@ -297,7 +328,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             else:
                 leader_html = f"<div class='meeting-leader-badge'>👤 <b>진행자</b>: <span>{facilitator_name}</span></div>"
 
-        # 삭제 권한 판정: 관리자는 모든 모임 삭제 가능, 열심멤버는 본인이 개설한 모임(정규모임 제외)만 삭제 가능
+        # 수정/삭제 권한 판정: 관리자는 모든 모임 가능, 열심멤버는 본인이 개설한 모임(정규모임 제외)만 가능
         is_my_meeting = False
         if google_user and leader_name:
             u_disp = str(google_user.get('display_name', '')).strip()
@@ -306,17 +337,18 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             u_email = str(google_user.get('email', '')).strip().lower()
             l_str = str(leader_name).strip()
 
-            if l_str == u_disp or l_str == u_name or (u_nick and l_str == u_nick):
+            if l_str == u_disp or l_str == u_name:
                 is_my_meeting = True
-            elif u_name and u_name in l_str:
-                if not u_nick or u_nick in l_str:
-                    is_my_meeting = True
             elif u_email and u_email in l_str.lower():
                 is_my_meeting = True
+            elif u_nick and u_name and (u_nick in l_str and u_name in l_str):
+                is_my_meeting = True
+            elif not u_nick and l_str == u_name:
+                is_my_meeting = True
 
-        can_delete = is_admin or (is_dedicated and is_my_meeting and not is_regular)
+        can_edit_or_delete = is_admin or (is_dedicated and is_my_meeting and not is_regular)
 
-        if can_delete:
+        if can_edit_or_delete:
             col_t1, col_t2 = st.columns([4.6, 1.2])
             with col_t1:
                 st.markdown(
@@ -331,7 +363,7 @@ def render_meeting_card(meeting, google_user, is_admin, key_prefix="g", is_ended
             with col_t2:
                 if edit_meeting_dialog is not None:
                     if st.button("✏️ 수정", key=f"{key_prefix}_edit_m_{m_id}", help="모임 정보를 수정하거나 삭제합니다", use_container_width=True):
-                        edit_meeting_dialog(meeting)
+                        edit_meeting_dialog(meeting, google_user=google_user)
                 else:
                     with st.popover("✏️ 수정", help="모임 정보를 수정하거나 삭제합니다"):
                         st.markdown(f"**[{m_title}]**")
